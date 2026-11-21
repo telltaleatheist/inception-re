@@ -731,6 +731,62 @@ bool Town::offer_weapon(int weapon, KeySource& keys) {
     return true;
 }
 
+// BTECH.EXE 17dc:13de (Ghidra FUN_17dc_13de)
+// Armour offered to the party, as 17dc:15e6 offers a weapon: whoever takes
+// it hands his old suit, with its points, on to be offered next
+// (docs/scripts.md, "The shops").
+bool Town::offer_armour(int type, int points, KeySource& keys) {
+    std::vector<int> members;
+    for (int i = 0; i < 8; ++i)
+        if (characters_[std::size_t(i)][character::kName] != character::kEmpty) members.push_back(i);
+    const int n = int(members.size());
+    if (n <= 1) {
+        characters_[0][character::kArmourType] = std::uint8_t(type);
+        characters_[0][character::kArmour] = std::uint8_t(points);
+        return true;
+    }
+    while (type != 0) {
+        clear_window();  // 2656:0388
+        print_id("offer.armour_give");
+        print_id("armour." + std::to_string(type));
+        print_id("offer.armour_to");
+        for (const int m : members) {
+            const auto& r = characters_[std::size_t(m)];
+            print_id("character." + std::to_string(r[character::kName]));
+            text_.set_cursor(10, text_.window().row);  // F:3748
+            print_id("armour." + std::to_string(std::int8_t(r[character::kArmourType])));
+            print_id("talk.line_end");  // 24d3:181e
+        }
+        print_id("offer.armour_drop");
+        text_.print(std::to_string(points));  // 273d:0053
+        menus_[4].items = n + 1;  // F:00d6
+        const auto chosen = menu(4, keys);
+        if (!chosen) {
+            place_open_ = true;
+            return false;
+        }
+        if (*chosen >= n) break;  // Drop it
+        auto& r = characters_[std::size_t(members[std::size_t(*chosen)])];
+        const int old_type = std::int8_t(r[character::kArmourType]);
+        const int old_points = std::int8_t(r[character::kArmour]);
+        r[character::kArmourType] = std::uint8_t(type);
+        r[character::kArmour] = std::uint8_t(points);
+        if (old_type == type) {
+            // 1000:2867: at column 0, row 20, in white.
+            text_.set_cursor(0, 20);
+            text_.set_fg(TextRole::Text);
+            print_id("offer.armour_already");
+            if (!read_key(keys)) {  // 273d:086a, 273d:0259
+                place_open_ = true;
+                return false;
+            }
+        }
+        type = old_type;
+        points = old_points;
+    }
+    return true;
+}
+
 // BTECH.EXE 15ab:0d3d (Ghidra FUN_15ab_0d3d)
 // The encounter's opponents: enemy people in character records 8-15 and
 // 'Mechs in records 4-7, then placed on free cells of the view, starting

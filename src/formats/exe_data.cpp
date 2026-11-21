@@ -38,6 +38,11 @@ constexpr std::array kDos103 = {
     ExeSpan{ExeSpan::Kind::Table, "rules.difficulty_armour", 0x46db, 0x165a, 7, "a8d217a43d0fbae8"},
     // The personal armour types' points, DG:4ddb + 0..5 (1000:3a49, 15ab:1a8f, 24d3:0a3c):
     ExeSpan{ExeSpan::Kind::Table, "rules.personal_armour", 0x46db, 0x4ddb, 6, "50b413dca9156173"},
+    // The shops' prices (24d3:09c7, 0a4b, 0ef3): armour by type (32-bit), an armour point by
+    // type - 1, weapons by number - 1 (32-bit).
+    ExeSpan{ExeSpan::Kind::Table, "rules.armour_prices", 0x46db, 0x4f26, 24, "27f58a769d8131df"},
+    ExeSpan{ExeSpan::Kind::Table, "rules.armour_point_prices", 0x46db, 0x4f3e, 6, "11abfb70db858fa0"},
+    ExeSpan{ExeSpan::Kind::Table, "rules.weapon_prices", 0x46db, 0x4f44, 44, "4e53bb99e5bd32d8"},
     // 1c67:08a8's ten pictured parts on BTSTATS.CMP: each one's point (x at
     // DG:28c4, y at DG:28d8, words) and its answer, a menu 0x25 item (DG:28ec):
     ExeSpan{ExeSpan::Kind::Table, "rules.quiz_part_x", 0x46db, 0x28c4, 20, "6ae32790932d22a7"},
@@ -333,6 +338,11 @@ constexpr std::array kDos103 = {
     ExeSpan{ExeSpan::Kind::Text, "offer.to", 0x46db, 0x16b4, 6, "fc653f69fd89a523"},
     ExeSpan{ExeSpan::Kind::Text, "offer.drop", 0x46db, 0x16ba, 8, "8a92a66f9e007a00"},
     ExeSpan{ExeSpan::Kind::Text, "offer.already", 0x46db, 0x16c2, 28, "0553948b51fb4426"},
+    // Armour offered to the party (17dc:13de).
+    ExeSpan{ExeSpan::Kind::Text, "offer.armour_give", 0x46db, 0x1661, 6, "4bab2e3777e939a2"},
+    ExeSpan{ExeSpan::Kind::Text, "offer.armour_to", 0x46db, 0x1667, 6, "fc653f69fd89a523"},
+    ExeSpan{ExeSpan::Kind::Text, "offer.armour_drop", 0x46db, 0x166d, 30, "55192b2f926b5a57"},
+    ExeSpan{ExeSpan::Kind::Text, "offer.armour_already", 0x46db, 0x168b, 35, "17293260e2ebcae1"},
     // What a recruit's arrival prints (19b8:0d58).
     ExeSpan{ExeSpan::Kind::Text, "recruit.name_is", 0x46db, 0x1e2f, 13, "a4dbe6be3d592b3e"},
     ExeSpan{ExeSpan::Kind::Text, "recruit.will_be", 0x46db, 0x1e3c, 17, "d412e3ba466aeef1"},
@@ -341,6 +351,18 @@ constexpr std::array kDos103 = {
     ExeSpan{ExeSpan::Kind::Text, "recruit.mech", 0x46db, 0x1e70, 10, "f0678ba9171ea829"},
     // What special 0a prints after the money (24d3:096f).
     ExeSpan{ExeSpan::Kind::Text, "shop.cbills_end", 0x46db, 0x4c18, 4, "0fee949ff0d918ca"},
+    // ARMOR's top-up (24d3:0ef3).
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_full", 0x46db, 0x4c1c, 68, "df9ef48a614e9576"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_lacks", 0x46db, 0x4c60, 21, "8e296caa368be362"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_none", 0x46db, 0x4c75, 4, "6cc99cd24a91be5c"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_points", 0x46db, 0x4c79, 8, "3d271af31db79737"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_cost", 0x46db, 0x4c81, 45, "054576405a99fcab"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_cbills", 0x46db, 0x4cae, 37, "8e4fcc17b3ec551f"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_ask", 0x46db, 0x4cd3, 27, "bd1b8948670888cb"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_short", 0x46db, 0x4cee, 38, "aac0974d30cd5cee"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_some", 0x46db, 0x4d14, 59, "4ccfcfd14e082c81"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_nothing", 0x46db, 0x4d4f, 24, "e6c6ed7ab43c67af"},
+    ExeSpan{ExeSpan::Kind::Text, "shop.topup_done", 0x46db, 0x4d67, 35, "aa799a648c10f4a8"},
     // 17dc:0629, the training missions:
     ExeSpan{ExeSpan::Kind::Text, "mission.failed", 0x46db, 0x1434, 55, "9fe5ba45e070d5e2"},
     ExeSpan{ExeSpan::Kind::Text, "mission.not_done", 0x46db, 0x146b, 54, "6449395b589999d5"},

@@ -770,6 +770,9 @@ bool Town::special(int n, KeySource& keys) {
         text_.print(std::to_string(money_.cbills));
         text_.print(lookup(texts_, "shop.cbills_end"));
         return true;
+    case 9:
+    case 11:
+        return buy(n, keys);
     case 12:
         return talk(keys);
     case 14:
@@ -864,6 +867,12 @@ bool Town::special(int n, KeySource& keys) {
         flags_[0x10] = std::uint8_t(held);
         return true;
     }
+    case 31:
+        // 24d3:0eda: flag 1f = the armour type of the character in flag 0e.
+        flags_[0x1f] = characters_[std::size_t(flags_[flag::kMembers])][character::kArmourType];
+        return true;
+    case 32:
+        return top_up_armour(keys);
     case 17: {
         // 24d3:0ca4: flag 10 = how many of 'Mech records 0-3 are in use.
         int in_use = 0;
@@ -875,6 +884,102 @@ bool Town::special(int n, KeySource& keys) {
         log_.push_back("special " + std::to_string(n) + ": not rebuilt");
         return true;
     }
+}
+
+// BTECH.EXE 24d3:09c7 and 24d3:0a4b, specials 9 and 11 (part of Ghidra
+// FUN_24d3_0004)
+// ARMOR's and WEAPON's purchase: the choice from the menus' remembered
+// items, paid for if the money covers it (flag 0b), then offered round the
+// party (docs/scripts.md, "The shops").
+bool Town::buy(int n, KeySource& keys) {
+    if (!rules_) {
+        log_.push_back("special " + std::to_string(n) + ": no rules");
+        return true;
+    }
+    const auto& shops = rules_->shops;
+    const bool armour = n == 9;
+    int choice;
+    if (armour) {
+        choice = menu_last_[0x0e];
+        if (flags_[flag::kInPlace] != 0) choice = menu_last_[0x0d];
+    } else {
+        choice = menu_last_[0x10];
+        if (flags_[0x0c] == 6) choice = menu_last_[0x11] + 6;
+        if (flags_[0x0c] == 9) choice = menu_last_[0x12] + 9;
+        --choice;  // the price and the weapon by number - 1
+    }
+    flags_[0x0b] = 0;
+    const std::size_t count = armour ? shops.armour.size() : shops.weapon.size();
+    if (choice < 0 || std::size_t(choice) >= count) {
+        log_.push_back("special " + std::to_string(n) + ": choice " + std::to_string(choice) + " past the table");
+        return true;
+    }
+    const std::uint32_t price = armour ? shops.armour[std::size_t(choice)] : shops.weapon[std::size_t(choice)];
+    if (static_cast<std::uint32_t>(money_.cbills) < price) return true;
+    money_.cbills = std::int32_t(static_cast<std::uint32_t>(money_.cbills) - price);
+    flags_[0x0b] = 1;
+    draw_cbills();  // 1e31:1fdf
+    if (armour) return offer_armour(choice, std::int8_t(rules_->combat.personal_armour[std::size_t(choice)]), keys);
+    return offer_weapon(choice + 1, keys);
+}
+
+// BTECH.EXE 24d3:0ef3, special 32 (part of Ghidra FUN_24d3_0004)
+// ARMOR's top-up: the character in flag 0e's armour back to full, a point
+// at a time while the money lasts (docs/scripts.md, "The shops").
+bool Town::top_up_armour(KeySource& keys) {
+    if (!rules_) {
+        log_.push_back("special 32: no rules");
+        return true;
+    }
+    auto& c = characters_[std::size_t(flags_[flag::kMembers])];
+    const int index = c[character::kArmourType] - 1;
+    if (index < 0 || std::size_t(index) >= rules_->shops.armour_point.size()) {
+        log_.push_back("special 32: armour type " + std::to_string(c[character::kArmourType]) + " past the table");
+        return true;
+    }
+    const int points = std::int8_t(c[character::kArmour]);
+    const int full = std::int8_t(rules_->combat.personal_armour[std::size_t(index + 1)]);  // DG:4ddc + t - 1
+    const int point_price = std::int8_t(rules_->shops.armour_point[std::size_t(index)]);
+    const auto end_with = [&](const char* id) {
+        print_id(id);
+        if (!read_key(keys)) {  // 273d:0259
+            place_open_ = true;
+            return false;
+        }
+        return true;
+    };
+    if (points == full) return end_with("shop.topup_full");
+    print_id("shop.topup_lacks");
+    int missing = full - points;
+    if (points == 0) {
+        print_id("shop.topup_none");
+    } else {
+        text_.print(std::to_string(missing));  // 273d:0053
+        print_id("shop.topup_points");
+    }
+    print_id("shop.topup_cost");
+    text_.print(std::to_string(std::int16_t(point_price * missing)));  // a 16-bit product
+    print_id("shop.topup_cbills");
+    if (!special(10, keys)) return false;  // the specials call themselves
+    print_id("shop.topup_ask");
+    const auto yes = yes_no(true, keys);  // 1000:1a13(1)
+    if (!yes) {
+        place_open_ = true;
+        return false;
+    }
+    if (!*yes) return true;
+    bool bought = false;
+    while (missing != 0) {
+        if (static_cast<std::uint32_t>(point_price) > static_cast<std::uint32_t>(money_.cbills)) break;
+        bought = true;
+        --missing;
+        money_.cbills = std::int32_t(static_cast<std::uint32_t>(money_.cbills) - std::uint32_t(point_price));
+        ++c[character::kArmour];
+        draw_cbills();  // 1e31:1fdf
+    }
+    if (missing == 0) return end_with("shop.topup_done");
+    print_id("shop.topup_short");
+    return end_with(bought ? "shop.topup_some" : "shop.topup_nothing");
 }
 
 // BTECH.EXE 24d3:0cf8, special 23: flag 19 = whether any party member's

@@ -390,6 +390,9 @@ private:
     bool alley_fight(KeySource& keys);
     bool new_member(int skill, KeySource& keys);
     bool offer_weapon(int weapon, KeySource& keys);
+    bool offer_armour(int type, int points, KeySource& keys);
+    bool buy(int n, KeySource& keys);
+    bool top_up_armour(KeySource& keys);
     bool crew_screen(int start, KeySource& keys);
     bool command_menu(KeySource& keys);
     bool game_settings(KeySource& keys);

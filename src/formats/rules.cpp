@@ -1,6 +1,7 @@
 #include "formats/rules.h"
 
 #include <cstdio>
+#include <type_traits>
 
 #include "formats/cmp.h"  // FormatError
 #include "formats/exe_data.h"
@@ -133,6 +134,15 @@ Rules rules_from_original(const OriginalExe& exe) {
     copy(c.target_movement, "rules.target_movement");
     copy(c.difficulty_armour, "rules.difficulty_armour");
     copy(c.personal_armour, "rules.personal_armour");
+    const auto dword = [&](std::span<const std::uint8_t> b, std::size_t i) {
+        return std::uint32_t(b[4 * i]) | std::uint32_t(b[4 * i + 1]) << 8 | std::uint32_t(b[4 * i + 2]) << 16 |
+               std::uint32_t(b[4 * i + 3]) << 24;
+    };
+    const auto armour_prices = table(exe, "rules.armour_prices");
+    for (std::size_t i = 0; i < rules.shops.armour.size(); ++i) rules.shops.armour[i] = dword(armour_prices, i);
+    copy(rules.shops.armour_point, "rules.armour_point_prices");
+    const auto weapon_prices = table(exe, "rules.weapon_prices");
+    for (std::size_t i = 0; i < rules.shops.weapon.size(); ++i) rules.shops.weapon[i] = dword(weapon_prices, i);
     // Three tables of ten words: x, y, answer.
     const auto word = [&](std::string_view name, int i) {
         const auto b = table(exe, name);
@@ -230,6 +240,19 @@ RulesFiles write_rules_files(const Rules& rules, int import_version) {
                   ", \"answer\": " + std::to_string(q.answer) + "}";
     }
     f.quiz += "\n  ]\n}\n";
+
+    const auto& sh = rules.shops;
+    const auto numbers = [](const auto& values) {
+        std::string out = "[";
+        for (std::size_t i = 0; i < values.size(); ++i) out += (i ? ", " : "") + std::to_string(values[i]);
+        return out + "]";
+    };
+    f.shops = header(import_version, "the shops' prices in C-Bills (docs/scripts.md, \"The shops\")");
+    f.shops += "  \"armour\": {\"address\": \"46db:4f26\", \"by\": \"armour type\", \"values\": " + numbers(sh.armour) +
+               "},\n  \"armour_point\": {\"address\": \"46db:4f3e\", \"by\": \"armour type - 1\", \"values\": " +
+               numbers(sh.armour_point) +
+               "},\n  \"weapon\": {\"address\": \"46db:4f44\", \"by\": \"weapon - 1\", \"values\": " + numbers(sh.weapon) +
+               "}\n}\n";
     return f;
 }
 
@@ -302,6 +325,20 @@ Rules read_rules_files(const RulesFiles& files) {
         };
         rules.quiz[std::size_t(i)] = {in("x", 0, 319), in("y", 0, 199), in("answer", 0, kQuizPartNames - 1)};
     }
+
+    const Json shops = parse_json(files.shops);
+    const auto prices = [&](auto& out, std::string_view key, double most) {
+        const auto& a = member(member(shops, key), "values").array();
+        if (a.size() != out.size()) throw FormatError("rules: shops' " + std::string(key) + " has the wrong count");
+        for (std::size_t i = 0; i < out.size(); ++i) {
+            const double v = a[i].number();
+            if (v < 0 || v > most || v != double(std::uint32_t(v))) throw FormatError("rules: a shop price is out of range");
+            out[i] = static_cast<std::remove_reference_t<decltype(out[i])>>(v);
+        }
+    };
+    prices(rules.shops.armour, "armour", 4294967295.0);
+    prices(rules.shops.armour_point, "armour_point", 255);
+    prices(rules.shops.weapon, "weapon", 4294967295.0);
     return rules;
 }
 
@@ -310,7 +347,8 @@ Rules read_rules(const fs::path& data_dir) {
         const auto bytes = read_file(rules_dir(data_dir) / name);
         return std::string(bytes.begin(), bytes.end());
     };
-    return read_rules_files({read(kRulesFiles[0]), read(kRulesFiles[1]), read(kRulesFiles[2]), read(kRulesFiles[3])});
+    return read_rules_files(
+        {read(kRulesFiles[0]), read(kRulesFiles[1]), read(kRulesFiles[2]), read(kRulesFiles[3]), read(kRulesFiles[4])});
 }
 
 }  // namespace chr::formats

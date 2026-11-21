@@ -155,7 +155,7 @@ narration of what happened, descriptions and flavour, and the original's own not
 | shot.* but shot.squashed, shot.arena_damaged, shot.urbanmechs | 26 | the pieces of a shot's message, hit and miss, critical, kill |
 | location.0-10 | 11 | the hit locations, as labels |
 
-### Imported only (709 IDs)
+### Imported only (724 IDs)
 
 | IDs | Count | Why |
 |---|---|---|
@@ -183,10 +183,12 @@ narration of what happened, descriptions and flavour, and the original's own not
 | heal.* | 17 | healing (1c31:000a): who treats, with what care, and who is still hurt |
 | crew.* | 21 | the crew screen (1c67:0002); a menu, but kept imported: interface.json holds only what Owen approved |
 | recruit.* | 5 | a new member joining (19b8:0d58) |
-| offer.* | 4 | a found weapon offered to the party (17dc:15e6) |
+| offer.give, offer.to, offer.drop, offer.already | 4 | a found weapon offered to the party (17dc:15e6) |
+| offer.armour_* | 4 | armour offered to the party (17dc:13de); its own copies of the first two |
 | over.leader.0-1, over.killed, over.new_game | 4 | the game over when the leader dies (1000:04a4), and its question |
 | ui.press_key, ui.plural_s, ui.full_stop | 3 | message pieces, kept imported: not on Owen's approved list |
 | shop.cbills_end | 1 | the end of a shop's price line, kept imported: not on Owen's approved list |
+| shop.topup_* | 11 | ARMOR's top-up (special 32, 24d3:0ef3); kept imported: not on Owen's approved list |
 | save.which, save.failed, save.refused | 3 | the save's slot question, its failure and its refusal in the cache (1000:35d3); kept imported: not on Owen's approved list |
 | overhead.caption, overhead.caption_outdoors | 2 | the overhead map's caption (1000:3fae); kept imported: not on Owen's approved list |
 | load.which, load.not_a_save, load.not_found, load.not_found_end | 4 | the load's slot question, a file without the mark, and a file that cannot be opened (around its name) (1000:32b3); kept imported: not on Owen's approved list |

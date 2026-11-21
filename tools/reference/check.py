@@ -1861,6 +1861,48 @@ SETTINGS_CASES = [dict(case, compare=False) for case in CASES[:4]] + [
     {"name": "settings_quit_no", "keys": "n", "match": SCREEN},
 ]
 
+# From the Weapons Shop's door to the Armor Shop's (map 1 entrances 3 and 4).
+SHOP_MAP = {"the map": WHOLE_MAP}
+SHOP_ARMOUR_WALK = "right down*15 left*5 down*8 left*6 down*52 right*31 down*5 left*3"
+
+# The shops on map 1 (docs/scripts.md, "The shops") from the town start.
+# WEAPON (entrance 3): the cheapest blade bought with the town's money, then
+# the dearest anti-'Mech weapon refused for want of it. The menus remember
+# their last item, so each case's keys count from there.
+SHOP_CASES = [dict(case, compare=False) for case in CASES[:4]] + [
+    {"name": "shop_weapon_door", "keys": "left*25 down*24 left*12 up*5 left", "match": SCREEN},
+    {"name": "shop_weapon_inside", "keys": "y", "match": SCREEN},
+    {"name": "shop_weapon_counters", "keys": "enter", "match": SCREEN},
+    {"name": "shop_weapon_blades", "keys": "down enter", "match": SCREEN},
+    {"name": "shop_weapon_first", "keys": "down enter", "match": SCREEN},
+    {"name": "shop_weapon_bought", "keys": "y", "match": SCREEN},
+    {"name": "shop_weapon_again", "keys": "enter", "match": SCREEN},
+    {"name": "shop_weapon_missiles", "keys": "enter down*2 enter", "match": SCREEN},
+    {"name": "shop_weapon_dearest", "keys": "down*2 enter", "match": SCREEN},
+    {"name": "shop_weapon_refused", "keys": "y", "match": SCREEN},
+    {"name": "shop_weapon_out", "keys": "enter", "match": SCREEN},
+    # ARMOR (entrance 4), from the weapon shop's door. At the door a second
+    # character (SALVAGE_POKES) and 2000 C-Bills are poked: the cheapest
+    # armour is bought and offered round the party, Jason takes it; then
+    # his points are poked down and topped up. The original draws the party
+    # box only at 1000:4cac, so until leaving it shows no bars for the poked
+    # character while chr's are drawn from the records: those cases compare
+    # the map (and the state); leaving redraws the box, compared whole.
+    {"name": "shop_armour_door", "keys": SHOP_ARMOUR_WALK + " " + SALVAGE_POKES + " cbills:07d0",
+     "match": SHOP_MAP},
+    {"name": "shop_armour_inside", "keys": "y", "match": SHOP_MAP},
+    {"name": "shop_armour_list", "keys": "enter", "match": SHOP_MAP},
+    {"name": "shop_armour_first", "keys": "down enter", "match": SHOP_MAP},
+    {"name": "shop_armour_offer", "keys": "y", "match": SHOP_MAP},
+    {"name": "shop_armour_taken", "keys": "enter", "match": SHOP_MAP},
+    {"name": "shop_armour_again", "keys": "enter", "match": SHOP_MAP},
+    {"name": "shop_armour_who", "keys": "char:0:0e=05 down enter", "match": SHOP_MAP},
+    {"name": "shop_armour_top_up", "keys": "enter", "match": SHOP_MAP},
+    {"name": "shop_armour_topped_up", "keys": "y", "match": SHOP_MAP},
+    {"name": "shop_armour_out", "keys": "enter", "match": SHOP_MAP},
+    {"name": "shop_armour_leave", "keys": "down*2 enter", "match": SCREEN},
+]
+
 # The long unpoked run: its own tier (`--campaign`, ctest label campaign).
 # The save (1000:35d3, docs/formats/save.md), from the agent's chain once the crew is set:
 # the command menu's item 6 (the menu starts on the crew item, 2) and slot 0. The file the
@@ -1947,6 +1989,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_entrance", [], CHAIN_ENTRANCE_CASES, []),
              ("chain_flee", [], CHAIN_FLEE_CASES, []),
              ("settings", [], SETTINGS_CASES, []),
+             ("shops", [], SHOP_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

@@ -159,8 +159,7 @@ machines of the day each probably took several display frames. The platform hold
 sounds are recorded but not played yet (no sound is rebuilt). A story picture is held 50 frames
 at its last frame.
 
-Not rebuilt yet: the sounds, Scan's Detail (the stats screen, 2.6), the Arena's spectator, the double agent, and the rest of what follows the fight (`17dc:15e6`'s offer of a found
-weapon).
+Not rebuilt yet: the sounds, Scan's Detail (the stats screen, 2.6), the Arena's spectator, and the double agent.
 
 **The cell window in a fight.** The planner's path (3.3) and the line of sight (3.6) read map
 cells from the 24x24-cell window P:07ad by index, as the townspeople do. The window and its

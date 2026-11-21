@@ -174,6 +174,8 @@ each one.
 | 03 | 24d3:01c2 | TRAINING | the 'Mech is handed back: record 0 emptied (byte 0 = ff), Jason on foot (character 0 byte 0x0c = 8), the party at (0x0c2e, 0xc076) outside the training center. Unless flag 04 is set, marks 0x7c and 0x7d (fires) lose their code, area and x (F:d457, d497, d4d7), keeping y |
 | 04 | 24d3:0231 | CITADEL | prints the three courses' prices: for skill i (0–2), 125 × Jason's skill i + 75, right-aligned to column 39 on row 5 + i |
 | 05 | 24d3:02a5 | CITADEL | takes the course in flag 08: prints DGROUP:491a and the level and course names (tables DGROUP:4ea2, 4eb6). At level 4 it prints 4948 and sets flag 09 = 0. With enough C-Bills: flag 09 = 1, the skill + 1, the price paid. Otherwise it prints 4999 and sets flag 09 = 0. |
+| 09 | 24d3:09c7 | ARMOR | buys the armour chosen: "The shops", below |
+| 11 | 24d3:0a4b | WEAPON | buys the weapon chosen: "The shops", below |
 | 12 | 24d3:0aea | ten places | "talk to others": `17dc:17b9`, below |
 | 13 | 24d3:0b26 | REPAIR, HOSPITAL | who attends: special 14, then menu 0x17 at the cursor's row, one item per present character (its name and a line end), the bar on the first; flag 0e = the chosen character's record |
 | 15 | 24d3:0bfc | REPAIR | the Tech course: with 500 C-Bills, the character in flag 0e pays, gets Tech + 1 and byte 0x10 bit 0; flag 0e = 1 and the C-Bills redrawn (it ends through special 21's tail, 0c9b). Short of 500: flag 0e = 0, nothing else |
@@ -182,6 +184,8 @@ each one.
 | 22 | 24d3:0c46 | HOSPITAL | flag 0f = byte 0x10 bit 1 of the character in flag 0e (the seminar taken) |
 | 14 | 24d3:0af2 | ten places, and after every visit | flag 0e = how many of the party records 1–7 are in use |
 | 23 | 24d3:0cf8 | healing (`1c31:000a`) | flag 19 = 1 if any party member's hit points differ from 10 x B, else 0 |
+| 31 | 24d3:0eda | ARMOR | flag 1f = the armour type (byte 0x0d) of the character in flag 0e |
+| 32 | 24d3:0ef3 | ARMOR | tops up that character's armour, point by point: "The shops", below |
 | 30 | 19b8:104e | PARTY | the first companion joins and the alley fight (kind -1, combat.md 1.6) |
 | 36 | 24d3:13b2 | JAIL | prints the double agent's name: character F:d331's name (the `character.*` table) |
 | 37 | 24d3:139a | JAIL | the game is over: DG:014a = 0 and character record 0 emptied (byte 0 = ff); not rebuilt |
@@ -193,7 +197,7 @@ each one.
 | 43 | 24d3:157e | TRAINING | after mission 5 is won (+1672, with flag 2d = 1): townsperson 0 is put at the Lounge's entrance (MAP entrance 7; record +0/+2 and figure 16), inside (+9 = ff), its route 0x70 (last the Lounge, next entrance 0) and its target entrance 0, the Training Center. Talk to others in the Lounge lets it out (below) |
 | others | see the table above | the other places | read with those places |
 
-Specials 6–11, 17–20, 24–29, 31–35, 41, 42, 44 and 47 belong to the other places and are read with them. The rebuild logs an
+Specials 6–8, 18–20, 24–28, 33–35, 41, 42, 44 and 47 belong to the other places and are read with them. The rebuild logs an
 unrebuilt special and goes on.
 
 Special 05's texts are imported from BTECH.EXE as `course.*` (docs/import.md).
@@ -213,6 +217,55 @@ Special 05's texts are imported from BTECH.EXE as `course.*` (docs/import.md).
    (`talk.hello`, `talk.reason.<flag 0d>`) and where it goes next (`talk.going_to`, the place's
    name from the map, `talk.end`), then a key. Outdoors it is a random rumour instead (not
    rebuilt: there are no townspeople outdoors yet).
+
+### The shops (WEAPON and ARMOR)
+
+Both shops print the money (special 10) on row 0x16 and take the choice from a menu whose item 0
+goes back. The menus' remembered items (record +6, "The menu" above) are what the buying
+specials read: the script does not hand them the choice.
+
+**WEAPON.** Menu 0x0f picks a counter: item 0 leaves, items 1-3 set flag 0c to 0, 6 or 9 and
+show menu 0x10, 0x11 or 0x12 (six, three and two weapons). After a weapon's description, Yes to
+the question buys it with special 11; flag 0b then picks the shopkeeper's answer. No goes back.
+
+Special 11 (`24d3:0a4b`): the weapon is menu 0x10's remembered item, or menu 0x11's + 6 when flag
+0c is 6, or menu 0x12's + 9 when it is 9 (weapons 1-11). Flag 0b = 0. Its price is the 32-bit
+entry for weapon - 1 at DG:4f44 (imported, `rules/shops.json`). If the money (F:d370, 32 bits,
+unsigned) covers it, it is paid, flag 0b = 1, the C-Bills line drawn again (`1e31:1fdf`), and the
+weapon goes to `17dc:15e6`, which offers it round the party like a found one (docs/combat.md):
+Jason alone simply takes it, and his old weapon is gone.
+
+**ARMOR.** Menu 0x0c: buy (0), top up (1), talk (2), leave (3). Buying: with flag 0a set, menu
+0x0d (five types), otherwise menu 0x0e (four), then a description and the Yes/No question; Yes
+runs special 9.
+
+Special 9 (`24d3:09c7`): the type is menu 0x0e's remembered item, or menu 0x0d's when flag 0a is
+set. Flag 0b = 0. The price is the 32-bit entry for the type at DG:4f26 (entry 0 is never read).
+If the money covers it: paid, flag 0b = 1, the C-Bills line drawn again, and `17dc:13de` offers
+the armour, with the type's full points (DG:4ddb, `rules.personal_armour`).
+
+`17dc:13de`, armour offered to the party, is `17dc:15e6` for armour. Its arguments are a type and
+points (character bytes 0x0d and 0x0e). With Jason alone (no other character record in use) he
+takes both. Otherwise, while the type is not 0: the window cleared, `offer.armour_give`, the
+type's name (`armour.<type>`), `offer.armour_to`; for each character in use, his name, column 10,
+his armour type's name and a line end; `offer.armour_drop` and the points in decimal; menu 4
+with one item more than there are characters. The last item drops it and ends. The one chosen
+gets the type and points, and what he wore is offered next. When his old type is the new one,
+`offer.armour_already` is printed at column 0, row 20 (`1000:2867`, white), then a key.
+
+Topping up: special 14; with others in the party, `bld.armor.0c30` and special 13 choose who
+(flag 0e), else flag 0e stays 0, Jason. Special 31 copies his armour type to flag 1f; type 0 gets
+a refusal and back to the start. Then special 32 (`24d3:0ef3`): with type t, points p and the
+type's full points f (read as DG:4ddc + t - 1, the same table):
+1. p = f: `shop.topup_full`, a key (`273d:0259`), done.
+2. `shop.topup_lacks`; then `shop.topup_none` if p is 0, else f - p in decimal and
+   `shop.topup_points`; `shop.topup_cost`, (f - p) x the point price (byte t - 1 of DG:4f3e,
+   16-bit product) in decimal, `shop.topup_cbills`; the money (special 10, by a call to the
+   specials themselves); `shop.topup_ask`; Yes/No with Yes first (`1000:1a13(1)`). No ends.
+3. While points are missing and the point price is no more than the money: one point bought (the
+   money less the price, p + 1, the C-Bills line drawn again).
+4. Then `shop.topup_short` and `shop.topup_some` (some bought) or `shop.topup_nothing`, or
+   `shop.topup_done` when none is missing; a key; done.
 
 ### The crew screen (BTECH.EXE 1c67:0002)
 
@@ -268,6 +321,13 @@ town is refused) and a key.
 - **WEAPON's unreached block.** A `goto 0220` at 015d always jumps over 0160–021f, which has
   another line from the shopkeeper. The player never sees it. It is kept (not imported, not
   shown); a fix would need to know what the jump was meant to test.
+- **ARMOR's four-type list is never shown.** Flag 0a is written only by entering a place (=1)
+  and the new game's clear, and read only by ARMOR's script and special 9. Inside the shop it is
+  always set, so the script always shows menu 0x0d and special 9 always reads it; menu 0x0e and
+  its branch are dead. Kept as it is: nothing to fix that the player sees.
+- **The armour offer's "already" test compares types only.** Handing a worn suit to someone
+  wearing the same type prints `offer.armour_already` though the points differ, and the swap
+  still happens.
 - **The let-out test reads the wrong place.** Talk to others (17dc:17b9) tests for place 7
   with the place of the last townsperson waiting anywhere (any index, any place), not with
   this place. On map 1 the Lounge is entrance 7, and while Rick is the only one waiting the
@@ -292,8 +352,8 @@ the same scripts offer where their entrances are open (map 1, and the other town
 | BARRACK2 | one of two texts by the party count (special 14, flag 0e) | 0e |
 | CITADEL | the skill courses (special 4's prices, special 5) | 04, 05, 0c |
 | COMSTAR | the money and a list of three 32-bit amounts at F:d374 (special 6); menus over them (7, 8) | 06, 07, 08, 0c |
-| WEAPON | buying a weapon: special 0b takes the price (DG:4f44, by the choice) if the money covers it and sets flag 0b | 0a, 0b, 0c |
-| ARMOR | buying armour: special 09, the same with DG:4f26; specials 1f / 20 not read | 09, 0a, 0d, 0e, 1f, 20, 0c |
+| WEAPON | buying a weapon ("The shops") | 0a, 0b, 0c |
+| ARMOR | buying armour and topping it up ("The shops") | 09, 0a, 0d, 0e, 1f, 20, 0c |
 | REPAIR | apprenticeship: the Tech course for 500, once per character, who chosen by special 13 (specials 16, 15; Tech + 1, character byte 0x10 bit 0); with a party and flag 18, a recruit (`new_member 5`, flag 20 once, or Tech 3+ and a random bit). Repairs (12), the speed shop (13, 14: the upgrades, 19b8:0925) and ammunition (2c) need a 'Mech: special 11 counts the 'Mech records in use, special 1d (with flag 18) the letters at F:d452..d455 | 0a, 0c-0f, 10-14, 1d, 2c |
 | BARRACKS, LOUNGE | talk, and the flags of the Lounge's let-out (2d, 2e, 2f) | 0c |
 
@@ -402,8 +462,8 @@ runs as the original does; the return visit itself is not captured.) The chain t
   24d3:0dc6/0dd3 (two of the specials, 24d3:0004) set; those are not rebuilt, so outside a loaded game the rebuild never jumps. UnBattletech names them "training complete" and a milestone.
 - **E4** (sound) is recorded, the event and the player's state (docs/sound.md), but no audio
   plays.
-- The specials other than 01-05, 0c, 0e, 11, 17 and 2b (in hex, as in the table above; chr's log
-  prints them in decimal).
+- Specials 6-8, 18-20, 24-28, 33-37, 41, 42, 44 and 47 (in decimal, as in the table above and
+  chr's log; the scripts and `tools/bld.py` write them in hex).
 - Talk outdoors (`17dc:17b9`): one of eight rumours (DGROUP:4e5e) at random. No rebuilt place
   is outdoors; the rebuild makes the draw and logs it.
 - The garage on foot is rebuilt (special 11, then flag 18 and the party put inside at the rear

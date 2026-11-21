@@ -79,7 +79,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 |---|---|---|---|---|---|
 | 15ab:0002 | 0x15ab2 | `FUN_15ab_0002` | 1271 | After a fight: repairs from the wrecks and scrap money | rebuilt (an SRM 6 with `fix_weapon_count` off logs) |
 | 15ab:04f9 | 0x15fa9 | `FUN_15ab_04f9` | 1106 | After a fight: salvage a wreck for a pilot on foot | rebuilt |
-| 15ab:094b | 0x163fb | `FUN_15ab_094b` | 531 | After a fight: loot the beaten soldiers (C-Bills, a weapon swap; bug 27) | rebuilt (not `17dc:15e6`, a weapon offered to a party of two or more) |
+| 15ab:094b | 0x163fb | `FUN_15ab_094b` | 531 | After a fight: loot the beaten soldiers (C-Bills, a weapon swap; bug 27) | rebuilt |
 | 15ab:0b5e | 0x1660e | `FUN_15ab_0b5e` | 55 | Asks whether the computer fights for you (F:009e) | read |
 | 15ab:0b95 | 0x16645 | `FUN_15ab_0b95` | 250 |  | - |
 | 15ab:0c8f | 0x1673f | `FUN_15ab_0c8f` | 131 |  | - |
@@ -101,8 +101,8 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 17dc:0629 | 0x183e9 | `FUN_17dc_0629` | 1824 | Scene driver: training missions 0-7, the arena (8), the jail break (9); results in flag 01 (docs/combat.md); modes 0-7 (not the raid) and the walk rebuilt | rebuilt (in part) |
 | 17dc:0d49 | 0x18b09 | `FUN_17dc_0d49` | 1538 | Sets up the opponents: enemy pilots and 'Mechs from templates, difficulty armour cut (docs/combat.md) | read |
 | 17dc:134b | 0x1910b | `FUN_17dc_134b` | 147 | Puts the party at figure 0 (or 4) after a fight and redraws | rebuilt |
-| 17dc:13de | 0x1919e | `FUN_17dc_13de` | 520 |  | - |
-| 17dc:15e6 | 0x193a6 | `FUN_17dc_15e6` | 467 |  | - |
+| 17dc:13de | 0x1919e | `FUN_17dc_13de` | 520 | Armour offered to the party (ARMOR's purchase; docs/scripts.md, "The shops") | rebuilt |
+| 17dc:15e6 | 0x193a6 | `FUN_17dc_15e6` | 467 | A weapon offered to the party (after a fight, WEAPON's purchase) | rebuilt |
 | 17dc:17b9 | 0x19579 | `FUN_17dc_17b9` | 573 | Talk to others: who is inside, and where they go next (docs/scripts.md, special 12) | rebuilt |
 | 17dc:19f6 | 0x197b6 | `FUN_17dc_19f6` | 48 |  | - |
 | 17dc:1a26 | 0x197e6 | `FUN_17dc_1a26` | 283 |  | - |

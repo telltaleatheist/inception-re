@@ -54,6 +54,18 @@ TEST(rules_round_trip_to_the_programs_bytes) {
     same(c.difficulty_armour, "rules.difficulty_armour");
     same(c.personal_armour, "rules.personal_armour");
 
+    // The shops' prices: 32-bit entries little-endian, the point prices bytes.
+    const auto dwords = [&](const auto& got, const char* name) {
+        const auto b = exe.get(name);
+        CHECK(b.size() == got.size() * 4);
+        for (std::size_t i = 0; i < got.size(); ++i)
+            CHECK(got[i] == (std::uint32_t(b[4 * i]) | std::uint32_t(b[4 * i + 1]) << 8 |
+                             std::uint32_t(b[4 * i + 2]) << 16 | std::uint32_t(b[4 * i + 3]) << 24));
+    };
+    dwords(back.shops.armour, "rules.armour_prices");
+    dwords(back.shops.weapon, "rules.weapon_prices");
+    same(back.shops.armour_point, "rules.armour_point_prices");
+
     // The quiz: ten parts, each answer one of menu 0x25's 20 names.
     const auto word = [&](const char* name, int i) {
         const auto b = exe.get(name);

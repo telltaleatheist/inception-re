@@ -125,6 +125,7 @@ void import_original(const fs::path& game_dir, const fs::path& data_dir) {
     write_file(rules_dir(data_dir) / kRulesFiles[1], files.weapons);
     write_file(rules_dir(data_dir) / kRulesFiles[2], files.combat);
     write_file(rules_dir(data_dir) / kRulesFiles[3], files.quiz);
+    write_file(rules_dir(data_dir) / kRulesFiles[4], files.shops);
     write_file(tables_path(data_dir), write_tables_file(tables, kImportVersion));
     write_file(manifest_path(data_dir),
                "{\n  \"import_version\": " + std::to_string(kImportVersion) + ",\n  \"source\": " +
