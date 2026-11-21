@@ -16,7 +16,8 @@ namespace chr::game {
 // the keys that have none (what 273d:0259 hands back).
 namespace key {
 inline constexpr int kHome = -0x47, kUp = -0x48, kPageUp = -0x49, kLeft = -0x4b, kRight = -0x4d,
-                     kEnd = -0x4f, kDown = -0x50, kPageDown = -0x51, kEnter = 0x0d, kSpace = 0x20;
+                     kEnd = -0x4f, kDown = -0x50, kPageDown = -0x51, kEnter = 0x0d, kSpace = 0x20,
+                     kEscape = 0x1b, kBackspace = 0x08;
 }
 
 struct Step {

@@ -1920,6 +1920,37 @@ CHAIN_SAVE_CASES = [dict(case, compare=False) for case in CHAIN_AGENT_CASES[:[
     {"name": "chain_load_done", "keys": "up enter", "match": SCREEN},
 ]
 
+# ComStar (COMSTAR, specials 6, 7 and 8; docs/scripts.md): the account, investing 15 typed
+# with a Backspace, selling from an empty stock, a sale capped at what is held, an investment
+# cancelled with Esc, the prospectus, and out. Menu 7 is both the buy/sell question and the
+# stock list, so the two share a remembered item.
+COMSTAR_CASES = [dict(case, compare=False) for case in CASES[:4]] + [
+    {"name": "comstar_door", "keys": "left right up right*12 up*2 right*20 up*2 right", "match": SCREEN},
+    {"name": "comstar_inside", "keys": "y", "match": SCREEN},
+    {"name": "comstar_terminal", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_account", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_change", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_buy_which", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_buy_how_much", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_buy_typed", "keys": "1 2 backspace 5", "match": SCREEN},
+    {"name": "comstar_bought", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_account_2", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_sell_which", "keys": "enter down enter", "match": SCREEN},
+    {"name": "comstar_sell_empty", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_account_3", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_sell_which_2", "keys": "enter enter", "match": SCREEN},
+    {"name": "comstar_sell_how_much", "keys": "up enter", "match": SCREEN},
+    {"name": "comstar_sell_capped", "keys": "9 9 9 enter", "match": SCREEN},
+    {"name": "comstar_account_4", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_buy_which_2", "keys": "enter enter", "match": SCREEN},
+    {"name": "comstar_buy_how_much_2", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_buy_cancelled", "keys": "4 esc enter", "match": SCREEN},
+    {"name": "comstar_account_5", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_prospectus", "keys": "down enter enter", "match": SCREEN},
+    {"name": "comstar_account_6", "keys": "enter", "match": SCREEN},
+    {"name": "comstar_out", "keys": "down enter", "match": SCREEN},
+]
+
 # The start-up's load (1000:50c8, docs/startup.md): "No" to the first-time question, "Yes" to
 # loading, slot 0. Its Game1 is the one chain_save's original run wrote (SEEDED), on both drives.
 START_LOAD_CASES = [dict(case, compare=False) for case in CASES[:3]] + [
@@ -1990,6 +2021,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_flee", [], CHAIN_FLEE_CASES, []),
              ("settings", [], SETTINGS_CASES, []),
              ("shops", [], SHOP_CASES, []),
+             ("comstar", [], COMSTAR_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

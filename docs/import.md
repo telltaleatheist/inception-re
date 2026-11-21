@@ -46,7 +46,7 @@ an older data folder without anyone remembering to bump the version.
 The versions: 2 the direction names; 3 "C-Bills:"; 4 the .BLD texts; 5 the class and talk texts;
 6 the start-up's; 7 the rule tables, the 'Mech and weapon names, the combat texts; 8 the table
 hash in `import.json`; 9 `rules/quiz.json`; 10 `tables.json`; 11 the round's tables in it; 12 the shot's poses and scripts;
-13 the orders screen's path arrows; 18 the area-to-map table; 19 the random encounter's tables; 20 the plural "s", the full stop and the game-over texts; 21 the healing texts and dice table; 22 the repair phrases by Tech level; 28 `rules/shops.json` and the shops' texts.
+13 the orders screen's path arrows; 18 the area-to-map table; 19 the random encounter's tables; 20 the plural "s", the full stop and the game-over texts; 21 the healing texts and dice table; 22 the repair phrases by Tech level; 28 `rules/shops.json` and the shops' and ComStar's texts.
 
 ## How it reads the program
 

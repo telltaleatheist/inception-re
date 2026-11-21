@@ -179,6 +179,8 @@ std::deque<ScriptItem> parse_key_script(const std::string& script) {
         else if (name == "pgdn") k = key::kPageDown;
         else if (name == "space") k = key::kSpace;
         else if (name == "enter") k = key::kEnter;
+        else if (name == "esc") k = key::kEscape;
+        else if (name == "backspace") k = key::kBackspace;
         else if (name.size() == 1) k = static_cast<unsigned char>(name[0]);
         else throw std::invalid_argument("unknown key \"" + name + "\"");
         for (int i = 0; i < count; ++i) keys.push_back({k, 0});

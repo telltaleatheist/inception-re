@@ -770,6 +770,12 @@ bool Town::special(int n, KeySource& keys) {
         text_.print(std::to_string(money_.cbills));
         text_.print(lookup(texts_, "shop.cbills_end"));
         return true;
+    case 6:
+        comstar_account();
+        return true;
+    case 7:
+    case 8:
+        return comstar_move(n == 7, keys);
     case 9:
     case 11:
         return buy(n, keys);
@@ -884,6 +890,127 @@ bool Town::special(int n, KeySource& keys) {
         log_.push_back("special " + std::to_string(n) + ": not rebuilt");
         return true;
     }
+}
+
+// A right-aligned amount, ending in screen column 38 (273d:00d5 at column
+// 39 less its length), in the money's colour on 0.
+void Town::put_amount(std::uint32_t amount, int row) {
+    const auto digits = std::to_string(amount);  // 287f:3bd2
+    text_.put_text(digits, 39 - int(digits.size()), row, TextRole::Funds, TextRole::Background);
+}
+
+// BTECH.EXE 24d3:037a, special 6 (part of Ghidra FUN_24d3_0004)
+// ComStar's account: the money on row 1, then each investment that is not 0,
+// its name and amount; F:e482 counts them (docs/scripts.md, "ComStar").
+void Town::comstar_account() {
+    put_amount(std::uint32_t(money_.cbills), 1);
+    investments_shown_ = 0;  // F:e482
+    for (int i = 0; i < 3; ++i) {
+        if (money_.invested[std::size_t(i)] == 0) continue;
+        text_.set_fg(TextRole::Text);  // F:37fe = 15
+        print_id("comstar.investment." + std::to_string(i));
+        put_amount(std::uint32_t(money_.invested[std::size_t(i)]), text_.window().row);  // a window row as a screen row
+        ++investments_shown_;
+    }
+    if (investments_shown_ == 0) print_id("comstar.none");
+}
+
+// BTECH.EXE 24d3:0725 and 24d3:04ad, specials 7 and 8 (part of Ghidra
+// FUN_24d3_0004)
+// ComStar's investing (from the money into an investment) and withdrawing
+// (back), the amount typed in the number field (docs/scripts.md, "ComStar").
+bool Town::comstar_move(bool invest, KeySource& keys) {
+    const std::string w = invest ? "comstar.invest_" : "comstar.withdraw_";
+    if (invest ? money_.cbills == 0 : investments_shown_ == 0) {
+        print_id(invest ? "comstar.no_money" : "comstar.nothing_invested");
+        return true;
+    }
+    clear_window();  // 2656:0388
+    print_id(w + "title");
+    for (int i = 0; i < 3; ++i) print_id("comstar.investment." + std::to_string(i));
+    const auto chosen = menu(7, keys);
+    if (!chosen) {
+        place_open_ = true;
+        return false;
+    }
+    const int i = *chosen;
+    if (i < 0 || i > 2) {
+        log_.push_back("special " + std::to_string(invest ? 7 : 8) + ": item " + std::to_string(i) + " past the investments");
+        return true;
+    }
+    auto& investment = money_.invested[std::size_t(i)];
+    if (!invest && investment == 0) {
+        print_id("comstar.withdraw_empty");
+        return true;
+    }
+    const std::uint32_t most = std::uint32_t(invest ? money_.cbills : investment);
+    print_id(w + "how_much");
+    text_.put_text(lookup(texts_, invest ? "comstar.label_cbills" : "comstar.label_invested"), text_.window().x, 23,
+                   TextRole::Text, TextRole::Background);
+    put_amount(most, 23);
+    const auto typed = number_field(keys);
+    if (!typed) return false;
+    std::uint32_t amount = *typed;
+    if (amount > most) {
+        amount = most;
+        print_id(w + "capped");
+    }
+    if (amount == 0) {
+        print_id(w + "none");
+        print_id("comstar.cancelled");  // 17dc:19e1
+        return true;
+    }
+    print_id(w + "done");
+    text_.set_fg(TextRole::Funds);
+    text_.print(std::to_string(amount));
+    print_id(invest ? "comstar.invest_in" : "comstar.withdraw_from");
+    print_id("comstar.investment." + std::to_string(i));
+    print_id(invest ? "comstar.invest_total" : "comstar.withdraw_left");
+    if (invest) {
+        investment = std::int32_t(std::uint32_t(investment) + amount);
+        money_.cbills = std::int32_t(std::uint32_t(money_.cbills) - amount);
+    } else {
+        investment = std::int32_t(std::uint32_t(investment) - amount);
+        money_.cbills = std::int32_t(std::uint32_t(money_.cbills) + amount);
+    }
+    text_.set_fg(TextRole::Funds);
+    text_.print(std::to_string(std::uint32_t(investment)));
+    print_id(w + "end");
+    draw_cbills();  // 1e31:1fdf
+    return true;
+}
+
+// BTECH.EXE 1d43:0cde (Ghidra FUN_1d43_0cde)
+// A whole number typed at the cursor, up to 7 digits, until Enter
+// (docs/scripts.md, "The number field").
+std::optional<std::uint32_t> Town::number_field(KeySource& keys) {
+    std::string digits = "0";
+    const int col = text_.window().col, row = text_.window().row;
+    for (;;) {
+        text_.set_cursor(col, row);
+        text_.set_fg(TextRole::Funds);  // F:37fe = 2
+        text_.print(digits);
+        const auto& win = text_.window();
+        if (win.col < win.width)  // 273d:01fb: the rest of the row
+            text_.fill(win.x + win.col, win.y + win.row, win.width - win.col, 1, TextRole::Background);
+        const auto k = read_key(keys);  // 273d:0259
+        if (!k) return std::nullopt;
+        if (*k == key::kEnter) break;
+        if (*k >= '0' && *k <= '9') {
+            if (digits.size() < 7) {
+                while (!digits.empty() && digits[0] == '0') digits.erase(0, 1);
+                digits += char(*k);
+            }
+        } else if (*k == key::kEscape) {
+            digits = "0";
+        } else if (*k == key::kBackspace) {
+            if (!digits.empty()) digits.pop_back();
+        }
+    }
+    std::uint32_t value = 0;
+    for (const char c : digits) value = value * 10 + std::uint32_t(c - '0');
+    text_.set_fg(TextRole::Text);  // F:37fe = 15
+    return value;
 }
 
 // BTECH.EXE 24d3:09c7 and 24d3:0a4b, specials 9 and 11 (part of Ghidra

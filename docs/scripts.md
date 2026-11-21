@@ -174,6 +174,9 @@ each one.
 | 03 | 24d3:01c2 | TRAINING | the 'Mech is handed back: record 0 emptied (byte 0 = ff), Jason on foot (character 0 byte 0x0c = 8), the party at (0x0c2e, 0xc076) outside the training center. Unless flag 04 is set, marks 0x7c and 0x7d (fires) lose their code, area and x (F:d457, d497, d4d7), keeping y |
 | 04 | 24d3:0231 | CITADEL | prints the three courses' prices: for skill i (0–2), 125 × Jason's skill i + 75, right-aligned to column 39 on row 5 + i |
 | 05 | 24d3:02a5 | CITADEL | takes the course in flag 08: prints DGROUP:491a and the level and course names (tables DGROUP:4ea2, 4eb6). At level 4 it prints 4948 and sets flag 09 = 0. With enough C-Bills: flag 09 = 1, the skill + 1, the price paid. Otherwise it prints 4999 and sets flag 09 = 0. |
+| 06 | 24d3:037a | COMSTAR | the account: the money and each investment, right-aligned: "ComStar", below |
+| 07 | 24d3:0725 | COMSTAR | invests C-Bills: "ComStar", below |
+| 08 | 24d3:04ad | COMSTAR | withdraws an investment: "ComStar", below |
 | 09 | 24d3:09c7 | ARMOR | buys the armour chosen: "The shops", below |
 | 11 | 24d3:0a4b | WEAPON | buys the weapon chosen: "The shops", below |
 | 12 | 24d3:0aea | ten places | "talk to others": `17dc:17b9`, below |
@@ -197,7 +200,7 @@ each one.
 | 43 | 24d3:157e | TRAINING | after mission 5 is won (+1672, with flag 2d = 1): townsperson 0 is put at the Lounge's entrance (MAP entrance 7; record +0/+2 and figure 16), inside (+9 = ff), its route 0x70 (last the Lounge, next entrance 0) and its target entrance 0, the Training Center. Talk to others in the Lounge lets it out (below) |
 | others | see the table above | the other places | read with those places |
 
-Specials 6–8, 18–20, 24–28, 33–35, 41, 42, 44 and 47 belong to the other places and are read with them. The rebuild logs an
+Specials 18–20, 24–28, 33–35, 41, 42, 44 and 47 belong to the other places and are read with them. The rebuild logs an
 unrebuilt special and goes on.
 
 Special 05's texts are imported from BTECH.EXE as `course.*` (docs/import.md).
@@ -267,6 +270,60 @@ type's full points f (read as DG:4ddc + t - 1, the same table):
 4. Then `shop.topup_short` and `shop.topup_some` (some bought) or `shop.topup_nothing`, or
    `shop.topup_done` when none is missing; a key; done.
 
+### ComStar (COMSTAR, specials 6, 7 and 8)
+
+The three investments are 32-bit amounts at F:d374, d378 and d37c (`Money::invested`, saved; the
+town's money step changes them, docs/town_loop.md). Their names are `comstar.investment.0-2`
+(pointers at DG:4e7e). Amounts are printed in decimal (`287f:3bd2`), and a right-aligned one is
+written with `273d:00d5` so that it ends in screen column 38, in colour 2 (1 in CGA mode 0,
+DG:4fba = 0) on 0.
+
+The script: a text, menu 0x0a (use the terminal, talk, leave). Using it: a text and a key, then
+the account (special 6), and menu 0x0b: invest or withdraw (menu 0x07: special 7, special 8,
+back), information (menu 0x07 again, three texts), or leave. Each path comes back to the key
+before the account.
+
+**Special 6** (`24d3:037a`), the account: the money right-aligned on screen row 1. F:e482 = 0.
+For each investment that is not 0: colour 15, its name printed, its amount right-aligned on the
+screen row equal to the cursor's row in the window (F:374e, a window row used as a screen row),
+and F:e482 + 1. If none, `comstar.none`.
+
+**Special 7** (`24d3:0725`), investing. No money: `comstar.no_money` and done. Otherwise the
+window cleared, `comstar.invest_title`, the three names, menu 0x07 for which one;
+`comstar.invest_how_much`; `comstar.label_cbills` at the window's left column (F:39a0), screen
+row 23, colour 15, and the money right-aligned on row 23. Then the number field (below). More
+than the money (unsigned): the money, and `comstar.invest_capped`. Zero: `comstar.invest_none`,
+then `comstar.cancelled` (`17dc:19e1`), done. Otherwise `comstar.invest_done`, the amount in
+colour 2, `comstar.invest_in`, the name, `comstar.invest_total`; the amount added to the
+investment and taken from the money; the investment's new total in the same colour;
+`comstar.invest_end`; the C-Bills line drawn again (`1e31:1fdf`).
+
+**Special 8** (`24d3:04ad`), withdrawing. With F:e482 = 0 (no investment shown at the last
+account): `comstar.nothing_invested` and done. Otherwise the window cleared,
+`comstar.withdraw_title`, the names, menu 0x07. That investment 0: `comstar.withdraw_empty`, done.
+Otherwise `comstar.withdraw_how_much`, `comstar.label_invested` at (F:39a0, 23) and the
+investment right-aligned on row 23; the number field. More than the investment: the investment,
+and `comstar.withdraw_capped`. Zero: `comstar.withdraw_none`, `comstar.cancelled`, done.
+Otherwise `comstar.withdraw_done`, the amount, `comstar.withdraw_from`, the name,
+`comstar.withdraw_left`; taken from the investment and added to the money; what is left;
+`comstar.withdraw_end`; the C-Bills line again.
+
+F:e482 is the count from the last account (special 6), which the script always shows before the
+menu that leads to special 8.
+
+### The number field (BTECH.EXE 1d43:0cde)
+
+Reads a whole number typed at the cursor. The text starts as "0". Until Enter:
+1. The cursor goes back to where it started; the text is printed in colour 2 (1 in CGA mode 0),
+   and the rest of that row, from the cursor to the window's right edge, is filled with colour 0
+   (`273d:01fb`). There is no cursor mark.
+2. A key (`273d:0259`): a digit, while the text is shorter than 7, first loses its leading
+   zeros, then the digit is added; Esc sets the text back to "0"; Backspace takes the last
+   character off (the text can become empty); anything else is ignored.
+
+Then the text is read as a decimal number (32 bits; empty is 0), the colour is set to 15 (in
+every mode), and the number is returned.
+
 ### The crew screen (BTECH.EXE 1c67:0002)
 
 Who pilots and who rides each 'Mech. 'Mech records 0-3 (byte 0 not ff) have a pilot (byte 0x79)
@@ -328,6 +385,9 @@ town is refused) and a key.
 - **The armour offer's "already" test compares types only.** Handing a worn suit to someone
   wearing the same type prints `offer.armour_already` though the points differ, and the swap
   still happens.
+- **ComStar's withdrawal counts the last account.** Special 8 tests F:e482, the number of
+  investments the last special 6 showed, not the investments themselves. The script always runs
+  special 6 first, so the two agree in play.
 - **The let-out test reads the wrong place.** Talk to others (17dc:17b9) tests for place 7
   with the place of the last townsperson waiting anywhere (any index, any place), not with
   this place. On map 1 the Lounge is entrance 7, and while Rick is the only one waiting the
@@ -351,7 +411,7 @@ the same scripts offer where their entrances are open (map 1, and the other town
 |---|---|---|
 | BARRACK2 | one of two texts by the party count (special 14, flag 0e) | 0e |
 | CITADEL | the skill courses (special 4's prices, special 5) | 04, 05, 0c |
-| COMSTAR | the money and a list of three 32-bit amounts at F:d374 (special 6); menus over them (7, 8) | 06, 07, 08, 0c |
+| COMSTAR | the account, investing and withdrawing ("ComStar") | 06, 07, 08, 0c |
 | WEAPON | buying a weapon ("The shops") | 0a, 0b, 0c |
 | ARMOR | buying armour and topping it up ("The shops") | 09, 0a, 0d, 0e, 1f, 20, 0c |
 | REPAIR | apprenticeship: the Tech course for 500, once per character, who chosen by special 13 (specials 16, 15; Tech + 1, character byte 0x10 bit 0); with a party and flag 18, a recruit (`new_member 5`, flag 20 once, or Tech 3+ and a random bit). Repairs (12), the speed shop (13, 14: the upgrades, 19b8:0925) and ammunition (2c) need a 'Mech: special 11 counts the 'Mech records in use, special 1d (with flag 18) the letters at F:d452..d455 | 0a, 0c-0f, 10-14, 1d, 2c |
@@ -462,7 +522,7 @@ runs as the original does; the return visit itself is not captured.) The chain t
   24d3:0dc6/0dd3 (two of the specials, 24d3:0004) set; those are not rebuilt, so outside a loaded game the rebuild never jumps. UnBattletech names them "training complete" and a milestone.
 - **E4** (sound) is recorded, the event and the player's state (docs/sound.md), but no audio
   plays.
-- Specials 6-8, 18-20, 24-28, 33-37, 41, 42, 44 and 47 (in decimal, as in the table above and
+- Specials 18-20, 24-28, 33-37, 41, 42, 44 and 47 (in decimal, as in the table above and
   chr's log; the scripts and `tools/bld.py` write them in hex).
 - Talk outdoors (`17dc:17b9`): one of eight rumours (DGROUP:4e5e) at random. No rebuilt place
   is outdoors; the rebuild makes the draw and logs it.

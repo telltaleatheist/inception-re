@@ -392,6 +392,10 @@ private:
     bool offer_weapon(int weapon, KeySource& keys);
     bool offer_armour(int type, int points, KeySource& keys);
     bool buy(int n, KeySource& keys);
+    void put_amount(std::uint32_t amount, int row);
+    void comstar_account();
+    bool comstar_move(bool invest, KeySource& keys);
+    std::optional<std::uint32_t> number_field(KeySource& keys);
     bool top_up_armour(KeySource& keys);
     bool crew_screen(int start, KeySource& keys);
     bool command_menu(KeySource& keys);
@@ -592,6 +596,7 @@ private:
     SoundState sound_;
     int message_speed_ = 2;  // DG:015e
     int steps_per_key_ = 1;  // DG:015a
+    int investments_shown_ = 0;  // F:e482: special 6's count
     bool poll_open_ = false;
     std::vector<XorBox> boxes_;
     std::uint32_t boxes_since_ = 0;  // the text layer's paint clock when boxes_ was last settled

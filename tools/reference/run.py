@@ -74,6 +74,7 @@ NAMED = {
     "up": 0x4800, "down": 0x5000, "left": 0x4B00, "right": 0x4D00,
     "home": 0x4700, "pgup": 0x4900, "end": 0x4F00, "pgdn": 0x5100,
     "enter": 0x1C0D, "space": 0x3920, "esc": 0x011B,
+    "backspace": 0x0E08,
 }
 ROWS = {  # scan codes of the letter and digit keys
     "1234567890": 0x02, "qwertyuiop": 0x10, "asdfghjkl": 0x1E, "zxcvbnm": 0x2C,
