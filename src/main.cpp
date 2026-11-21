@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <deque>
 #include <memory>
+#include <optional>
 #include <vector>
 #include <cstdlib>
 #include <filesystem>
@@ -300,6 +301,30 @@ int key_code(SDL_Keycode key) {
     return 0;
 }
 
+// The user's data folder, "inception-re" in the application-data folder.
+// Its earlier name was "crescent-hawks-rebuild": if that one exists and the
+// new one is empty, the old one is moved to the new name once, so its import
+// and saves carry over; if the move fails, the old folder is used in place.
+std::optional<std::filesystem::path> data_folder() {
+    namespace fs = std::filesystem;
+    char* pref = SDL_GetPrefPath("", "inception-re");  // creates it if missing
+    if (!pref) return std::nullopt;
+    const fs::path folder = fs::path(pref).parent_path();
+    SDL_free(pref);
+    const fs::path old = folder.parent_path() / "crescent-hawks-rebuild";
+    std::error_code ec;
+    if (!fs::is_directory(old, ec) || !fs::is_empty(folder, ec) || ec) return folder;
+    fs::remove(folder, ec);
+    if (!ec) fs::rename(old, folder, ec);
+    if (ec) {
+        std::fprintf(stderr, "chr: couldn't rename %s to %s (%s); using the old folder\n",
+                     old.string().c_str(), folder.string().c_str(), ec.message().c_str());
+        return old;
+    }
+    std::fprintf(stderr, "chr: renamed the data folder %s to %s\n", old.string().c_str(), folder.string().c_str());
+    return folder;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -309,9 +334,8 @@ int main(int argc, char** argv) {
     if (options.data_dir.empty()) {
         if (const char* env = std::getenv("CHR_DATA_DIR"); env && *env) {
             options.data_dir = env;
-        } else if (char* pref = SDL_GetPrefPath("", "crescent-hawks-rebuild")) {
-            options.data_dir = pref;
-            SDL_free(pref);
+        } else if (auto folder = data_folder()) {
+            options.data_dir = *folder;
         } else {
             std::fprintf(stderr, "chr: no data folder (%s); use --data-dir\n", SDL_GetError());
             return 1;
@@ -346,7 +370,7 @@ int main(int argc, char** argv) {
     SDL_Window* window = nullptr;
     SDL_Renderer* sdl_renderer = nullptr;
     const SDL_WindowFlags window_flags = headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_RESIZABLE;
-    if (!SDL_CreateWindowAndRenderer("Crescent Hawks Rebuild", 960, 600, window_flags,
+    if (!SDL_CreateWindowAndRenderer("Inception RE", 960, 600, window_flags,
                                      &window, &sdl_renderer)) {
         std::fprintf(stderr, "chr: can't open a window: %s\n", SDL_GetError());
         SDL_Quit();

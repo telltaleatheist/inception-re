@@ -1,4 +1,4 @@
-# Crescent Hawk's Rebuild
+# Inception RE
 
 A ground-up rebuild of **BattleTech: The Crescent Hawk's Inception** (Infocom,
 1988, written by Westwood Associates) in modern C++, so the game runs on

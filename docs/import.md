@@ -15,7 +15,9 @@ If an import is needed and BTECH.EXE is missing or is not DOS 1.03, `chr` stops 
 that says so and how to run the importer.
 
 The data folder is `--data-dir DIR`, else the `CHR_DATA_DIR` environment variable, else the
-user's application-data folder (on macOS `~/Library/Application Support/crescent-hawks-rebuild`).
+user's application-data folder (on macOS `~/Library/Application Support/inception-re`). A
+folder from before the rename (`crescent-hawks-rebuild`) is moved to the new name once, when the
+new one is empty; if that fails, the old folder is used where it is.
 
 ## What it writes
 
