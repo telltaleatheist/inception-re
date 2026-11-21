@@ -11,11 +11,11 @@ event and updates the player's state (`SoundState`, src/game/sound.h). It plays 
 
 ## Sound on and off
 
-DG:015c is 1 in the program image and nothing at start-up changes it. An options sub-menu in
-`1000:378d` (menu 0x21; item 1 sets the message speed DG:015e, item 2 at 0x3ce4 flips DG:015c's
-low bit) is the only writer, and the sub-menu shows which state it is in (DG:08c9 / DG:08cc). It is not in the saved game (the save block is
-F:c614..d557), so every run starts with sound on. The rebuild has no options sub-menu yet, so
-sound stays on.
+DG:015c is 1 in the program image and nothing at start-up changes it. The game settings
+(`1000:3bd0`, docs/town_loop.md: item 2, at `1000:3ce4`, flips DG:015c's low bit) is the only
+writer, and it shows which state the sound is in (DG:08c9 / DG:08cc). It is not in the saved game
+(the save block is F:c614..d557), so every run starts with sound on. Rebuilt: `SoundState::on`,
+flipped by `Town::game_settings`.
 
 ## The lists (DG:5008)
 

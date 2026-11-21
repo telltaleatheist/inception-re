@@ -421,21 +421,26 @@ counts, DG:014a and the map marks).
   code clears the column on those paths is not yet found.
 
 - **A fleeing enemy person whose target byte is ff** (docs/combat.md 2.10, bug 21): rebuilt
-  against figure -1 (docs/sound.md), not yet compared with the original. `chain_entrance` fights
-  the forced 'Mech encounter on the walk from the HUT to ENTRANCE (2 'Mechs, 3 people, at
-  0471,4059) with the computer, and matches it to the win and Edward's salvage; but no party
-  figure dies there, so every enemy person's first target stays 0 or 1 and the run never meets
-  ff. An ff needs a killed target (`22e8:12c7` sets the bytes aimed at it to ff). A walk with
-  other key timing met it at the same fight; a sequence that loses a party figure there is
-  still to be found.
+  against figure -1 (docs/sound.md). `chain_entrance` fights the forced 'Mech encounter on the
+  walk from the HUT to ENTRANCE (2 'Mechs, 3 people, at 0471,4059) with the computer and matches
+  it to the win, but no party figure dies, so no enemy person's first target is ff there.
+  `chain_flee` (not in the campaign) is the same fight with party 'Mech 1's armour and structure
+  bytes poked to 1 (our own test values): 'Mech 1 falls in the first fight key, the people aimed
+  at it get ff, and both programs show the fled message (DG:38bc) at the end
+  of that key. But the key's state already differs: the original's 'Mech 0 has taken about one
+  more SRM 2 volley (three 2-point hits) and its last Medium Laser hit goes through the left arm
+  and left torso into the centre torso (three critical checks), where chr's stops in the arm (one
+  check); the random state differs too. Checked against the original and found the same: the
+  damage loop (linear 0x239c3..0x23b50), the transfer table (`1e31:1122`), F:e484 (set only by
+  the transfer and the cockpit critical, cleared before each shot at linear 0x23c75) and the
+  destroyed 'Mech (`1d43:0a35`, the crew's ejection). The split is likely in who fires at whom
+  after the fall (the planner, 4.x, or the person run's removals); the rig captures only at key
+  ends, so the first differing draw is not yet found. To find it: a draw log from the original
+  (the generator's bytes at each call) or a poke that makes the fall land in a later key.
 - **The wait after a story picture** (`Town::show_picture`, docs/scripts.md): `1000:48b7` in
   mode 0 plays sound 12 for picture 0 (`1000:4a7f`), then waits 0x3c frames (`273d:0006` at
   `1000:4a89`) and clears window 4. chr holds 50 frames (none for picture 8). No sequence has
   compared a story picture's timing yet; to check when one does.
-- **Steps a key** (DG:015a, docs/movement.md): the main loop takes each key's step DG:015a
-  times. It is 1 at the start, `1000:3c67` changes it, and the cache's way down (`1b5d:055a`)
-  sets it back to 1. chr does not model it and always takes one step a key, which matches
-  every sequence so far, since none changes it. To build when `1000:3c67` is read.
 
 ## Findings
 

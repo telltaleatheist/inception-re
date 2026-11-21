@@ -19,7 +19,7 @@ user's application-data folder (on macOS `~/Library/Application Support/crescent
 
 ## What it writes
 
-    import.json          {"import_version": 26, "source": "BTECH.EXE DOS 1.03", "exe_sha256": ...,
+    import.json          {"import_version": 27, "source": "BTECH.EXE DOS 1.03", "exe_sha256": ...,
                           "table_sha256": ...}
     text/english.json    {"texts": [{"id": ..., "address": "ssss:oooo", "text": ...}, ...]}
     font/font.txt        the font (docs/formats/font.md)

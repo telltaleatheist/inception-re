@@ -83,9 +83,38 @@ near the party), the message box with DG:0ace and a key. Otherwise the crew scre
 argument 0 (docs/scripts.md), the panel (`1000:4cac(1)`) and window 1 cleared. After any item
 `273d:06c3` copies the page's map columns back over the windows.
 
-Rebuilt: items 0, 2, 4, 5, 6 and 7 (`Town::command_menu`, `Town::allocate_crew`, `Town::load_game`,
-`Town::save_game`, docs/formats/save.md; `Town::overhead_map`, docs/overhead_map.md); the others
-are logged.
+Rebuilt: items 0, 1, 2, 4, 5, 6 and 7 (`Town::command_menu`, `Town::game_settings` below,
+`Town::allocate_crew`, `Town::load_game`, `Town::save_game`, docs/formats/save.md;
+`Town::overhead_map`, docs/overhead_map.md); item 3 is logged.
+
+### Game settings (`1000:3bd0`)
+
+In window 1, which the command menu left selected: the window cleared (`2656:0388`), DG:0896,
+then DG:08c9 if the word DG:015c is not 0, else DG:08cc (the sound's state; the word takes in
+DG:015d, which is 0 and which nothing in the game segments writes), then DG:08ce, and menu 0x21
+(six items). The menu records are at 385b:0092, 16 bytes each (docs/formats/tables.md); the
+function writes into menu 0x27's record directly.
+
+| item | what |
+|---|---|
+| 0 | Steps a key (DG:015a). The window cleared and DG:08f9. Menu 0x27's item count (+4) = 3, its first row (+0) = 1, its last item (+6) = DG:015a - 1, one less again when DG:015a is 4. After menu 0x27, DG:015a = item + 1, and 4 in place of 3; first row back to 0 (the count stays 3). Then if F:d34e is set (the cache's second level) DG:015a = 1. No panel redraw. |
+| 1 | Message speed. The window cleared, DG:092f, menu 0x22 (six items); DG:015e = the item. Then the panel (`1000:4cac(1)`). |
+| 2 | Sound: DG:015c's low byte flipped (`1000:3ce4`). Nothing drawn. |
+| 3 | Pictures. The window cleared, DG:095d, menu 0x26 (three items, its last item at M:02f8, which the load sets from flag 4f); F:d35b (flag 4f) = the item. Then the panel. |
+| 4 | Quit. The window cleared, DG:0993, DG:09cf, the yes/no question with No first (`1000:1a13(0)`); DG:0152 = the answer, and Yes ends the main loop. |
+| 5 | back |
+
+Only this function uses menus 0x21, 0x22, 0x26 and 0x27. None of DG:015a, DG:015c and DG:015e is
+in the saved game; all three keep their values through a load and a new game. Rebuilt in
+`Town::game_settings`.
+
+### Steps a key
+
+The key half takes the step DG:015a times (`1000:0069..00a0`): each time the step (`1000:218f`,
+skipped for Space) and the figures (`1000:051b`); if F:d55c is then set (a message or question
+came up), it stops. The direction's name is written once, after the last step, when F:d55c is
+0. DG:015a is 1 in the program image; menu item 0 above changes it, and the cache's way down
+(`1b5d:055a`, at linear 0x1bbde) sets it back to 1. Rebuilt in `Town::turn` (`steps_per_key_`).
 A rider ('Mech byte 0x7a) is not on foot, so soldiers can't shoot at him; the repairs still pick the
 best tech among all the party's characters (docs/combat.md 2.15).
 

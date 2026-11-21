@@ -204,7 +204,7 @@ bool Town::cache_stairs(int x, int y, KeySource& keys) {
     clear_window();  // 2656:0388
     print_id("cache.way_down_2");
     if (!read_key(keys)) return false;
-    // DG:015a = 1: one step a key (docs/movement.md).
+    steps_per_key_ = 1;  // DG:015a (docs/town_loop.md, "Steps a key")
     position_ = {0x0c04, 0xc022};
     // 287f:00d1 (CGA colours) and 1000:28cc (the disk) have nothing to do here.
     terrain_.fill_grids(kLowerGrid);

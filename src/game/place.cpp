@@ -538,8 +538,8 @@ bool Town::crew_screen(int start, KeySource& keys) {
 // BTECH.EXE 1000:2c50 (Ghidra FUN_1000_2c50)
 // The Space command menu: menu 1 in window 1, one row higher and one item
 // longer when any of 'Mech records 0-3 is in use (the crew item). The crew
-// item, the healing, the load, the save and the overhead map are rebuilt;
-// the others are logged.
+// item, the settings, the healing, the load, the save and the overhead map
+// are rebuilt; the inspect item is logged.
 bool Town::command_menu(KeySource& keys) {
     bool mechs = false;
     for (int m = 0; m < 4; ++m) mechs = mechs || mechs_[std::size_t(m)][0] != character::kEmpty;
@@ -562,6 +562,9 @@ bool Town::command_menu(KeySource& keys) {
     switch (item) {
     case 0:
         break;
+    case 1:
+        if (!game_settings(keys)) return false;  // 1000:3bd0
+        break;
     case 2:
         if (!allocate_crew(keys)) return false;
         break;
@@ -583,6 +586,86 @@ bool Town::command_menu(KeySource& keys) {
     }
     // 273d:06c3 copies the page's map columns back over the windows; the
     // tick that follows draws the map again (1000:046e).
+    return true;
+}
+
+// BTECH.EXE 1000:3bd0 (Ghidra FUN_1000_3bd0)
+// The command menu's settings, in its window: steps a key, message speed,
+// sound, how often a place's picture shows, quit (docs/town_loop.md).
+bool Town::game_settings(KeySource& keys) {
+    clear_window();  // 2656:0388
+    print_id("settings.title");
+    print_id(sound_.on ? "settings.sound_on" : "settings.sound_off");
+    print_id("settings.items");
+    const auto item = menu(0x21, keys);
+    if (!item) {
+        place_open_ = true;
+        return false;
+    }
+    switch (*item) {
+    case 0: {
+        clear_window();
+        print_id("settings.steps");
+        // Menu 0x27's record is written directly: three items, starting a
+        // row down, the bar on the current choice (1, 2, 4).
+        auto& rec = menus_[0x27];
+        rec.items = 3;
+        rec.first_row = 1;
+        menu_last_[0x27] = steps_per_key_ - 1 - (steps_per_key_ == 4 ? 1 : 0);
+        const auto steps = menu(0x27, keys);
+        if (!steps) {
+            place_open_ = true;
+            return false;
+        }
+        steps_per_key_ = *steps + 1 == 3 ? 4 : *steps + 1;
+        rec.first_row = 0;
+        if (flags_[flag::kCacheLevel] != 0) steps_per_key_ = 1;
+        return true;
+    }
+    case 1: {
+        clear_window();
+        print_id("settings.speed");
+        const auto speed = menu(0x22, keys);
+        if (!speed) {
+            place_open_ = true;
+            return false;
+        }
+        message_speed_ = *speed;
+        break;
+    }
+    case 2:
+        sound_.on = !sound_.on;  // 1000:3ce4: the low byte flipped
+        return true;
+    case 3: {
+        clear_window();
+        print_id("settings.pictures");
+        const auto chance = menu(0x26, keys);
+        if (!chance) {
+            place_open_ = true;
+            return false;
+        }
+        flags_[flag::kPictureChance] = std::uint8_t(*chance);
+        break;
+    }
+    case 4: {
+        clear_window();
+        print_id("settings.quit");
+        print_id("settings.quit_2");
+        const auto quit = yes_no(false, keys);  // 1000:1a13(0)
+        if (!quit) {
+            place_open_ = true;
+            return false;
+        }
+        if (*quit) {
+            log_.push_back("the game settings: quit");
+            quit_ = true;  // DG:0152
+        }
+        return true;
+    }
+    default:
+        return true;
+    }
+    draw_panel(true, false);  // 1000:4cac(1): column 0-12 not blanked first
     return true;
 }
 

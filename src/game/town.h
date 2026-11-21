@@ -392,6 +392,7 @@ private:
     bool offer_weapon(int weapon, KeySource& keys);
     bool crew_screen(int start, KeySource& keys);
     bool command_menu(KeySource& keys);
+    bool game_settings(KeySource& keys);
     bool allocate_crew(KeySource& keys);
     // The command menu's map (game/overhead.cpp).
     bool overhead_map(KeySource& keys);
@@ -587,6 +588,7 @@ private:
     std::vector<ShownEvent> events_;
     SoundState sound_;
     int message_speed_ = 2;  // DG:015e
+    int steps_per_key_ = 1;  // DG:015a
     bool poll_open_ = false;
     std::vector<XorBox> boxes_;
     std::uint32_t boxes_since_ = 0;  // the text layer's paint clock when boxes_ was last settled

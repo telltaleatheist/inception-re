@@ -694,11 +694,21 @@ void Town::turn(int k, KeySource& keys) {
         log_.push_back("key " + std::to_string(k) + ": nothing");
         return;
     }
-    const auto r = step_party(*step, keys);
-    if (!r) return;
+    // BTECH.EXE 1000:0069..00a0: the step DG:015a times, the figures drawn
+    // after each (the last by the key half), stopping when a message or
+    // question came up (F:d55c).
+    std::optional<StepResult> r;
+    bool message = false;
+    for (int i = 0; i < steps_per_key_; ++i) {
+        if (i > 0) record_party_places();  // 1000:051b
+        r = step_party(*step, keys);
+        if (!r) return;
+        message = r->offered_place || r->outcome == StepOutcome::TooDeep || turn_message_;
+        if (message || stopped()) break;
+    }
     // The main loop then writes the direction in the upper panel box, unless
-    // a message or question came up this turn (F:d55c).
-    if (!r->offered_place && r->outcome != StepOutcome::TooDeep && !turn_message_) {
+    // a message or question came up this turn.
+    if (!message) {
         text_.select_window(4);
         text_.set_fg(TextRole::Text);
         text_.print(lookup(texts_, direction_text_id(*step)));

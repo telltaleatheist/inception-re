@@ -1643,6 +1643,18 @@ CHAIN_ENTRANCE_CASES = [dict(case, compare=False) for case in CHAIN_AGENT_CASES]
 ]
 
 
+# Poked: chain_entrance's forced fight with party 'Mech 1's armour and
+# internal bytes set to 1 (our own test values) before it starts. The 'Mech
+# falls, the enemy people aimed at it get target ff, and the run (combat.md
+# 2.10) measures them from figure -1 (docs/sound.md). Each fight key compared.
+# Not in the campaign: the first key already differs (docs/reference.md).
+FLEE_POKES = " ".join("mech:1:%02x=01" % b for b in range(0x11, 0x24))
+_FLEE_FROM = [case["name"] for case in CHAIN_ENTRANCE_CASES].index("chain_entrance_fight")
+CHAIN_FLEE_CASES = [dict(case, compare=False) for case in CHAIN_ENTRANCE_CASES[:_FLEE_FROM]] + [
+    {"name": "chain_flee_fight", "keys": FLEE_POKES + " y enter arm:2 n", "match": {}, "fight": True},
+] + [{"name": "chain_flee_fight_key_%d" % n, "keys": "enter", "match": SCREEN} for n in range(1, 13)]
+
+
 # Poked: from the HUT's door, the generator's state set to 0f1e2d (our own
 # test value) in place of the walk's draws. From there every way to ENTRANCE
 # meets a 'Mech encounter that cannot be evaded (docs/reference.md, open
@@ -1825,6 +1837,30 @@ CHAIN_COURSES_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_courses_seminar_short_back", "keys": "enter", "match": SCREEN},
 ]
 
+# The game settings (1000:3bd0, docs/town_loop.md) from the town start: the
+# command menu's item 1 and each of its items. The menus remember their last
+# item, so each case's keys count from there. Steps a key is walked at 2 and
+# at 4, the sound flipped (no sound is played: only its state shows), and the
+# quit question answered No.
+SETTINGS_CASES = [dict(case, compare=False) for case in CASES[:4]] + [
+    {"name": "settings_open", "keys": "space down enter", "match": SCREEN},
+    {"name": "settings_sound_off", "keys": "down*2 enter", "match": SCREEN},
+    {"name": "settings_sound_shown", "keys": "space enter", "match": SCREEN},
+    {"name": "settings_back", "keys": "down*3 enter", "match": SCREEN},
+    {"name": "settings_steps_menu", "keys": "space enter down enter", "match": SCREEN},
+    {"name": "settings_steps_2", "keys": "down enter", "match": SCREEN},
+    {"name": "settings_steps_2_walk", "keys": "left*2", "match": SCREEN},
+    {"name": "settings_steps_4_menu", "keys": "space enter enter", "match": SCREEN},
+    {"name": "settings_steps_4", "keys": "down enter", "match": SCREEN},
+    {"name": "settings_steps_4_walk", "keys": "right", "match": SCREEN},
+    {"name": "settings_speed_menu", "keys": "space enter down enter", "match": SCREEN},
+    {"name": "settings_speed", "keys": "down*3 enter", "match": SCREEN},
+    {"name": "settings_pictures_menu", "keys": "space enter down*2 enter", "match": SCREEN},
+    {"name": "settings_pictures", "keys": "down enter", "match": SCREEN},
+    {"name": "settings_quit", "keys": "space enter down enter", "match": SCREEN},
+    {"name": "settings_quit_no", "keys": "n", "match": SCREEN},
+]
+
 # The long unpoked run: its own tier (`--campaign`, ctest label campaign).
 # The save (1000:35d3, docs/formats/save.md), from the agent's chain once the crew is set:
 # the command menu's item 6 (the menu starts on the crew item, 2) and slot 0. The file the
@@ -1903,6 +1939,8 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_cache_poked", [], CHAIN_CACHE_POKED_CASES, []),
              ("chain_cache_open", [], CHAIN_CACHE_OPEN_CASES, []),
              ("chain_entrance", [], CHAIN_ENTRANCE_CASES, []),
+             ("chain_flee", [], CHAIN_FLEE_CASES, []),
+             ("settings", [], SETTINGS_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

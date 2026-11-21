@@ -32,7 +32,7 @@ The program's key reader hands back a character, or minus the scan code for keys
 
 (The keypad's 7, 9, 1 and 3 are Home, PgUp, End and PgDn with Num Lock off.) Every key is one
 turn: the main loop (`1000:002d`) reads it, empties the keyboard buffer, selects the upper panel
-box (window 4) and takes the step DG:015a times (1 at the start; `1000:3c67` changes it). Unless a
+box (window 4) and takes the step DG:015a times (1 at the start; the game settings change it, docs/town_loop.md). Unless a
 message or question came up during the step (F:d55c), it then writes the direction's name in
 that box ("North", "Northeast", ...; DG:01aa), blocked or not, so the box is a log of the last
 eleven steps. The map, the figures and the panel are drawn again afterwards (`1000:01f4`), so a
