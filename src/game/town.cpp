@@ -568,7 +568,7 @@ void Town::game_tick(KeySource* keys) {
         flags_[0x37] = std::uint8_t(flags_[0x38] | flags_[0x39]);
         if (flags_[0x37] == 0 && position_.x >= 0x0800 && position_.x < 0x0d00 && position_.y >= 0x6000 &&
             position_.y < 0xb000)
-            log_.push_back("timer 37 ran out in the region: 1d43:0c72 not rebuilt");
+            arena_wall(true);  // 1d43:0c72(1)
     }
     // Outdoors, a draw with none of flag 24's bits starts a random
     // encounter (docs/combat.md 1.1), unless F:d346.

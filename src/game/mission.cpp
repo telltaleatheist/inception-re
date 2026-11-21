@@ -33,6 +33,22 @@ void Town::set_map_cell(std::size_t index, int tile, bool rebuild) {
     }
 }
 
+// BTECH.EXE 1d43:0c72 (Ghidra FUN_1d43_0c72)
+// The Arena's wall: map-store cells 0xc00-0xc25 kept (DG:5804) and those
+// the table names overwritten, or with `restore` the kept cells put back.
+// Only the store is written; the window shows it when next built.
+void Town::arena_wall(bool restore) {
+    constexpr std::size_t kFirst = 0xc00;
+    for (std::size_t i = 0; i < arena_wall_kept_.size() && kFirst + i < map_.blocks.size(); ++i) {
+        if (restore) {
+            set_map_cell(kFirst + i, arena_wall_kept_[i], false);
+        } else {
+            arena_wall_kept_[i] = map_.blocks[kFirst + i];
+            if (const int tile = tables_.arena_wall[i]; tile != 0) set_map_cell(kFirst + i, tile, false);
+        }
+    }
+}
+
 // BTECH.EXE 17dc:0629 (Ghidra FUN_17dc_0629)
 // Sets up the mission of `mode`, then walks: a key is a step, and without
 // one the tiles animate and the townspeople move. A mission ends when the
@@ -108,6 +124,14 @@ bool Town::run_mission(int mode, KeySource& keys) {
         party_to_jason();
         w.done = true;
         no_computer_order_ = false;
+        break;
+    case 8:
+        // The Arena (17dc:07f7): one enemy 'Mech by 0d49's bit 0x80 (and
+        // the spectator), fight kind 2; the party is not walked back to
+        // Jason (17dc:110b is skipped).
+        place_mission(0x81, 0);
+        if (!fight(2, keys)) return false;
+        w.done = true;
         break;
     case 9:
         // The jail break (17dc:05d4): F:398e = 1 has the figure drawing add
@@ -209,6 +233,8 @@ bool Town::load_town_map(int number, int grid) {
     terrain_.hold_window();
     terrain_.place_map(map_, grid);
     terrain_.link_blocks();
+    // Map 2 loaded while flag 37's count runs: the Arena's wall broken again.
+    if (number == 2 && flags_[0x37] != 0) arena_wall(false);  // 1d43:0c72(0)
     if (people_skipped_) {  // DG:014c (the overhead map)
         log_.push_back("map " + std::to_string(number) + " loaded into grid " + std::to_string(grid) + ", no townspeople");
         return true;

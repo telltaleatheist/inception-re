@@ -64,6 +64,10 @@ word); anything else is refused, and the game asks for a new import.
 | `person_poses` | DG:3ff8 | 120 far pointers | a person's fire pose, 8 directions for each weapon 0-0x0e |
 | `reaction_script` | DG:2e3c | 6 bytes | a 'Mech or person hit: its reaction (it loops) |
 | `explosion_script` | DG:41d8 | 4 bytes | the explosion over a target hit |
+| `spectator_script` | DG:4dd8 | 3 bytes | the Arena's spectator: one frame, held (17dc:0d49) |
+| `encounter_templates` | DG:13e2 | 11 far pointers | 'Mech templates by index (docs/formats/mech.md); the Arena uses 3-6 |
+| `encounter_sprite_sets` | DG:140e | 11 bytes | the sprite set for each |
+| `arena_wall` | DG:2b8e | 38 bytes | the cells 1d43:0c72 writes over map-store cells 0xc00-0xc25, 0 = left alone |
 | `muzzle` | DG:2d28 | 48 bytes | a line shot's start by direction, x then y: a 'Mech, a 'Mech with the other sprite set, a person |
 | `line_steps` | DG:41dc | 32 bytes | by octant (1e31:1ea2): the straight step's x and y, then the diagonal step's |
 | `person_quarters` | DG:0372 | 4 words | by parity, the tile bits of a person's cell (1000:0e4b) |

@@ -23,6 +23,9 @@ constexpr int kPilot = 0x79;
 
 std::int16_t wrap16(int v) { return std::int16_t(std::uint16_t(v)); }
 
+// Thrown by Combat's key hook when the keys run out inside a round.
+struct KeysRanOut {};
+
 }  // namespace
 
 int mech_sink(int tile, int quarters) {
@@ -238,12 +241,13 @@ bool Town::walk_in(KeySource& keys) {
     return run_mission(flags_[0], keys);
 }
 
-// BTECH.EXE 17dc:0d49 (Ghidra FUN_17dc_0d49), for a training mission or the
-// jail break (bit 0x80 in `people`; not the Arena's bit in `mechs`):
-// `mechs` enemy Locusts in records 4 on, as figures 12 on, and `people`
+// BTECH.EXE 17dc:0d49 (Ghidra FUN_17dc_0d49), for a training mission, the
+// jail break (bit 0x80 in `people`) or the Arena (bit 0x80 in `mechs`):
+// `mechs` enemy 'Mechs in records 4 on, as figures 12 on, and `people`
 // enemy people in character records 8 on, as figures 16 on.
 void Town::place_mission(int mechs, int people) {
     const bool on_foot = (people & 0x80) != 0;
+    const bool arena = (mechs & 0x80) != 0;
     people &= 0x7f;
     figs_.computer[0] = false;
     // The townspeople keep their places in their records; every figure is
@@ -259,20 +263,42 @@ void Town::place_mission(int mechs, int people) {
     }
     // Jason's 'Mech, or Jason on foot.
     figs_.active[on_foot ? 4 : 0] = 1;
-    // Where the enemy starts: two draws, the first thrown away on the
-    // course of mission 2, which always starts at x 0c72; both thrown away
-    // in the jail break.
-    std::uint16_t x0 = std::uint16_t(0x0c65 + (random_.next() & 7));
-    std::uint16_t y0 = std::uint16_t(0xc059 + (random_.next() & 7));
-    if (on_foot) {
-        x0 = 0x0d10;
-        y0 = 0x7024;
+    std::uint16_t x0 = 0, y0 = 0;
+    int tmpl_index = 0;  // LOCUST (27e8:02f0)
+    int sprite_set = 0;
+    if (arena) {
+        // The Arena (17dc:0e4e): one of two spots at the east end, three or
+        // four draws; with the spectator (F:e48e) a second 'Mech when a held
+        // letter is ff. The 2d6 is drawn either way; with the spectator one
+        // more draw replaces it, (r & 3) + 3: LOCUST, WASP, LOCUST or STINGER.
+        x0 = std::uint16_t(0x0a10 + (random_.next() & 3));
+        if (random_.next() & 1) x0 = std::uint16_t(0x0a28 + (random_.next() & 3));
+        y0 = std::uint16_t(0x806f + (random_.next() & 3));
+        if (combat_.spectator)
+            for (const auto letter : held_mechs_)
+                if (letter == 0xff) mechs = 2;
+        int index = two_d6(random_) - 2;
+        if (combat_.spectator) index = (random_.next() & 3) + 3;
+        const int offset = tables_.encounter_templates[std::size_t(2 * index)];
+        tmpl_index = (offset - 0x02f0) / 0x7d;
+        sprite_set = tables_.encounter_sprite_sets[std::size_t(index)];
+    } else {
+        // Where the enemy starts: two draws, the first thrown away on the
+        // course of mission 2, which always starts at x 0c72; both thrown
+        // away in the jail break.
+        x0 = std::uint16_t(0x0c65 + (random_.next() & 7));
+        y0 = std::uint16_t(0xc059 + (random_.next() & 7));
+        if (on_foot) {
+            x0 = 0x0d10;
+            y0 = 0x7024;
+        }
+        if (flags_[0] == 2) x0 = 0x0c72;
     }
-    if (flags_[0] == 2) x0 = 0x0c72;
+    mechs &= 0x7f;
     // In the raid (F:3772): four 'Mechs, JENNERs (27e8:0561, template 5),
     // and flag 03 set to 0.
     if (raid_) mechs = 4;
-    const auto& tmpl = rules_->mechs[raid_ ? 5 : 0].record;
+    const auto& tmpl = rules_->mechs[std::size_t(raid_ ? 5 : tmpl_index)].record;
     // Flag 03 counts failed tries at the mission: it is kept at 6 at most,
     // and takes armour off the enemy (and, after five, more: below).
     if (raid_) flags_[flag::kTries] = 0;
@@ -286,6 +312,8 @@ void Town::place_mission(int mechs, int people) {
         pilot[character::kMech] = std::uint8_t(4 + i);
         auto& rec = mechs_[std::size_t(4 + i)];
         rec = tmpl;
+        // The Arena's second 'Mech is the spectator (27e8:05de, template 6).
+        if (combat_.spectator && i > 0) rec = rules_->mechs[6].record;
         for (int b = kArmourFirst; b <= kArmourLast; ++b)
             rec[std::size_t(b)] = rec[std::size_t(b)] <= cut ? 0 : std::uint8_t(rec[std::size_t(b)] - cut);
         if (tries > 4)
@@ -296,7 +324,7 @@ void Town::place_mission(int mechs, int people) {
         if (tries > 5)
             for (const int b : {0x75, 0x77, 0x76}) rec[std::size_t(b)] = std::uint8_t(random_.next() & 1);
         const int f = 12 + i;
-        figs_.sprite_base[std::size_t(f)] = 0;
+        figs_.sprite_base[std::size_t(f)] = std::uint8_t(sprite_set);
         animation_.set_frame(f, 0x0c);
         animation_.start_script(f, FigureAnimation::mech_script(6));
         animation_.set_direction(f, 6);
@@ -304,6 +332,16 @@ void Town::place_mission(int mechs, int people) {
         figs_.active[std::size_t(f)] = 1;
         figs_.x[std::size_t(f)] = std::uint16_t(x0 + tables_.enemy_offset_x[std::size_t(placed)]);
         figs_.y[std::size_t(f)] = std::uint16_t(y0 + tables_.enemy_offset_y[std::size_t(placed)]);
+        if (combat_.spectator && i > 0) {
+            // The spectator: its own place, frame and one-frame script, facing 2.
+            animation_.set_frame(f, 0x10);
+            figs_.sprite_base[std::size_t(f)] = 0;
+            animation_.start_script(f, formats::Tables::kSpectatorScript);  // DG:4dd8
+            figs_.heading[std::size_t(f)] = 2;
+            animation_.set_direction(f, 2);
+            figs_.x[std::size_t(f)] = 0x0a06;
+            figs_.y[std::size_t(f)] = 0x8066;
+        }
     }
     // People: the characters after the 'Mechs' pilots, at most to 15, as
     // figures 8 on from their numbers.
@@ -476,6 +514,14 @@ bool Town::fight(int kind, KeySource& keys) {
         }
         raid_line_ = 0;
     }
+    if (kind == 2) {
+        // 203b:04e6: the Arena's view set on the party and drawn (287f:1314,
+        // 18ef, 1000:0e4b, 273d:06c3).
+        build_window();
+        page_ = Frozen{live_view(), fight_figures_drawn()};
+        page_sprites_.clear();
+        show_page();
+    }
     computer_ = false;
     if (!no_computer_order_) {
         text_.select_window(3);
@@ -584,7 +630,11 @@ bool Town::print_unit_heading(int fig, bool agent_check, bool details, KeySource
 }
 
 std::optional<std::string> Town::mech_name_id(int record) const {
-    const auto& rec = mechs_[std::size_t(record)];
+    return template_name_id(mechs_[std::size_t(record)]);
+}
+
+// The text ID of the template whose name a record's name matches.
+std::optional<std::string> Town::template_name_id(const formats::MechRecord& rec) const {
     const auto ids = formats::mech_template_ids();
     for (std::size_t t = 0; t < rules_->mechs.size() && t < ids.size(); ++t)
         if (std::equal(rec.begin(), rec.begin() + formats::kMechNameSize, rules_->mechs[t].record.begin()))
@@ -1339,6 +1389,11 @@ Combat Town::combat_rules() {
     hooks.log = [this](const std::string& line) {
         if (log_.empty() || log_.back() != line) log_.push_back(line);
     };
+    hooks.message_box = [this] { open_message_box(); };
+    hooks.key = [this] {
+        if (!round_keys_ || !read_key(*round_keys_)) throw KeysRanOut{};
+    };
+    hooks.arena_wall = [this](bool restore) { arena_wall(restore); };
     return Combat(terrain_, blocking_tile(map_number_), position_, figs_, animation_, mechs_, characters_, flags_,
                   random_, combat_, marks_, *rules_, tables_, fixes_, messages_, graphics_, std::move(hooks));
 }
@@ -1376,6 +1431,7 @@ bool Town::fight_rounds(int kind, KeySource& keys) {
     Combat combat = combat_rules();
     bool over = false;
     int fled_how = 0;  // [bp-0x38]: 2 when the raid's way out was reached
+    bool exit_zone = false;  // [bp-0xc]: the Arena's exit zone reached with flag 23
     while (!over) {
         // Each round draws the map first (287f:1314).
         terrain_.release_window();
@@ -1450,10 +1506,20 @@ bool Town::fight_rounds(int kind, KeySource& keys) {
             combat_.enemy_people_ran = false;
             combat.plan_side(12);
             position_ = start;
-            combat.round(kind > 0);
+            // A key the round waits for (the Arena's spectator) may find none:
+            // the fight stops there, as the original waits.
+            round_keys_ = &keys;
+            try {
+                combat.round(kind > 0);
+            } catch (const KeysRanOut&) {
+                round_keys_ = nullptr;
+                place_open_ = true;
+                return false;
+            }
+            round_keys_ = nullptr;
             if (combat_.fight_on && flags_[0x27] != 0 && agent_found_ && !double_agent_acts(keys)) return false;
             // 2.8: the end tests.
-            bool exit_zone = false;
+            exit_zone = false;
             if (flags_[0x23] != 0 && figs_.active[0] != 0 && figs_.x[0] > 0x0900 && figs_.x[0] < 0x0a07)
                 exit_zone = true;
             over = true;
@@ -1506,7 +1572,21 @@ bool Town::fight_rounds(int kind, KeySource& keys) {
     } else if (kind == 0 || kind == -1 || kind == 3) {
         // 203b:1401 / 16a1: kinds below 1 and kind 3.
         return encounter_end(fled_how == 0, keys);
-    } else if (kind != 1) {
+    } else if (kind == 2 && combat_.fight_on && !raid_ && !exit_zone) {
+        // 203b:1757..1790: the Arena's verdict, flag 21 = won, and a key.
+        open_message_box();
+        flags_[0x21] = 1;
+        if (mechs_[0][0] != 0xff) {
+            print_id("fight.arena_won");
+        } else {
+            print_id("fight.arena_lost");
+            flags_[0x21] = 0;
+        }
+        if (!read_key(keys)) {
+            place_open_ = true;
+            return false;
+        }
+    } else if (kind != 1 && kind != 2) {
         log_.push_back("the ending of a fight of kind " + std::to_string(kind) + ": not rebuilt");
         fight_unfinished_ = true;
         return false;

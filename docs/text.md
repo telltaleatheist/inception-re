@@ -155,7 +155,7 @@ narration of what happened, descriptions and flavour, and the original's own not
 | shot.* but shot.squashed, shot.arena_damaged, shot.urbanmechs | 26 | the pieces of a shot's message, hit and miss, critical, kill |
 | location.0-10 | 11 | the hit locations, as labels |
 
-### Imported only (750 IDs)
+### Imported only (752 IDs)
 
 | IDs | Count | Why |
 |---|---|---|
@@ -189,6 +189,7 @@ narration of what happened, descriptions and flavour, and the original's own not
 | ui.press_key, ui.plural_s, ui.full_stop | 3 | message pieces, kept imported: not on Owen's approved list |
 | shop.cbills_end | 1 | the end of a shop's price line, kept imported: not on Owen's approved list |
 | comstar.* | 26 | ComStar: the investments' names, the account, investing and withdrawing (24d3:037a, 0725, 04ad, 17dc:19e1); kept imported: not on Owen's approved list |
+| arena.* | 2 | ARENA's own 'Mech: the chooser's prompt and the separator between a pilot and a 'Mech (17dc:1a26, 1c67:0b98); kept imported: not on Owen's approved list |
 | shop.topup_* | 11 | ARMOR's top-up (special 32, 24d3:0ef3); kept imported: not on Owen's approved list |
 | save.which, save.failed, save.refused | 3 | the save's slot question, its failure and its refusal in the cache (1000:35d3); kept imported: not on Owen's approved list |
 | overhead.caption, overhead.caption_outdoors | 2 | the overhead map's caption (1000:3fae); kept imported: not on Owen's approved list |

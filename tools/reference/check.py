@@ -1951,6 +1951,27 @@ COMSTAR_CASES = [dict(case, compare=False) for case in CASES[:4]] + [
     {"name": "comstar_out", "keys": "down enter", "match": SCREEN},
 ]
 
+# The Arena (ARENA, docs/scripts.md "The Arena"), from inside map 2 as chain_party starts: the
+# walk to its door (entrance 1), 500 C-Bills poked there (the chain has 170, renting costs 250),
+# renting the Arena's 'Mech, and a fight the computer fights (no combat graphics) to the
+# verdict, the prize and the way out. The poke is not drawn by the original until the script's
+# `pay` redraws the C-Bills, so the cases before it match the map only.
+ARENA_WALK = "pgdn*19 down*9 right*20 down*2 left*4 down*16 right*4"
+CHAIN_ARENA_CASES = [dict(case, compare=False) for case in
+                     CHAIN_TOWN_CASES[:[c["name"] for c in CHAIN_TOWN_CASES].index("chain_town_garage_out_2") + 1]] + [
+    {"name": "chain_arena_door", "keys": ARENA_WALK + " cbills:01f4", "match": SHOP_MAP},
+    {"name": "chain_arena_welcome", "keys": "y", "match": SHOP_MAP},
+    {"name": "chain_arena_attendant", "keys": "y", "match": SHOP_MAP},
+    {"name": "chain_arena_deposit", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_first_time", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_computer", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_messages", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_graphics", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_verdict", "keys": "n idle:400", "match": SCREEN},
+    {"name": "chain_arena_prize", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_out", "keys": "enter", "match": SCREEN},
+]
+
 # The start-up's load (1000:50c8, docs/startup.md): "No" to the first-time question, "Yes" to
 # loading, slot 0. Its Game1 is the one chain_save's original run wrote (SEEDED), on both drives.
 START_LOAD_CASES = [dict(case, compare=False) for case in CASES[:3]] + [
@@ -1975,7 +1996,7 @@ STALL_SECONDS = 600
 CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_poked", "chain_heal_poked", "chain_repair_poked",
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
-            "chain_cache_open", "chain_entrance"}
+            "chain_cache_open", "chain_entrance", "chain_arena"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2022,6 +2043,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("settings", [], SETTINGS_CASES, []),
              ("shops", [], SHOP_CASES, []),
              ("comstar", [], COMSTAR_CASES, []),
+             ("chain_arena", [], CHAIN_ARENA_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

@@ -123,7 +123,7 @@ best tech among all the party's characters (docs/combat.md 2.15).
 These bytes are script flags (docs/scripts.md: flag f is F:d30c + f), so the places' scripts
 can set them. All are 0 at a new game. Addresses marked linear are byte offsets in the unpacked
 image (load segment 0x1000). Rebuilt in `Town::game_tick` (src/game/town.cpp), in the original's
-order; the call at the end of flag 37 is logged, not rebuilt (it belongs to the world map).
+order.
 
 | Flag | Byte | Each tick | Set by | Read by |
 |---|---|---|---|---|

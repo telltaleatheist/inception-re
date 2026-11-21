@@ -385,6 +385,7 @@ private:
     // Sets byte `index` of the map store (P:101d) and has the window built
     // again.
     void set_map_cell(std::size_t index, int tile, bool rebuild = true);
+    void arena_wall(bool restore);
     void place_mission(int mechs, int people);
     bool fight(int kind, KeySource& keys);
     bool alley_fight(KeySource& keys);
@@ -398,6 +399,15 @@ private:
     std::optional<std::uint32_t> number_field(KeySource& keys);
     bool top_up_armour(KeySource& keys);
     bool crew_screen(int start, KeySource& keys);
+    void arena_members_out();
+    void arena_rent();
+    bool arena_own(KeySource& keys);
+    std::optional<int> choose_mech(KeySource& keys);
+    std::optional<std::string> template_name_id(const formats::MechRecord& rec) const;
+    void arena_patch(bool build);
+    bool arena_fight(KeySource& keys);
+    void arena_put_back();
+    void arena_theft();
     bool command_menu(KeySource& keys);
     bool game_settings(KeySource& keys);
     bool allocate_crew(KeySource& keys);
@@ -597,6 +607,14 @@ private:
     int message_speed_ = 2;  // DG:015e
     int steps_per_key_ = 1;  // DG:015a
     int investments_shown_ = 0;  // F:e482: special 6's count
+    std::array<std::uint8_t, 0x26> arena_wall_kept_{};  // DG:5804 (1d43:0c72)
+    formats::MechRecord arena_kept_record_{};            // F:3780: record 0 before the Arena
+    std::array<std::uint8_t, 8> arena_kept_first_{};     // F:3fe9 + c: the members' first bytes
+    std::array<std::uint8_t, 4> arena_kept_pilot_{};     // F:430e + m
+    std::array<std::uint8_t, 4> arena_kept_rider_{};     // F:3ffa + m
+    int arena_choice_ = 0;                               // DG:0068: the chosen 'Mech record
+    int arena_patch_ = 0;                                // DG:0010: the wall patch, 0-3
+    KeySource* round_keys_ = nullptr;  // the keys while a fight round runs (Combat's key hook)
     bool poll_open_ = false;
     std::vector<XorBox> boxes_;
     std::uint32_t boxes_since_ = 0;  // the text layer's paint clock when boxes_ was last settled

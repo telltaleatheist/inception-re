@@ -151,6 +151,13 @@ public:
         std::function<void()> clear_wander;
         std::function<void()> pause;
         std::function<void(const std::string&)> log;
+        // 24d3:17c6: the message box opened and made current.
+        std::function<void()> message_box;
+        // 273d:0259: a key read. When the keys run out it does not return
+        // (it throws), so the fight stops where the original waits.
+        std::function<void()> key;
+        // 1d43:0c72: the Arena's wall cells patched (false) or put back (true).
+        std::function<void(bool restore)> arena_wall;
     };
 
     Combat(const Terrain& terrain, int blocking, formats::MapPosition& party, FightFigures& figs,
@@ -241,6 +248,7 @@ private:
     void present(int s, int t, int w, int dir);
     // 22e8:12c7's kills and wrecks, which come after it.
     void after_shot(int t, bool killed, bool destroyed, int c);
+    void spectator_down();
     // Jason's figure, the view's centre (F:c620: his 'Mech, or figure 4).
     int view_figure() const;
     // The view redrawn around Jason's figure (1000:17bb, then draw_view):

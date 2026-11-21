@@ -21,7 +21,7 @@ new one is empty; if that fails, the old folder is used where it is.
 
 ## What it writes
 
-    import.json          {"import_version": 28, "source": "BTECH.EXE DOS 1.03", "exe_sha256": ...,
+    import.json          {"import_version": 29, "source": "BTECH.EXE DOS 1.03", "exe_sha256": ...,
                           "table_sha256": ...}
     text/english.json    {"texts": [{"id": ..., "address": "ssss:oooo", "text": ...}, ...]}
     font/font.txt        the font (docs/formats/font.md)
@@ -48,7 +48,7 @@ an older data folder without anyone remembering to bump the version.
 The versions: 2 the direction names; 3 "C-Bills:"; 4 the .BLD texts; 5 the class and talk texts;
 6 the start-up's; 7 the rule tables, the 'Mech and weapon names, the combat texts; 8 the table
 hash in `import.json`; 9 `rules/quiz.json`; 10 `tables.json`; 11 the round's tables in it; 12 the shot's poses and scripts;
-13 the orders screen's path arrows; 18 the area-to-map table; 19 the random encounter's tables; 20 the plural "s", the full stop and the game-over texts; 21 the healing texts and dice table; 22 the repair phrases by Tech level; 28 `rules/shops.json` and the shops' and ComStar's texts.
+13 the orders screen's path arrows; 18 the area-to-map table; 19 the random encounter's tables; 20 the plural "s", the full stop and the game-over texts; 21 the healing texts and dice table; 22 the repair phrases by Tech level; 28 `rules/shops.json` and the shops' and ComStar's texts; 29 the Arena's tables and texts.
 
 ## How it reads the program
 

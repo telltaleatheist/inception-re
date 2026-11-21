@@ -374,14 +374,17 @@ menu 0x17 (2656:0b5e) with as many items as lines, and DG:0068 = the chosen list
    'Mech byte = 0, record 0's pilot = 0.
 2. The place picture (`1000:48b7(0, 0)`), the party at (0x0a2b, 0x8057), P:01f6 / 01f8 =
    0x02a0 / 0x27e8, DG:409a = `1000:1732(0)`.
-3. `19b8:137f`: one r, kept in DG:0010; r & 3 picks one of three patches of map cells (1-3;
-   0 none), a short wall of tiles 0x6f, 0x6a and 0x70 or 0x71, 0x6b.
+3. `19b8:137f`: one r, kept in DG:0010; r & 3 picks one of three wall patches in the map store
+   (0 none). Each has a first cell, middle cells and a last cell: (1) 0xc72, 0xc73-0xc77, 0xcb0;
+   (2) 0xa5b, 0xa5c-0xa5f and 0xa98-0xa9d, 0xa9e; (3) 0xabc, 0xc84-0xcb4 every 8th, 0xcbc.
+   Tiles 0x6f, 0x6a, 0x70 for patches 1 and 2; 0x71, 0x6b, 0x70 for patch 3.
 4. Mission mode 8 (`17dc:0629(8)`, combat.md 1.3).
 5. The marks 0x7c and 0x7d (fires) in area 0x8a lose their code, area and x.
 6. DG:014a = 0 (the leader fell): flag 28 = 1.
-7. Flag 23 clear (no theft): `19b8:1441`, by DG:0010: tiles 0x40-0x43 at the patch's two ends,
-   and one cell (two for patch 2) elsewhere gets (r & 3) + 0x40, one r each; the patch's middle
-   cells are not written. Then `17dc:1b41` (below) and the party at (0x0a39, 0x805d).
+7. Flag 23 clear (no theft): `19b8:1441`, by DG:0010, writes the same cells: the first and
+   last 0x43 / 0x42 (patch 1), 0x41 / 0x42 (2), 0x40 / 0x41 (3), and each middle cell
+   (r & 3) + 0x40, one r each, so the floor differs each time. Then `17dc:1b41` (below) and the
+   party at (0x0a39, 0x805d).
 8. Flag 23 set, the theft: the party at x 0x0970, y F:4036 (F:403e when F:406a is 0: figure 0's
    row, or Jason's on foot). Characters 1-7 get their first bytes back from F:3fe9. Then by
    the held letters (F:d452..d455):
@@ -467,6 +470,11 @@ town is refused) and a key.
   'Mech also loses its held letter. Since the chooser lists held letters once flag 18 is set,
   the 'Mech is still offered at the Arena and comes back at the Garage (special 46). Not yet
   seen on the original.
+- **The 'Mech chooser names pilots by record number.** `1c67:0b98` reads each line's name at
+  DG:01ca + 4 x (the pilot's character record number), a table indexed by name number. Jason
+  (record 0, name 0) comes out right; a member whose name number differs from his record number
+  is shown under another name. Kept; an empty seat (ff) would read past the table, which the
+  rebuild logs and stops at.
 - **ARMOR's four-type list is never shown.** Flag 0a is written only by entering a place (=1)
   and the new game's clear, and read only by ARMOR's script and special 9. Inside the shop it is
   always set, so the script always shows menu 0x0d and special 9 always reads it; menu 0x0e and
@@ -611,7 +619,7 @@ runs as the original does; the return visit itself is not captured.) The chain t
   24d3:0dc6/0dd3 (two of the specials, 24d3:0004) set; those are not rebuilt, so outside a loaded game the rebuild never jumps. UnBattletech names them "training complete" and a milestone.
 - **E4** (sound) is recorded, the event and the player's state (docs/sound.md), but no audio
   plays.
-- Specials 18-20, 24-28, 33-37, 41, 42, 44 and 47 (in decimal, as in the table above and
+- Specials 18-20, 24-26, 28, 36, 37, 41, 42, 44 and 47 (in decimal, as in the table above and
   chr's log; the scripts and `tools/bld.py` write them in hex).
 - Talk outdoors (`17dc:17b9`): one of eight rumours (DGROUP:4e5e) at random. No rebuilt place
   is outdoors; the rebuild makes the draw and logs it.

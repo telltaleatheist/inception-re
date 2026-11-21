@@ -105,9 +105,9 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 17dc:15e6 | 0x193a6 | `FUN_17dc_15e6` | 467 | A weapon offered to the party (after a fight, WEAPON's purchase) | rebuilt |
 | 17dc:17b9 | 0x19579 | `FUN_17dc_17b9` | 573 | Talk to others: who is inside, and where they go next (docs/scripts.md, special 12) | rebuilt |
 | 17dc:19f6 | 0x197b6 | `FUN_17dc_19f6` | 48 |  | - |
-| 17dc:1a26 | 0x197e6 | `FUN_17dc_1a26` | 283 |  | - |
-| 17dc:1b41 | 0x19901 | `FUN_17dc_1b41` | 346 |  | - |
-| 17dc:1c9b | 0x19a5b | `FUN_17dc_1c9b` | 149 |  | - |
+| 17dc:1a26 | 0x197e6 | `FUN_17dc_1a26` | 283 | ARENA's special 34: the party's own 'Mech for the Arena (docs/scripts.md, "The Arena") | rebuilt |
+| 17dc:1b41 | 0x19901 | `FUN_17dc_1b41` | 346 | After an Arena fight with no theft: the 'Mechs, seats and members put back | rebuilt |
+| 17dc:1c9b | 0x19a5b | `FUN_17dc_1c9b` | 149 | ARENA's special 33: the Arena's 'Mech rented, the spectator on | rebuilt |
 | 17dc:1d30 | 0x19af0 | `FUN_17dc_1d30` | 146 | Deciphers the loaded .BLD script (docs/formats/bld.md) | rebuilt |
 
 ## CODE_4: segment 19b8, 6,738 bytes
@@ -118,8 +118,8 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 19b8:0925 | 0x1a4a5 | `FUN_19b8_0925` | 1075 | Pays for and applies a 'Mech upgrade: eight cases by model and stage (docs/combat.md 2.6, Kick) | read in part |
 | 19b8:0d58 | 0x1a8d8 | `FUN_19b8_0d58` | 758 | A new party member joins (script E9) | read |
 | 19b8:104e | 0x1abce | `FUN_19b8_104e` | 817 |  | - |
-| 19b8:137f | 0x1aeff | `FUN_19b8_137f` | 194 |  | - |
-| 19b8:1441 | 0x1afc1 | `FUN_19b8_1441` | 238 |  | - |
+| 19b8:137f | 0x1aeff | `FUN_19b8_137f` | 194 | One of three wall patches in the Arena, by chance (DG:0010) | rebuilt |
+| 19b8:1441 | 0x1afc1 | `FUN_19b8_1441` | 238 | The Arena's patch made floor again, one draw a middle cell | rebuilt |
 | 19b8:152f | 0x1b0af | `FUN_19b8_152f` | 387 |  | - |
 | 19b8:16b2 | 0x1b232 | `FUN_19b8_16b2` | 176 |  | - |
 | 19b8:1762 | 0x1b2e2 | `FUN_19b8_1762` | 754 |  | - |
@@ -154,7 +154,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 |---|---|---|---|---|---|
 | 1c67:0002 | 0x1c672 | `FUN_1c67_0002` | 2214 |  | - |
 | 1c67:08a8 | 0x1cf18 | `FUN_1c67_08a8` | 752 | The training center's first visit: the copy-protection quiz (docs/combat.md) | read |
-| 1c67:0b98 | 0x1d208 | `FUN_1c67_0b98` | 486 |  | - |
+| 1c67:0b98 | 0x1d208 | `FUN_1c67_0b98` | 486 | Chooses a 'Mech by menu 0x17 (the Arena's own 'Mech) | rebuilt |
 | 1c67:0d7e | 0x1d3ee | `FUN_1c67_0d7e` | 70 |  | - |
 
 ## CODE_8: segment 1d43, 3,810 bytes
@@ -164,7 +164,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 1d43:0004 | 0x1d434 | `FUN_1d43_0004` | 1991 | The Use Weapons screen | rebuilt |
 | 1d43:07cb | 0x1dbfb | `FUN_1d43_07cb` | 618 | The target picker | rebuilt |
 | 1d43:0a35 | 0x1de65 | `FUN_1d43_0a35` | 573 | A 'Mech destroyed: targets cleared, the party crew ejects | rebuilt in part |
-| 1d43:0c72 | 0x1e0a2 | `FUN_1d43_0c72` | 108 |  | - |
+| 1d43:0c72 | 0x1e0a2 | `FUN_1d43_0c72` | 108 | The Arena's broken wall: map-store cells 0xc00-0xc25 patched (DG:2b8e) or put back (DG:5804) | rebuilt |
 | 1d43:0cde | 0x1e10e | `FUN_1d43_0cde` | 520 |  | - |
 
 ## CODE_9: segment 1e31, 8,356 bytes
@@ -230,7 +230,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 24d3:0004 | 0x24d34 | `FUN_24d3_0004` | 6082 | The script specials, F5 n (docs/scripts.md); 1-5, 12 and 14 rebuilt | read |
+| 24d3:0004 | 0x24d34 | `FUN_24d3_0004` | 6082 | The script specials, F5 n (docs/scripts.md); the rebuilt ones are listed there | read |
 | 24d3:17c6 | 0x264f6 | `FUN_24d3_17c6` | 36 | Opens the message box over the map: window 7, cleared, frame style 0 | rebuilt |
 | 24d3:17ea | 0x2651a | `FUN_24d3_17ea` | 31 | Prints a message in the open box, waits a moment (273d:086a) | read |
 | 24d3:1809 | 0x26539 | `FUN_24d3_1809` | 21 | Prints DGROUP:4f7e (special 5) | rebuilt |

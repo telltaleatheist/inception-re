@@ -120,6 +120,11 @@ constexpr std::array kDos103 = {
     ExeSpan{ExeSpan::Kind::Table, "tables.person_quarters", 0x46db, 0x0372, 8, "7a1284cf4c84ce54"},
     ExeSpan{ExeSpan::Kind::Table, "tables.muzzle", 0x46db, 0x2d28, 0x30, "e5f4d337ac08ca39"},
     ExeSpan{ExeSpan::Kind::Table, "tables.line_steps", 0x46db, 0x41dc, 0x20, "b5d668490f6227c0"},
+    // The Arena (17dc:0d49's bit-0x80 branch, 22e8:12c7, 1d43:0c72):
+    ExeSpan{ExeSpan::Kind::Table, "tables.encounter_templates", 0x46db, 0x13e2, 44, "1aebfdba712bd0c0"},
+    ExeSpan{ExeSpan::Kind::Table, "tables.encounter_sprite_sets", 0x46db, 0x140e, 11, "653680474c132640"},
+    ExeSpan{ExeSpan::Kind::Table, "tables.spectator_script", 0x46db, 0x4dd8, 3, "e204de4f40ba3515"},
+    ExeSpan{ExeSpan::Kind::Table, "tables.arena_wall", 0x46db, 0x2b8e, 0x26, "410a59f69b3795fe"},
     ExeSpan{ExeSpan::Kind::Table, "tables.path_arrows", 0x46db, 0x3b06, 12, "a9eff4005e9a70e1"},
     // The terrain outside the towns (docs/wilderness.md):
     ExeSpan{ExeSpan::Kind::Table, "tables.world_heights", 0x2c6c, 0x0b0b, 256, "1ace38e0c5828f12"},
@@ -378,6 +383,9 @@ constexpr std::array kDos103 = {
     ExeSpan{ExeSpan::Kind::Text, "comstar.invest_end", 0x46db, 0x4c07, 4, "0fee949ff0d918ca"},
     ExeSpan{ExeSpan::Kind::Text, "comstar.invest_none", 0x46db, 0x4c0b, 13, "ea702b391a49a93b"},
     ExeSpan{ExeSpan::Kind::Text, "comstar.cancelled", 0x46db, 0x1791, 20, "b3048a9cda43e570"},
+    // ARENA's own 'Mech (17dc:1a26, 1c67:0b98):
+    ExeSpan{ExeSpan::Kind::Text, "arena.which_mech", 0x46db, 0x17a5, 40, "b12462dda2afe62a"},
+    ExeSpan{ExeSpan::Kind::Text, "arena.name_sep", 0x46db, 0x2900, 4, "c51fb3911583f0c4"},
     // ARMOR's top-up (24d3:0ef3).
     ExeSpan{ExeSpan::Kind::Text, "shop.topup_full", 0x46db, 0x4c1c, 68, "df9ef48a614e9576"},
     ExeSpan{ExeSpan::Kind::Text, "shop.topup_lacks", 0x46db, 0x4c60, 21, "8e296caa368be362"},

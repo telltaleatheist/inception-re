@@ -858,6 +858,18 @@ bool Town::special(int n, KeySource& keys) {
         draw_panel(true);  // 1000:4cac(1)
         clear_window();    // 2656:0388
         return true;
+    case 27:
+        // 24d3:0e54: special 46 without its first step (docs/scripts.md).
+        for (int m = 0; m < 4; ++m)
+            figs_.sprite_base[std::size_t(m)] = mechs_[std::size_t(m)][0] == 'L' ? 0 : 0x92;
+        return crew_screen(0, keys);
+    case 33:
+        arena_rent();
+        return true;
+    case 34:
+        return arena_own(keys);
+    case 35:
+        return arena_fight(keys);
     case 46:
         // 24d3:0e2c: the held 'Mechs back in their records, then the crew
         // screen (docs/scripts.md).
@@ -890,6 +902,208 @@ bool Town::special(int n, KeySource& keys) {
         log_.push_back("special " + std::to_string(n) + ": not rebuilt");
         return true;
     }
+}
+
+namespace {
+constexpr std::size_t kMechPilot = 0x79, kMechRider = 0x7a, kMechSprites = 0x7b;
+}  // namespace
+
+// 17dc:1c9b and 17dc:1a26's common part: characters 1-7 out of the fight,
+// their first bytes kept (F:3fe9 + c), and every 'Mech byte of 0-7 set to 3.
+void Town::arena_members_out() {
+    for (int c = 1; c < 8; ++c) {
+        characters_[std::size_t(c)][character::kMech] = 3;
+        characters_[std::size_t(c - 1)][character::kMech] = 3;
+        arena_kept_first_[std::size_t(c)] = characters_[std::size_t(c)][character::kName];
+        characters_[std::size_t(c)][character::kName] = character::kEmpty;
+    }
+}
+
+// BTECH.EXE 17dc:1c9b (Ghidra FUN_17dc_1c9b), special 33
+// The Arena's 'Mech: record 0 kept (F:3780) and made a LOCUST (27e8:02f0),
+// the others out, and the spectator on (F:e48e).
+void Town::arena_rent() {
+    arena_kept_record_ = mechs_[0];
+    mechs_[0] = rules_->mechs[0].record;
+    arena_members_out();
+    combat_.spectator = true;
+}
+
+// BTECH.EXE 17dc:1a26 (Ghidra FUN_17dc_1a26), special 34
+// The party's own 'Mech: every seat kept, the 'Mech chosen, record 0 kept
+// and made a copy of it named by its held letter, the others out, Jason
+// alone in it, and no spectator.
+bool Town::arena_own(KeySource& keys) {
+    for (std::size_t m = 0; m < 4; ++m) {
+        arena_kept_pilot_[m] = mechs_[m][kMechPilot];  // F:430e
+        arena_kept_rider_[m] = mechs_[m][kMechRider];  // F:3ffa
+    }
+    clear_window();  // 2656:0388
+    print_id("arena.which_mech");
+    const auto chosen = choose_mech(keys);
+    if (!chosen) return false;
+    arena_choice_ = *chosen;
+    arena_kept_record_ = mechs_[0];
+    mechs_[0] = mechs_[std::size_t(arena_choice_)];
+    mechs_[0][0] = held_mechs_[std::size_t(arena_choice_)];
+    arena_members_out();
+    mechs_[0][kMechPilot] = 0;
+    mechs_[0][kMechRider] = character::kEmpty;
+    combat_.spectator = false;
+    return true;
+}
+
+// BTECH.EXE 1c67:0b98 (Ghidra FUN_1c67_0b98)
+// A 'Mech chosen from records 0-3 in use, or with flag 18 those with a held
+// letter: one menu line each, the pilot's name, a separator and the 'Mech's
+// name. The pilot's name is read by the record's number as a name number
+// (DG:01ca + 4n), as the original does.
+std::optional<int> Town::choose_mech(KeySource& keys) {
+    const bool held = flags_[0x18] != 0;
+    std::vector<int> listed;  // F:d558
+    for (int m = 0; m < 4; ++m)
+        if ((held ? held_mechs_[std::size_t(m)] : mechs_[std::size_t(m)][0]) != 0xff) listed.push_back(m);
+    auto& rec = menus_[0x17];
+    rec.first_row = text_.window().row;  // DG:0202 = F:374e
+    for (const int m : listed) {
+        const auto& r = mechs_[std::size_t(m)];
+        const int pilot = r[kMechPilot];
+        if (pilot >= 8) {  // character.0-7
+            log_.push_back("the 'Mech chooser: a pilot number past the names: not rebuilt");
+            return std::nullopt;
+        }
+        print_id("character." + std::to_string(pilot));
+        print_id("arena.name_sep");
+        auto named = r;
+        if (held) named[0] = held_mechs_[std::size_t(m)];
+        if (const auto id = template_name_id(named)) print_id(*id);
+        else log_.push_back("a 'Mech record with no template's name");
+        print_id("talk.line_end");  // 24d3:181e
+    }
+    rec.items = int(listed.size());  // DG:0206
+    menu_last_[0x17] = 0;            // DG:0208
+    const auto chosen = menu(0x17, keys);
+    rec.first_row = 1;
+    if (!chosen) return std::nullopt;
+    return listed.at(std::size_t(*chosen));
+}
+
+// BTECH.EXE 19b8:137f and 19b8:1441 (Ghidra FUN_19b8_137f, FUN_19b8_1441)
+// The Arena's wall patch (DG:0010, drawn by `build`): its map-store cells,
+// built as a wall, or afterwards as floor (fixed ends, one draw a middle cell).
+void Town::arena_patch(bool build) {
+    struct Patch {
+        std::size_t first, last;
+        std::vector<std::size_t> middle;
+        int wall_first, wall_middle, floor_first, floor_last;
+    };
+    static const std::array<Patch, 3> kPatches = {{
+        {0xc72, 0xcb0, {0xc73, 0xc74, 0xc75, 0xc76, 0xc77}, 0x6f, 0x6a, 0x43, 0x42},
+        {0xa5b, 0xa9e, {0xa5c, 0xa5d, 0xa5e, 0xa5f, 0xa98, 0xa99, 0xa9a, 0xa9b, 0xa9c, 0xa9d}, 0x6f, 0x6a, 0x41, 0x42},
+        {0xabc, 0xcbc, {0xc84, 0xc8c, 0xc94, 0xc9c, 0xca4, 0xcac, 0xcb4}, 0x71, 0x6b, 0x40, 0x41},
+    }};
+    if (build) arena_patch_ = random_.next() & 3;
+    if (arena_patch_ == 0) return;
+    const auto& p = kPatches[std::size_t(arena_patch_ - 1)];
+    const auto put = [this](std::size_t cell, int tile) {
+        if (cell < map_.blocks.size()) set_map_cell(cell, tile, false);
+    };
+    put(p.first, build ? p.wall_first : p.floor_first);
+    for (const auto cell : p.middle) put(cell, build ? p.wall_middle : (random_.next() & 3) + 0x40);
+    put(p.last, build ? 0x70 : p.floor_last);
+}
+
+// BTECH.EXE 24d3:1062, special 35 (part of Ghidra FUN_24d3_0004)
+// The Arena fight, then either the 'Mechs put back (17dc:1b41) or, when the
+// spectator fell and the exit zone was reached, the theft: the party
+// outside the town to the west (docs/scripts.md, "The Arena").
+bool Town::arena_fight(KeySource& keys) {
+    figs_.sprite_base[0] = mechs_[0][kMechSprites] != 0 ? 0x92 : 0;  // F:d55e
+    characters_[0][character::kMech] = 0;
+    mechs_[0][kMechPilot] = 0;
+    show_picture(0, 0);  // 1000:48b7(0, 0)
+    position_ = {0x0a2b, 0x8057};
+    animation_.start_script(0, FigureAnimation::mech_script(6));  // P:01f6 = 27e8:02a0
+    animation_.advance(0);                                        // DG:409a = 1000:1732(0)
+    arena_patch(true);
+    if (!run_mission(8, keys)) return false;  // 17dc:0629(8)
+    // The fires (marks 0x7c and 0x7d) in the Arena's area lose all but y.
+    for (auto& m : marks_.marks)
+        if ((m.code & 0x7e) == 0x7c && m.area == 0x8a) m.code = m.area = m.x = 0;
+    if (!combat_.fight_on) flags_[0x28] = 1;  // DG:014a = 0: the leader fell
+    if (flags_[0x23] == 0) {
+        // The cell window keeps the wall until 287f:1314 next builds it.
+        terrain_.hold_window();
+        arena_patch(false);
+        arena_put_back();
+        position_ = {0x0a39, 0x805d};
+    } else {
+        arena_theft();
+    }
+    combat_.spectator = false;  // F:e48e
+    return true;
+}
+
+// BTECH.EXE 17dc:1b41 (Ghidra FUN_17dc_1b41)
+// After an Arena fight with no theft: the rented 'Mech handed back, or the
+// party's own copied back to its record, which is then marked empty (its
+// held letter kept unless it was destroyed), and the seats and members back.
+void Town::arena_put_back() {
+    if (combat_.spectator) {
+        mechs_[0] = arena_kept_record_;
+    } else {
+        const auto m = std::size_t(arena_choice_);
+        mechs_[m] = mechs_[0];
+        if (mechs_[0][0] == 0xff) held_mechs_[m] = 0xff;
+        mechs_[m][0] = 0xff;
+        if (m != 0) mechs_[0] = arena_kept_record_;
+        for (std::size_t k = 0; k < 4; ++k) {
+            mechs_[k][kMechPilot] = arena_kept_pilot_[k];
+            mechs_[k][kMechRider] = arena_kept_rider_[k];
+        }
+    }
+    for (int c = 1; c < 8; ++c) {
+        characters_[std::size_t(c)][character::kMech] = character::kOnFoot;
+        characters_[std::size_t(c - 1)][character::kMech] = character::kOnFoot;
+        characters_[std::size_t(c)][character::kName] = arena_kept_first_[std::size_t(c)];
+    }
+}
+
+// 24d3:1062's theft branch (24d3:111b..1352)
+void Town::arena_theft() {
+    position_.x = 0x0970;
+    position_.y = figs_.active[0] != 0 ? figs_.y[0] : figs_.y[4];  // F:4036, or F:403e
+    for (int c = 1; c < 8; ++c) characters_[std::size_t(c)][character::kName] = arena_kept_first_[std::size_t(c)];
+    bool all_free = true;
+    for (const auto letter : held_mechs_) all_free = all_free && letter == 0xff;
+    if (!all_free) {
+        bool placed = false;
+        for (std::size_t i = 1; i < 4 && !placed; ++i) {
+            if (held_mechs_[i] != 0xff) continue;
+            placed = true;
+            for (std::size_t j = 1; j < 4; ++j) mechs_[j][0] = held_mechs_[j];
+            mechs_[i] = arena_kept_record_;
+            mechs_[i][0] = held_mechs_[0];
+        }
+        if (!placed) {
+            mechs_[0] = arena_kept_record_;
+            for (std::size_t m = 0; m < 4; ++m) mechs_[m][0] = held_mechs_[m];
+        }
+    }
+    // The nine areas around area 0x89, west of the town (287f:104e, 1000:2da8, 287f:1da8).
+    constexpr int kArea = 0x89;
+    terrain_.generate(kArea);
+    for (int k = 0; k < 9; ++k) {
+        const int a = kArea - 0x11 + 16 * (k / 3) + k % 3;
+        if (area_maps_[std::size_t(a)] != 0) load_town_map(area_maps_[std::size_t(a)], k);
+    }
+    terrain_.link_blocks();
+    arena_wall(false);  // 1d43:0c72(0)
+    for (std::size_t m = 0; m < 4; ++m) {
+        held_mechs_[m] = 0xff;
+        mechs_[m][kMechPilot] = mechs_[m][kMechRider] = character::kEmpty;
+    }
+    for (int c = 0; c < 8; ++c) characters_[std::size_t(c)][character::kMech] = character::kOnFoot;
 }
 
 // A right-aligned amount, ending in screen column 38 (273d:00d5 at column

@@ -124,6 +124,11 @@ struct Tables {
     static constexpr int kReactionScript = 0x2e3c, kExplosionScript = 0x41d8;
     std::array<int, 6> reaction_script{};    // DG:2e3c: the target's reaction to a hit
     std::array<int, 4> explosion_script{};   // DG:41d8
+    static constexpr int kSpectatorScript = 0x4dd8;
+    std::array<int, 3> spectator_script{};   // DG:4dd8: the Arena's spectator stands
+    std::array<int, 22> encounter_templates{};  // DG:13e2: far pointers (offset, segment) to 'Mech templates
+    std::array<int, 11> encounter_sprite_sets{};  // DG:140e: the sprite set for each
+    std::array<int, 0x26> arena_wall{};      // DG:2b8e: map-store cells 0xc00 on, 0 = unchanged (1d43:0c72)
     std::array<int, 4> person_quarters{};    // DG:0372: a person's cell's tile bits, by parity (1000:0e4b)
     std::array<int, 0x30> muzzle{};          // DG:2d28: a line shot's start, x then y by direction (8 each):
                                              // a 'Mech, a 'Mech with the other sprites, a person

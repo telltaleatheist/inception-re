@@ -159,7 +159,7 @@ machines of the day each probably took several display frames. The platform hold
 sounds are recorded but not played yet (no sound is rebuilt). A story picture is held 50 frames
 at its last frame.
 
-Not rebuilt yet: the sounds, Scan's Detail (the stats screen, 2.6), the Arena's spectator, and the double agent.
+Not rebuilt yet: the sounds, Scan's Detail (the stats screen, 2.6), and the double agent.
 
 **The cell window in a fight.** The planner's path (3.3) and the line of sight (3.6) read map
 cells from the 24x24-cell window P:07ad by index, as the townspeople do. The window and its
@@ -202,7 +202,7 @@ sight at long range can (the figure is 8-15 cells from the window's edges).
 
 FUN_17dc_0629. A jump table at cs:086f by mode. All modes share a walking loop like the town's
 (a key is a step, `1000:218f`; with no key the tiles animate and the townspeople move) and the
-results step at 0bf2. Rebuilt: modes 0-7, the raid and the walk (`game/mission.cpp`), and the
+results step at 0bf2. Rebuilt: modes 0-9, the raid and the walk (`game/mission.cpp`), and the
 results of modes 2-7.
 
 **The walk** (0883..0bef). Each pass, first: with the party back at the training center's door

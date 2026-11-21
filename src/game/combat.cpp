@@ -841,7 +841,14 @@ void Combat::destroy_mech(int f) {
     auto& r = mechs_[std::size_t(m)];
     s_.wreck_letter[std::size_t(m)] = r[0];
     r[0] = 0xff;
-    if (s_.spectator && (m == 4 || m == 5)) note("the Arena's spectator destroyed: not rebuilt");
+    // 1d43:0a35 in the Arena: the opponent's fall takes the spectator out of
+    // the fight; the spectator's own fall breaks the Arena's wall (1d43:0c72).
+    if (s_.spectator && m == 4) {
+        mechs_[5][0] = 0xff;
+        figs_.active[13] = 0;
+    } else if (s_.spectator && m == 5 && hooks_.arena_wall) {
+        hooks_.arena_wall(false);
+    }
     critical_hit_ = false;
     arm_off_ = false;
     if (hooks_.select_box) hooks_.select_box();
@@ -1173,6 +1180,43 @@ void Combat::present(int s, int t, int w, int dir) {
     if (is_mech(s)) animation_.set_frame(s, kept);
 }
 
+// BTECH.EXE 22e8:1c82..1e03, part of 22e8:12c7 (Ghidra FUN_22e8_12c7)
+// The Arena's spectator (figure 13) destroyed: two message boxes with the
+// view on figure 0 between them, two URBANMECHs (template 7) as figures 14
+// and 15 at the Arena's west side, the spectator gone (F:e48e = 0), and
+// flag 23 set: the exit zone opens (docs/combat.md 3.14).
+void Combat::spectator_down() {
+    if (hooks_.message_box) hooks_.message_box();  // 24d3:17c6
+    sound(7);                                      // 1000:19bf
+    print({"shot.arena_damaged"});                 // 24d3:17ea
+    if (hooks_.key) hooks_.key();                  // 273d:0259
+    walk({figs_.x[0], figs_.y[0]});                // 1000:17bb
+    terrain_.save_cells(party_);                   // 287f:1314, 1ece
+    if (hooks_.draw_view) hooks_.draw_view(true);  // 1000:240b, 287f:18ef, 1000:0e4b
+    show(0);                                       // 273d:06c3
+    if (hooks_.message_box) hooks_.message_box();
+    print({"shot.urbanmechs"});
+    if (hooks_.key) hooks_.key();
+    const auto& urbanmech = rules_.mechs[7].record;  // 27e8:065b
+    mechs_[6] = urbanmech;
+    mechs_[7] = urbanmech;
+    for (const int f : {14, 15}) {
+        const int heading = f == 14 ? 4 : 0;
+        animation_.set_frame(f, 0);
+        figs_.sprite_base[std::size_t(f)] = 0;
+        figs_.heading[std::size_t(f)] = std::int8_t(heading);
+        animation_.set_direction(f, heading);
+        animation_.start_script(f, FigureAnimation::mech_script(6));  // 27e8:02a0
+        figs_.active[std::size_t(f)] = 1;
+        figs_.x[std::size_t(f)] = 0x097d;
+    }
+    s_.spectator = false;  // F:e48e
+    flags_[0x23] = 1;
+    figs_.y[14] = 0x8030;
+    figs_.y[15] = 0x8070;
+    if (hooks_.select_box) hooks_.select_box();  // 2656:0281(4)
+}
+
 void Combat::after_shot(int t, bool killed, bool destroyed, int c) {
     if (killed) {
         print({"shot.killed"});
@@ -1196,7 +1240,7 @@ void Combat::after_shot(int t, bool killed, bool destroyed, int c) {
             marks_.add(figs_.sprite_base[std::size_t(t)] != 0 ? 0x81 : 0x80, x, y);
             sound(8);  // 1000:19bf
         } else {
-            note("the spectator's wreck: not rebuilt");
+            spectator_down();
         }
         figs_.x[std::size_t(t)] = figs_.y[std::size_t(t)] = 0xffff;
         figs_.active[std::size_t(t)] = 0;

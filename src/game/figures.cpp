@@ -41,6 +41,8 @@ int FigureAnimation::script_byte(int address) const {
         return t.reaction_script[std::size_t(address - formats::Tables::kReactionScript)];
     if (in(formats::Tables::kExplosionScript, t.explosion_script))
         return t.explosion_script[std::size_t(address - formats::Tables::kExplosionScript)];
+    if (in(formats::Tables::kSpectatorScript, t.spectator_script))
+        return t.spectator_script[std::size_t(address - formats::Tables::kSpectatorScript)];
     return 0xff;  // no script holds it: held, as at a script's end
 }
 
