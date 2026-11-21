@@ -189,6 +189,10 @@ each one.
 | 23 | 24d3:0cf8 | healing (`1c31:000a`) | flag 19 = 1 if any party member's hit points differ from 10 x B, else 0 |
 | 31 | 24d3:0eda | ARMOR | flag 1f = the armour type (byte 0x0d) of the character in flag 0e |
 | 32 | 24d3:0ef3 | ARMOR | tops up that character's armour, point by point: "The shops", below |
+| 27 | 24d3:0e54 | ARENA | special 46 without its first step: each of 'Mech records 0-3 gets sprite set 0 (F:d55e + m) if its name starts with L, else 0x92; then the crew screen with argument 0 |
+| 33 | 24d3:1052 | ARENA | rents the Arena's 'Mech (`17dc:1c9b`): "The Arena", below |
+| 34 | 24d3:105a | ARENA | the party's own 'Mech for the Arena (`17dc:1a26`): "The Arena", below |
+| 35 | 24d3:1062 | ARENA | the Arena fight (mission mode 8) and what follows it: "The Arena", below |
 | 30 | 19b8:104e | PARTY | the first companion joins and the alley fight (kind -1, combat.md 1.6) |
 | 36 | 24d3:13b2 | JAIL | prints the double agent's name: character F:d331's name (the `character.*` table) |
 | 37 | 24d3:139a | JAIL | the game is over: DG:014a = 0 and character record 0 emptied (byte 0 = ff); not rebuilt |
@@ -324,6 +328,82 @@ Reads a whole number typed at the cursor. The text starts as "0". Until Enter:
 Then the text is read as a decimal number (32 bits; empty is 0), the colour is set to 15 (in
 every mode), and the number is returned.
 
+### The Arena (ARENA, specials 27, 33, 34 and 35)
+
+Place 0x0a, map 2's entrance 1. The script, by offset (flags in hex):
+- 0005: flag 27 (a traitor in the party) goes to 0d2f: a refusal, a key, done.
+- 0009: the welcome and a Yes/No. No: flag 0d = 0x0a and talk to others (special 12), done.
+- 027b (Yes): flag 23 = 0, the attendant, a key; special 29 (flag 10 = how many held 'Mech
+  letters, F:d452..d455, are A-Z). None: straight to 03a0. Some: 0127, a Yes/No; Yes goes to
+  03a0, No to the party's own 'Mech: special 34, flag 22 = 0, the waivers, a key, then 06a5.
+- 03a0, renting: `if_cbills 250`; short, a refusal and done. Otherwise `pay 250`, a text and a
+  key; flag 21 clear: flag 21 = 1 and a second text and key. Then special 33 and flag 22 = 1.
+- 06a5: special 35, the fight. Flag 28 set (the leader fell) ends the script at once. Otherwise
+  window 6, cleared and framed, then by the flags the fight left:
+  - flag 23 (the spectator destroyed, combat.md 3.14, and the exit zone reached): 09e9. Special
+    14; with members (flag 0e), a key and a text about them, then special 17, and with 2-4
+    'Mechs in use (flag 10) one more text. Then a key, a text, flag 23 = 0, flag 37 = 1,
+    flag 38 = 0, flag 39 = 0x14, a key and special 27; done.
+  - flag 21 (won, set by the fight's end, combat.md 2.12): `earn 500`, a text; flag 22 (rented)
+    adds the repair bill text at 0e2f, otherwise the prize text at 0935; a key, done. The bill
+    is only text: nothing is paid.
+  - neither (lost): a text, then by flag 22 the deposit text (07c6) or the other (06fa), the
+    exit text, a key, done.
+
+**Special 33** (`17dc:1c9b`), the Arena's 'Mech. 'Mech record 0 is saved at F:3780 and replaced
+by the LOCUST template (27e8:02f0). For characters 1-7: the first byte saved at F:3fe9 + c and
+set to ff (out of the fight), and the 'Mech byte (0x0c) of character c and c - 1 set to 3: so
+characters 0-7 all get 3. F:e48e = 1 (the spectator, combat.md 3.14).
+
+**Special 34** (`17dc:1a26`), the party's own 'Mech. Each of 'Mech records 0-3 has its pilot
+and second seat (bytes 0x79, 0x7a) saved at F:430e + m and F:3ffa + m. Window 6 is cleared
+(`2656:0388`), `arena.which_mech` is printed and the 'Mech is chosen (`1c67:0b98`, below) into
+DG:0068. Record 0 is saved at F:3780 and gets a copy of the chosen record, with its first byte
+set to the chosen held letter (F:d452 + choice). Characters 1-7 as in special 33; then Jason
+pilots (byte 0x79 = 0), the second seat is empty (0x7a = ff), and F:e48e = 0.
+
+**Choosing a 'Mech** (`1c67:0b98`). The list (F:d558, four bytes, cleared first) is the 'Mech
+records 0-3 in use (byte 0 not ff), or with flag 18 set (the Garage visited), those whose held
+letter (F:d452 + m) is not ff. One line per 'Mech: its pilot's name (character name table, by
+byte 0x79), `arena.name_sep`, and the 'Mech's name; with flag 18 the name is the held letter
+followed by the record's name from its second byte. Each line ends through `24d3:181e`. Then
+menu 0x17 (2656:0b5e) with as many items as lines, and DG:0068 = the chosen list entry.
+
+**Special 35** (24d3:1062), the fight:
+1. Figure 0's sprite set (F:d55e) = 0x92 if byte 0x7b of record 0 is not 0, else 0. Jason's
+   'Mech byte = 0, record 0's pilot = 0.
+2. The place picture (`1000:48b7(0, 0)`), the party at (0x0a2b, 0x8057), P:01f6 / 01f8 =
+   0x02a0 / 0x27e8, DG:409a = `1000:1732(0)`.
+3. `19b8:137f`: one r, kept in DG:0010; r & 3 picks one of three patches of map cells (1-3;
+   0 none), a short wall of tiles 0x6f, 0x6a and 0x70 or 0x71, 0x6b.
+4. Mission mode 8 (`17dc:0629(8)`, combat.md 1.3).
+5. The marks 0x7c and 0x7d (fires) in area 0x8a lose their code, area and x.
+6. DG:014a = 0 (the leader fell): flag 28 = 1.
+7. Flag 23 clear (no theft): `19b8:1441`, by DG:0010: tiles 0x40-0x43 at the patch's two ends,
+   and one cell (two for patch 2) elsewhere gets (r & 3) + 0x40, one r each; the patch's middle
+   cells are not written. Then `17dc:1b41` (below) and the party at (0x0a39, 0x805d).
+8. Flag 23 set, the theft: the party at x 0x0970, y F:4036 (F:403e when F:406a is 0: figure 0's
+   row, or Jason's on foot). Characters 1-7 get their first bytes back from F:3fe9. Then by
+   the held letters (F:d452..d455):
+   - all ff: nothing more; record 0 keeps the Arena's 'Mech and the saved record is not put
+     back;
+   - one of 1-3 ff: records 1-3 get their held letters as first bytes, and the first of them
+     whose letter is ff gets the saved record (F:3780), with the first held letter (F:d452);
+   - otherwise: record 0 is the saved one again and records 0-3 get their held letters (the
+     Arena's 'Mech is lost).
+   Then the nine area grids around area 0x89 (`287f:104e(0x89)`): the
+   party is outside the town, west of it; the nine maps of the 3x3 neighbourhood are loaded
+   (`1000:2da8`, from the table P:0078 + 16 row + 0x30 + column, where not 0), the masks again
+   (`287f:1da8`), and `1d43:0c72(0)`. Every held letter = ff, every 'Mech's seats ff, characters
+   0-7 on foot (byte 0x0c = 8).
+9. F:e48e = 0.
+
+**`17dc:1b41`**, after a fight without a theft. With F:e48e set (rented): record 0 = the saved
+F:3780. Otherwise (own): record DG:0068 gets a copy of record 0; record 0's first byte ff (the
+'Mech destroyed) also clears the held letter F:d452 + DG:0068; record DG:0068's first byte is
+then set to ff either way; with DG:0068 not 0, record 0 = F:3780; the seats come back from
+F:430e / F:3ffa. Then characters 1-7: 'Mech byte 8 (on foot) and the first byte from F:3fe9.
+
 ### The crew screen (BTECH.EXE 1c67:0002)
 
 Who pilots and who rides each 'Mech. 'Mech records 0-3 (byte 0 not ff) have a pilot (byte 0x79)
@@ -378,6 +458,15 @@ town is refused) and a key.
 - **WEAPON's unreached block.** A `goto 0220` at 015d always jumps over 0160–021f, which has
   another line from the shopkeeper. The player never sees it. It is kept (not imported, not
   shown); a fix would need to know what the jump was meant to test.
+- **The Arena's second text shows after every lost fight.** The script uses flag 21 to show
+  its second renting text once (03a0..069e: shown while flag 21 is clear, then flag 21 = 1), but
+  the fight's end (combat.md 2.12) also writes flag 21: 1 for a win, 0 for a loss. So the text
+  comes again on the next rental after any loss. Only text: the payment is 250 either way.
+- **An own 'Mech leaves the records after the Arena.** `17dc:1b41` copies record 0 back to the
+  chosen record and then sets that record's first byte to ff, won or lost; only a destroyed
+  'Mech also loses its held letter. Since the chooser lists held letters once flag 18 is set,
+  the 'Mech is still offered at the Arena and comes back at the Garage (special 46). Not yet
+  seen on the original.
 - **ARMOR's four-type list is never shown.** Flag 0a is written only by entering a place (=1)
   and the new game's clear, and read only by ARMOR's script and special 9. Inside the shop it is
   always set, so the script always shows menu 0x0d and special 9 always reads it; menu 0x0e and
@@ -425,7 +514,7 @@ step (docs/town_loop.md), whose 15 C-Bills come only in a town; the ruined town 
 **Where the story goes next.** The recruits are HOSPITAL (`new_member 6`; maps 2-9), REPAIR
 (`new_member 5`, which needs flag 18, set only by GARAGE: map 2) and JAIL (`new_member 4`; map 3).
 The only code that writes a new 'Mech record outside the fights and the shops is reached from
-ARENA's specials 21, 22 and 23 (`17dc:1c9b`, `17dc:1a26`, `17dc:1b41`) and PARTY's special 1e
+ARENA's specials 33, 34 and 35 (`17dc:1c9b`, `17dc:1a26`, and `17dc:1b41` from 35) and PARTY's special 30
 (`19b8:104e`), both on map 2 (area 0x8a: four areas north and two west of map 11). Map 3
 (area 0x7d), with the jail and mode 9, comes after that. The towns by area: 0x28 map 9, 0x4b 8,
 0x62 10, 0x66 13, 0x7d 3, 0x8a 2, 0xa6 7, 0xb9 4, 0xc2 5, 0xcc 1 (and 11), 0xd5 6
@@ -443,8 +532,8 @@ door is reachable from the rear exit, 24 to 100 steps; `if_flag` jumps when the 
 - HOSPITAL's recruit (menu item 3, 0623): flag 18 set goes to a refusal and back to the menu;
   with it clear, special 0e must find a member after Jason. Alone, never.
 - REPAIR's recruit (0c1a): special 0e must find a member; alone it offers the Tech course (500).
-- ARENA (03a0): entering costs 250 (`if_cbills 0xfa`); the prize (`earn 0x1f4`) and the 'Mech
-  record specials 21-23 are all behind it.
+- ARENA (03a0): renting costs 250 (`if_cbills 0xfa`); the prize (`earn 0x1f4`) and the 'Mech
+  record specials 33-35 are all behind it (the own 'Mech, special 34, needs a held letter).
 - JAIL (map 3) is not open to him either (an earlier reading had the branch backwards). Flag 2a
   (set by its recruit) goes to 0277; flag 27 (a traitor in the party, F:d333) to 0063; otherwise
   special 0e with a member goes to 01fb, the jailkeeper's menu, whose item 07dc leads to

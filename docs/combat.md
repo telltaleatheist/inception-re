@@ -296,8 +296,10 @@ FUN_17dc_0d49. `a` is the number of enemy 'Mechs, `b` the number of enemy people
 
 - **The Arena.** ARENA.BLD's special 0x21 calls `17dc:1c9b`: 'Mech record 0 is saved at F:3780
   and replaced by the LOCUST template, characters 1-7 are hidden (first bytes saved at F:3fe9),
-  all eight characters' 'Mech slot bytes are set to 3, and F:e48e = 1. Special 0x23 runs mode 8
-  and then `17dc:1b41`, which undoes it (slots back to 8, F:e48e = 0). F:e48e marks figure 13 as
+  all eight characters' 'Mech slot bytes are set to 3, and F:e48e = 1. Special 0x23 runs mode 8;
+  then, only with flag 23 clear (the spectator not destroyed), `17dc:1b41` undoes it (slots
+  back to 8); with flag 23 set it takes the theft's way instead. Either way F:e48e = 0 at the
+  end (docs/scripts.md, "The Arena"). F:e48e marks figure 13 as
   the "spectator" (3.14). The enemy 'Mech is made by `0d49`'s bit-0x80 branch (1.4, step 4).
 - **The Kurita raid** (F:3772, modes 6 and 7): four JENNERs, the armour cut off, a story message
   first (2.4), one more story line per round (2.11), and fleeing only by walking out of the
