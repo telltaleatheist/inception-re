@@ -870,6 +870,14 @@ bool Town::special(int n, KeySource& keys) {
         return arena_own(keys);
     case 35:
         return arena_fight(keys);
+    case 47: {
+        // 24d3:174e: Jason loses 4 hit points if he has more than 5 (a
+        // signed byte compare); the panel is not redrawn.
+        held_bars_ = bars();  // drawn again only by the visit's end (1000:4cac)
+        auto& hits = characters_[0][character::kHitPoints];
+        if (std::int8_t(hits) > 5) hits = std::uint8_t(hits - 4);
+        return true;
+    }
     case 46:
         // 24d3:0e2c: the held 'Mechs back in their records, then the crew
         // screen (docs/scripts.md).

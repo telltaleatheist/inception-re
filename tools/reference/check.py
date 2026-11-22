@@ -1998,6 +1998,34 @@ CHAIN_FROB_CASES = [dict(case, compare=False) for case in
     {"name": "chain_frob_seen", "keys": "down*3", "match": SCREEN},
 ]
 
+# MAYOR (docs/scripts.md, "The mayor"): from chain_town's segment 6, south-west across the
+# wilderness to the Mayor's house (map 4, entrance 6), four groups in reach declined and evaded
+# on the way (the planner's walk). The first visit takes menu item 0 (which loops back) and then
+# item 1 through to the end, special 47 among the last texts; the second visit is the short one
+# flag 2b gives.
+CHAIN_MAYOR_CASES = [dict(case, compare=False) for case in
+                     CHAIN_TOWN_CASES[:[c["name"] for c in CHAIN_TOWN_CASES].index("chain_town_walk_6b") + 1]]
+for i, walk in enumerate(["end*61", "end*9", "end*28", "end*40 home*61"]):
+    CHAIN_MAYOR_CASES += [
+        {"name": "chain_mayor_walk_%d" % i, "keys": walk, "match": SCREEN},
+        {"name": "chain_mayor_%d_no" % i, "keys": "n", "match": SCREEN},
+        {"name": "chain_mayor_%d_eluded" % i, "keys": "enter", "match": SCREEN},
+        {"name": "chain_mayor_%d_back" % i, "keys": "enter", "match": SCREEN},
+    ]
+CHAIN_MAYOR_CASES += [
+    {"name": "chain_mayor_door", "keys": "home*8", "match": SCREEN},
+    {"name": "chain_mayor_inside", "keys": "y", "match": SCREEN},
+    {"name": "chain_mayor_menu", "keys": "enter", "match": SCREEN},
+    {"name": "chain_mayor_item_0", "keys": "enter", "match": SCREEN},
+    {"name": "chain_mayor_menu_again", "keys": "enter", "match": SCREEN},
+    {"name": "chain_mayor_item_1", "keys": "down enter", "match": SCREEN},
+] + [{"name": "chain_mayor_text_%d" % i, "keys": "enter", "match": SCREEN} for i in range(8)] + [
+    {"name": "chain_mayor_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_mayor_again", "keys": "pgdn pgdn home", "match": SCREEN},
+    {"name": "chain_mayor_again_inside", "keys": "y", "match": SCREEN},
+    {"name": "chain_mayor_again_out", "keys": "enter", "match": SCREEN},
+]
+
 # The start-up's load (1000:50c8, docs/startup.md): "No" to the first-time question, "Yes" to
 # loading, slot 0. Its Game1 is the one chain_save's original run wrote (SEEDED), on both drives.
 START_LOAD_CASES = [dict(case, compare=False) for case in CASES[:3]] + [
@@ -2022,7 +2050,7 @@ STALL_SECONDS = 600
 CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_poked", "chain_heal_poked", "chain_repair_poked",
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
-            "chain_cache_open", "chain_entrance", "chain_arena", "chain_frob"}
+            "chain_cache_open", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2071,6 +2099,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("comstar", [], COMSTAR_CASES, []),
              ("chain_arena", [], CHAIN_ARENA_CASES, []),
              ("chain_frob", [], CHAIN_FROB_CASES, []),
+             ("chain_mayor", [], CHAIN_MAYOR_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

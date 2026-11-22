@@ -200,11 +200,12 @@ each one.
 | 39 | 24d3:13e6 | JAIL | the crew screen with argument 1: everyone on foot, every seat empty first (below); not rebuilt |
 | 40 | 24d3:13ec | JAIL | Jason alone on foot for the impounded 'Mech (`19b8:152f`, mode 9, combat.md); then flag 28 = 1 if he fell (DG:014a = 0, the leader down: combat.md); not rebuilt |
 | 45 | 24d3:15dd | ENDMECH | ENDMECH.CMP over the whole screen with its own palette (3858:0000, docs/formats/cmp.md) until a key; then STARLEAG.ICN loaded again, the standard palette, the screen set back for the town (287f:1fbe), the panel (`4cac(1)`) and the box cleared (2656:0388). CGA's colours are not rebuilt |
+| 47 | 24d3:174e | MAYOR | Jason (character record 0) loses 4 hit points if he has more than 5 (byte 0x0f, F:c623, compared signed); the panel is not redrawn: "The mayor", below |
 | 46 | 24d3:0e2c | GARAGE | the held 'Mechs back and the crew screen (below) |
 | 43 | 24d3:157e | TRAINING | after mission 5 is won (+1672, with flag 2d = 1): townsperson 0 is put at the Lounge's entrance (MAP entrance 7; record +0/+2 and figure 16), inside (+9 = ff), its route 0x70 (last the Lounge, next entrance 0) and its target entrance 0, the Training Center. Talk to others in the Lounge lets it out (below) |
 | others | see the table above | the other places | read with those places |
 
-Specials 18–20, 24–26, 28, 41, 42, 44 and 47 belong to the other places and are read with them. The rebuild logs an
+Specials 18–20, 24–26, 28, 41, 42 and 44 belong to the other places and are read with them. The rebuild logs an
 unrebuilt special and goes on.
 
 Special 05's texts are imported from BTECH.EXE as `course.*` (docs/import.md).
@@ -434,6 +435,25 @@ What the two flags do elsewhere:
   two texts by it (`1000:3b6b`, DG:0888 or 088c, at column 0x14, row 0x15), between the lines
   for F:d450 and d451. Those are the program's only two reads.
 
+### The mayor (MAYOR, map 4 entrance 6)
+
+MAYOR uses the plain ops, special 14 and special 47. Flag 2b (F:d337) is its own: no other
+script and no code reads or writes it.
+
+1. With flag 2b set: a text, a key, `end`. That is every visit after the first.
+2. Otherwise flag 2b = 1 and a text; special 14; with members besides Jason one more text
+   first; then a text and a key.
+3. At 015b: a text and menu 0x20, three items.
+   - Item 0 (0302): special 14, then by flag 0e one of two texts, a key, back to 015b.
+   - Item 1 (0797): a text, special 14, by flag 0e one of two texts, a key, then on at 0ced:
+     a text and a key, and on to 0db1.
+   - Item 2 (0a11): two texts with keys, then on to 0db1.
+4. At 0db1: a run of texts, each followed by a key, with special 47 between the fourth and
+   the fifth; then `end`.
+
+So the first visit always ends in the second half, which costs Jason 4 hit points once (if he has
+more than 5); item 0 alone loops back to the menu.
+
 ### The crew screen (BTECH.EXE 1c67:0002)
 
 Who pilots and who rides each 'Mech. 'Mech records 0-3 (byte 0 not ff) have a pilot (byte 0x79)
@@ -649,7 +669,7 @@ runs as the original does; the return visit itself is not captured.) The chain t
   24d3:0dc6/0dd3 (two of the specials, 24d3:0004) set; those are not rebuilt, so outside a loaded game the rebuild never jumps. UnBattletech names them "training complete" and a milestone.
 - **E4** (sound) is recorded, the event and the player's state (docs/sound.md), but no audio
   plays.
-- Specials 18-20, 24-26, 28, 36, 37, 41, 42, 44 and 47 (in decimal, as in the table above and
+- Specials 18-20, 24-26, 28, 36, 37, 41, 42 and 44 (in decimal, as in the table above and
   chr's log; the scripts and `tools/bld.py` write them in hex).
 - Talk outdoors (`17dc:17b9`): one of eight rumours (DGROUP:4e5e) at random. No rebuilt place
   is outdoors; the rebuild makes the draw and logs it.
