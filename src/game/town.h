@@ -211,6 +211,17 @@ public:
     save::Block save_block() const;
     void load_block(const save::Block& b);
     const Flags& flags() const { return flags_; }
+    // A test aid for planning walks (--walks): from the party's place, the
+    // shortest walk to each tile that stops a step and names a tile for
+    // the cache's dispatch (StepResult::event_tile), by the step check alone
+    // (1000:1c12) with the window built at each place, no question answered
+    // and no tile's function run. The walk's last step is the bump.
+    struct Walk {
+        int tile = 0;
+        formats::MapPosition at;  // the half-cell the dispatch is given
+        std::vector<Step> steps;
+    };
+    std::vector<Walk> walks() const;
     // A test aid (--set-flag): set flag `f` to `v` when the town starts.
     void set_flag_when_town_starts(int f, int v) { pending_flags_.emplace_back(f, v); }
     const std::array<int, formats::kMenuCount>& menu_last() const { return menu_last_; }

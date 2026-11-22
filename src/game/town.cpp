@@ -3,7 +3,10 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <deque>
 #include <stdexcept>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "game/tile_animation.h"
 #include "game/world.h"
@@ -811,6 +814,54 @@ std::optional<StepResult> Town::step_party(Step step, KeySource& keys) {
     build_window();  // 287f:1314 at the end of 1000:218f
     terrain_.corner_words_set = true;  // 287f:1df8
     return r;
+}
+
+std::vector<Town::Walk> Town::walks() const {
+    struct NoQuestion : EntranceQuestion {
+        bool ask(int, bool) override { return false; }
+    } no;
+    Party walking = party();
+    for (int i = 0; i < 8; ++i) walking.present[std::size_t(i)] = walking.present[std::size_t(i)] && on_foot(i);
+    const MechParty mechs = active_mechs();
+    const auto key_of = [](const formats::MapPosition& p) { return (std::uint32_t(p.x) << 16) | p.y; };
+    std::unordered_map<std::uint32_t, std::pair<std::uint32_t, Step>> came_from;  // place: (from, step)
+    std::unordered_set<std::uint64_t> events_seen;
+    std::vector<Walk> found;
+    std::deque<formats::MapPosition> queue{position_};
+    came_from[key_of(position_)] = {key_of(position_), {}};
+    const auto steps_to = [&](std::uint32_t k) {
+        std::vector<Step> path;
+        while (came_from.at(k).first != k) {
+            path.push_back(came_from.at(k).second);
+            k = came_from.at(k).first;
+        }
+        std::reverse(path.begin(), path.end());
+        return path;
+    };
+    while (!queue.empty()) {
+        const auto at = queue.front();
+        queue.pop_front();
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (dx == 0 && dy == 0) continue;
+                const Step step{dx, dy};
+                const auto r = take_step(map_, map_number_, at, walking, step, no, tables_, terrain_, mechs, at, blocking_);
+                if (r.event_tile) {
+                    const std::uint64_t e = (std::uint64_t(*r.event_tile) << 32) | key_of(r.event_at);
+                    if (!events_seen.insert(e).second) continue;
+                    auto path = steps_to(key_of(at));
+                    path.push_back(step);
+                    found.push_back({*r.event_tile, r.event_at, std::move(path)});
+                    continue;
+                }
+                if (r.outcome != StepOutcome::Moved) continue;
+                // Within the area: a walk that leaves it would move the grids.
+                if (((r.position.x ^ at.x) | (r.position.y ^ at.y)) & 0xff00) continue;
+                if (!came_from.emplace(key_of(r.position), std::pair{key_of(at), step}).second) continue;
+                queue.push_back(r.position);
+            }
+    }
+    return found;
 }
 
 // BTECH.EXE 287f:1314 (Ghidra FUN_287f_1314)

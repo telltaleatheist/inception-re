@@ -115,8 +115,9 @@ prompt check stays, for any other cause.
 A run of the original that writes no new capture for `STALL_SECONDS` (600) is stuck: `run.py`
 SIGKILLs DOSBox-X and the report says `rig error: the original stalled`, with DOSBox-X's log kept as
 `original-SEQUENCE/run-dosbox.log`. A run past the whole script's limit (2400 seconds for a
-campaign sequence) is a `rig error` the same way. The longest sequence, `chain_cache_open`, takes
-about 30 minutes, so the stall limit is what catches a stuck run early.
+campaign sequence, 3600 for `chain_finale`: check.py's `LONG_SEQUENCES`) is a `rig error` the same
+way. The longest sequence, `chain_finale`, takes about 35 minutes alone and is listed first among
+the campaign's, so it starts beside the others; the stall limit is what catches a stuck run early.
 
 To stop a run, send `check.py` (or `run.py`) SIGTERM or SIGINT: it SIGKILLs every DOSBox-X it
 started, removes their scratch folders and exits. DOSBox-X answers any other signal with a "Quit
@@ -187,6 +188,13 @@ fight the rig plays reaches with heat left. None of them reaches flag 14 (F:d320
 as the script leaves it (docs/wilderness.md). check.py adds it to every state case, at the place
 the original last built its own; `window.py CAPTURE...` does the same for any captures with a new
 game's terrain.
+
+`chr --walks` prints, from where the script leaves the party, the shortest walk to every tile
+that stops a step and names a tile for the cache's dispatch (`Town::walks`): one line each,
+`walk TILE X,Y STEPS KEYS`, with the half-cell the dispatch is given and the keys in the
+script's own names, the last key being the bump. It uses the step check alone, with the window
+built at each place, no question answered and no tile's function run. It plans walks; nothing
+in the rig reads it (docs/cache.md, "The way through").
 
 What a poke may not touch: code, and anything that decides the copy-protection path. Flag 14
 (F:d320), which skips the training quiz while nonzero, is refused by run.py and by chr; the

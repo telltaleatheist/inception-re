@@ -191,6 +191,28 @@ The toggle `((t + 1) ^ 1) - 1` maps an odd t to t + 1 and an even t to t - 1.
 | d34f-d35a | 43-4e | door d open |
 | 45de + i | - | item i used (by a door) |
 
+## The way through
+
+The route the main chain takes from its first step inside (`chain_entrance`) to the way out,
+with no pokes. Every one of the 33 items is needed exactly once: the eleven doors 0-10 ask for
+three each, all different. A door's three items are one of each kind, so the party fetches a
+door's three, opens it, and goes on to the next; nothing is carried from one door to the next.
+
+The order was found with `chr --walks` (`Town::walks`, docs/reference.md), which lists the
+shortest walk from the party's place to every tile that stops a step, by the rebuild's step
+check: from where the party stands, the next door is one whose three items and whose own tile
+can all be reached, the nearest by the sum of those walks; its items are fetched nearest first,
+each taken with Enter (Yes is the question's first answer), and the door bumped. The walks are
+found again after each item and each door, from the state the chain has reached, since a door
+changes the map. None of the walks steps on a tile that runs a function before its end.
+
+The doors open in the order 1, 2, 0, 6, 10, 8, 4, 5, 3, 9, 7, in 5,670 steps in all (an earlier
+estimate, from a different search, was about 7,800). Then the game is saved and loaded, and the
+party walks to 02d2's text (256 steps), a screen tile (83), the wall of 01e9 (395) and the way
+down (261). The way down puts the party at 0c04,c022 and the way up at 0c45,c039, whatever the
+way there, so from the second level on the chain takes the same keys as `chain_cache_open`:
+the puzzle, the way up, ENDMECH, FINDIT, the way out, WINSCENE and the game-over question.
+
 ## Rebuilt
 
 Going in (`Town::enter_cache`, `src/game/cache.cpp`), the doors (`Town::open_door`) and the step
@@ -224,3 +246,8 @@ The way out (`Town::cache_way_out`, texts `cache.out_closed`, `cache.out_puzzle`
 out at x 02, y 0e, bumps it with all three flags set, reads WINSCENE to its end, and the main
 loop asks the game-over question (docs/town_loop.md, step 7). Its three refusals are not walked
 to: each is a text and a key, the same as the tiles before it.
+
+`chain_finale` (campaign tier only) is the main chain carried through the cache unpoked, by the
+route above ("The way through"): each item taken and each door opened is compared, then the save
+and load after the doors, the four tiles before the way down, and the rest as `chain_cache_open`
+has it.
