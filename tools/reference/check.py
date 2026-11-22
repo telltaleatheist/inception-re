@@ -1972,6 +1972,32 @@ CHAIN_ARENA_CASES = [dict(case, compare=False) for case in
     {"name": "chain_arena_out", "keys": "enter", "match": SCREEN},
 ]
 
+# FROB (docs/scripts.md, "Frob's"): from chain_town's garage door, the walk to Frob's door
+# (map 2, entrance 11), 20000 C-Bills poked there, Jason alone buying the holoviewer (flag 30),
+# then a second visit buying the terrain mapper (flag 31), and three steps after it, which the
+# seen map marks a whole column at a time. Until the first `pay` redraws the C-Bills the cases
+# match the map only.
+FROB_WALK = "up left up*29 left*11"
+CHAIN_FROB_CASES = [dict(case, compare=False) for case in
+                    CHAIN_TOWN_CASES[:[c["name"] for c in CHAIN_TOWN_CASES].index("chain_town_garage_out_2") + 1]] + [
+    {"name": "chain_frob_door", "keys": FROB_WALK + " cbills:4e20", "match": SHOP_MAP},
+    {"name": "chain_frob_welcome", "keys": "y", "match": SHOP_MAP},
+    {"name": "chain_frob_inside", "keys": "enter", "match": SHOP_MAP},
+    {"name": "chain_frob_choice", "keys": "enter", "match": SHOP_MAP},
+    {"name": "chain_frob_salesman", "keys": "enter", "match": SHOP_MAP},
+    {"name": "chain_frob_price", "keys": "enter", "match": SHOP_MAP},
+    {"name": "chain_frob_holoviewer", "keys": "y", "match": SCREEN},
+    {"name": "chain_frob_holoviewer_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_frob_again", "keys": "right left", "match": SCREEN},
+    {"name": "chain_frob_again_welcome", "keys": "y", "match": SCREEN},
+    {"name": "chain_frob_again_inside", "keys": "enter", "match": SCREEN},
+    {"name": "chain_frob_again_choice", "keys": "enter", "match": SCREEN},
+    {"name": "chain_frob_mappers", "keys": "down enter", "match": SCREEN},
+    {"name": "chain_frob_mapper", "keys": "y", "match": SCREEN},
+    {"name": "chain_frob_mapper_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_frob_seen", "keys": "down*3", "match": SCREEN},
+]
+
 # The start-up's load (1000:50c8, docs/startup.md): "No" to the first-time question, "Yes" to
 # loading, slot 0. Its Game1 is the one chain_save's original run wrote (SEEDED), on both drives.
 START_LOAD_CASES = [dict(case, compare=False) for case in CASES[:3]] + [
@@ -1996,7 +2022,7 @@ STALL_SECONDS = 600
 CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_poked", "chain_heal_poked", "chain_repair_poked",
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
-            "chain_cache_open", "chain_entrance", "chain_arena"}
+            "chain_cache_open", "chain_entrance", "chain_arena", "chain_frob"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2044,6 +2070,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("shops", [], SHOP_CASES, []),
              ("comstar", [], COMSTAR_CASES, []),
              ("chain_arena", [], CHAIN_ARENA_CASES, []),
+             ("chain_frob", [], CHAIN_FROB_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

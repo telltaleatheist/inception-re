@@ -204,7 +204,7 @@ each one.
 | 43 | 24d3:157e | TRAINING | after mission 5 is won (+1672, with flag 2d = 1): townsperson 0 is put at the Lounge's entrance (MAP entrance 7; record +0/+2 and figure 16), inside (+9 = ff), its route 0x70 (last the Lounge, next entrance 0) and its target entrance 0, the Training Center. Talk to others in the Lounge lets it out (below) |
 | others | see the table above | the other places | read with those places |
 
-Specials 18–20, 24–28, 33–35, 41, 42, 44 and 47 belong to the other places and are read with them. The rebuild logs an
+Specials 18–20, 24–26, 28, 41, 42, 44 and 47 belong to the other places and are read with them. The rebuild logs an
 unrebuilt special and goes on.
 
 Special 05's texts are imported from BTECH.EXE as `course.*` (docs/import.md).
@@ -407,6 +407,33 @@ F:3780. Otherwise (own): record DG:0068 gets a copy of record 0; record 0's firs
 then set to ff either way; with DG:0068 not 0, record 0 = F:3780; the seats come back from
 F:430e / F:3ffa. Then characters 1-7: 'Mech byte 8 (on foot) and the first byte from F:3fe9.
 
+### Frob's (FROB, map 2 entrance 11)
+
+FROB uses the plain ops and special 14 only; what it leaves behind is two flags.
+
+1. Menu 0x23: leave (`end`), or go in. Going in shows two texts with a key between, then menu
+   0x24: a salesman, or the terrain mappers' display.
+2. The salesman: special 14, then flag 0e (members besides Jason) picks the branch.
+   - Jason alone: the holoviewer, two texts and the Yes/No question. No: a text, a key, back
+     to offset 0. Yes with 7000 C-Bills (`if_cbills 0x1b58`): a text, `pay 0x1b58`, flag 30
+     = 1, a key, `end`. Yes and short: a text, a key, `end`.
+   - With members: a text and a key; then, unless flag 32 (VIEWDISK seen) is set, a second
+     text and a key; back to offset 0.
+3. The mappers: with flag 31 set, a text, a key, back to offset 0. Otherwise a text and the
+   Yes/No question. No: back to offset 0. Yes with 6000 C-Bills (`if_cbills 0x1770`): a
+   text, `pay 0x1770`, flag 31 = 1, a key, `end`. Yes and short: a text, a key, back to
+   offset 0.
+
+What the two flags do elsewhere:
+
+- **Flag 30** (F:d33c), the holoviewer: leaving the garage with it set takes the party to
+  VIEWDISK ("Entering a place", step 7; read at `1000:7ea1`).
+- **Flag 31** (F:d33d), the terrain mapper: after each key on a map without tile events the
+  seen map marks the party's whole column of the area (`1000:010f`, docs/wilderness.md); and
+  the inspect-a-character screen (`1000:378d`, command item 3, docs/town_loop.md) picks one of
+  two texts by it (`1000:3b6b`, DG:0888 or 088c, at column 0x14, row 0x15), between the lines
+  for F:d450 and d451. Those are the program's only two reads.
+
 ### The crew screen (BTECH.EXE 1c67:0002)
 
 Who pilots and who rides each 'Mech. 'Mech records 0-3 (byte 0 not ff) have a pilot (byte 0x79)
@@ -458,6 +485,9 @@ town is refused) and a key.
 
 ## Original quirks
 
+- **FROB sells the holoviewer more than once.** The salesman never tests flag 30: Jason, back
+  alone, is offered it again, and Yes with 7000 C-Bills pays again. The mappers test flag 31
+  first.
 - **WEAPON's unreached block.** A `goto 0220` at 015d always jumps over 0160–021f, which has
   another line from the shopkeeper. The player never sees it. It is kept (not imported, not
   shown); a fix would need to know what the jump was meant to test.

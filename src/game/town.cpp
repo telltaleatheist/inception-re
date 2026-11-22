@@ -526,7 +526,7 @@ void Town::key(int k, KeySource& more) {
 
 // BTECH.EXE 1000:010b..01af (in Ghidra FUN_1000_00bb)
 // After a key, the seen map gets the party's patch: the bits for x's bits
-// 4-6 in the party's row, and the rows above and below it. With flag 3d set
+// 4-6 in the party's row, and the rows above and below it. With flag 31 set
 // outside a tile-event map, a whole column of the area instead.
 void Town::mark_seen() {
     const int x = position_.x & 0xffff, y = position_.y & 0xffff;
@@ -540,7 +540,7 @@ void Town::mark_seen() {
         }
         seen_[std::size_t(i)] = set ? bits : std::uint8_t(seen_[std::size_t(i)] | bits);
     };
-    if (flags_[flag::kSeenWhole] != 0 && flags_[flag::kTileEvents] == 0) {
+    if (flags_[flag::kMapper] != 0 && flags_[flag::kTileEvents] == 0) {
         for (int r = 0; r < 0x80; r += 0x10) put(column + r, 0xff, true);
         return;
     }

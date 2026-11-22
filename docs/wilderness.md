@@ -210,8 +210,9 @@ FUN_1000_00bb) marks the party's place, after the command menu and before the ti
   table DG:029a for x's bits 4-6 (`tables.seen_bits`, three bits wide, so neighbours overlap).
 - The byte a row above gets the same bits unless y is 0, and the byte a row below unless y is
   0xf07f or more.
-- With flag 3d (F:d33d) set and flag 3a (the tile-event map) clear, instead the eight bytes of
-  the party's column in its area (`0x80 (y >> 12) + (x >> 8)` and the 7 rows below it) become ff.
+- With flag 31 (F:d33d, the terrain mapper FROB sells) set and flag 3a (the tile-event map)
+  clear, instead the eight bytes of the party's column in its area (`0x80 (y >> 12) + (x >> 8)`
+  and the 7 rows below it) become ff.
 
 x's bit 7 and y's bits 7-11 take no part, so places a half area apart share a bit.
 
