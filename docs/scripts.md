@@ -159,8 +159,16 @@ starting answer.
 upper left 88×88 at (8, 8). One random number is always drawn. The picture shows when
 (r AND mask) is 0, the mask from DGROUP:0ac4 {03, 0f, 3f} by flag 4f. It always shows when mode
 is 2, or when n ≠ 0x10 and n is 0, 2, 6 or above 7. For n above 0x10 the file must exist, otherwise
-window 4 is cleared. Picture 8 plays 7 times. In mode 0 it plays and goes: sound 12 after
-picture 0, a wait of 60, window 4 cleared. Otherwise the last frame stays.
+window 4 is cleared. It plays while it waits:
+
+1. The first frame (`1000:1afd`: the frame drawn, then its own delay, docs/formats/anm.md).
+2. Unless the picture is 8, a wait of 0x32 (`273d:0006`).
+3. The other frames, each with its delay, to the list's end.
+4. Picture 8 plays 7 times over (steps 1 and 3 again, from its first frame).
+
+Then, in mode 0, it goes: sound 12 after picture 0 (`1000:19bf`), a wait of 0x3c, window 4
+cleared. In the other modes the last frame stays. `273d:0006(n)` counts n down to 0, one
+vertical retrace each (`287f:0b40`), and reads no key, so none of this takes a key.
 
 ## Specials (F5 n)
 
@@ -197,8 +205,8 @@ each one.
 | 36 | 24d3:13b2 | JAIL | prints the double agent's name: character F:d331's name (the `character.*` table) |
 | 37 | 24d3:139a | JAIL | the game is over: DG:014a = 0 and character record 0 emptied (byte 0 = ff); not rebuilt |
 | 38 | 24d3:13c6 | JAIL | prints the name the next recruit will get: name number F:d456 (scripts.md, "A new member") |
-| 39 | 24d3:13e6 | JAIL | the crew screen with argument 1: everyone on foot, every seat empty first (below); not rebuilt |
-| 40 | 24d3:13ec | JAIL | Jason alone on foot for the impounded 'Mech (`19b8:152f`, mode 9, combat.md); then flag 28 = 1 if he fell (DG:014a = 0, the leader down: combat.md); not rebuilt |
+| 39 | 24d3:13e6 | JAIL | the crew screen with argument 1: everyone on foot, every seat empty first (below) |
+| 40 | 24d3:13ec | JAIL | Jason alone on foot for the impounded 'Mech (`19b8:152f`, mode 9, combat.md); then flag 28 = 1 if he fell (DG:014a = 0, the leader down: combat.md) |
 | 42 | 24d3:1515 | THEATER | the audience comes out: each townsperson i stands at the party's position (figure 16 + i and record +0/+2), route 0x77, inside for i rounds, its target (+4/+6) unchanged; then the party's y + 1: "The theater", below |
 | 45 | 24d3:15dd | ENDMECH | ENDMECH.CMP over the whole screen with its own palette (3858:0000, docs/formats/cmp.md) until a key; then STARLEAG.ICN loaded again, the standard palette, the screen set back for the town (287f:1fbe), the panel (`4cac(1)`) and the box cleared (2656:0388). CGA's colours are not rebuilt |
 | 47 | 24d3:174e | MAYOR | Jason (character record 0) loses 4 hit points if he has more than 5 (byte 0x0f, F:c623, compared signed); the panel is not redrawn: "The mayor", below |

@@ -346,6 +346,7 @@ private:
     bool special(int n, KeySource& keys);
     bool talk(KeySource& keys);
     void show_picture(int number, int mode);
+    void play_picture(int number);
     // The screen as it is, held `frames` display frames (an event).
     void hold_screen(int frames);
     // BTECH.EXE 1000:19bf (Ghidra FUN_1000_19bf)

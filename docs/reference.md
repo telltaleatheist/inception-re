@@ -439,10 +439,11 @@ counts, DG:014a and the map marks).
   after the fall (the planner, 4.x, or the person run's removals); the rig captures only at key
   ends, so the first differing draw is not yet found. To find it: a draw log from the original
   (the generator's bytes at each call) or a poke that makes the fall land in a later key.
-- **The wait after a story picture** (`Town::show_picture`, docs/scripts.md): `1000:48b7` in
-  mode 0 plays sound 12 for picture 0 (`1000:4a7f`), then waits 0x3c frames (`273d:0006` at
-  `1000:4a89`) and clears window 4. chr holds 50 frames (none for picture 8). No sequence has
-  compared a story picture's timing yet; to check when one does.
+- **A picture's waits** (`Town::show_picture`, docs/scripts.md, "The picture"): the frames'
+  delays, the 0x32 after the first frame and mode 0's 0x3c are retrace counts (`273d:0006`)
+  that read no key, so the rig, which captures only where a key is read, cannot see them. They
+  are checked against the disassembly and in `chr --events` (one event a frame, held for its
+  delay), not by a sequence.
 
 ## Findings
 

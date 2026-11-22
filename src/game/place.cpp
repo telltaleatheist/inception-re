@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <stdexcept>
 
+#include "formats/anm.h"
 #include "formats/bld.h"
 #include "formats/game_files.h"
 #include "game/movement.h"
@@ -17,6 +18,9 @@ namespace chr::game {
 namespace {
 
 constexpr int kPanelPictureWindow = 4;
+constexpr int kFirstFrameWait = 0x32;  // 1000:4a3d
+constexpr int kStoryPictureWait = 0x3c;  // 1000:4a85
+constexpr int kRepeatedPicture = 8, kRepeatedPlays = 7;
 
 }  // namespace
 
@@ -1568,20 +1572,41 @@ void Town::show_picture(int number, int mode) {
     if (number != 0x10 && (number == 0 || number > 7 || number == 6 || number == 2)) show = true;
     if (mode == 2) show = true;
     if (!show) return;
-    // The frames play with their delays (formats/anm.h); the picture then
-    // stays as its last frame shows it. Mode 0 (a story picture) waits 50
-    // frames after it (none for picture 8) and clears the box again.
+    if (mode != 0) text_.forget(1, 1, 11, 11);
+    play_picture(number);
+    // Mode 0 (a story picture) waits and clears the box again; the others
+    // leave the last frame up.
     if (mode == 0) {
         picture_ = PlacePicture{number};
         if (number == 0) play_sound(12);  // 1000:19bf
-        hold_screen(number == 8 ? 0 : 50);
+        hold_screen(kStoryPictureWait);
         text_.select_window(kPanelPictureWindow);
         text_.clear_window();
         picture_.reset();
         return;
     }
-    text_.forget(1, 1, 11, 11);
     picture_ = PlacePicture{number};
+}
+
+// 1000:48b7's frames (1000:1afd each, the frame and then its delay): the
+// first, a wait unless the picture is 8, then the rest; picture 8 plays 7
+// times. Each frame is an event held for its wait (273d:0006 counts a 16-bit
+// word down to 0).
+void Town::play_picture(int number) {
+    if (!game_dir_) return;
+    const auto path = formats::find_game_file(*game_dir_, "O" + std::to_string(number) + ".ANM");
+    if (!path) return;
+    const auto anm = formats::read_anm(*path);
+    const auto hold = [this](int frames) {
+        if (const int n = frames & 0xffff; n != 0) hold_screen(n);
+    };
+    const int plays = number == kRepeatedPicture ? kRepeatedPlays : 1;
+    for (int play = 0; play < plays; ++play)
+        for (std::size_t k = 0; k < anm.delays.size(); ++k) {
+            picture_ = PlacePicture{number, int(k)};
+            hold(anm.delays[k]);
+            if (k == 0 && number != kRepeatedPicture) hold(kFirstFrameWait);
+        }
 }
 
 }  // namespace chr::game
