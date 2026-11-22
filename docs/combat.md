@@ -748,8 +748,8 @@ traitor exists) and F:374a are all set, the traitor (character number in flag 25
 F:374a means the player has seen through him. Three places set it: the scan list's heading
 (`15ab:18e8` with its first flag, in a fight: his name, then DG:1222 in place of his condition,
 weapon and armour, and a key), the crew screen's tell (`2c67`, docs/scripts.md) and a third
-screen, `1000:378d`, from the Space command menu (`1000:2c50`: its third item when the menu has
-seven, its second when it has six; DG:07ff; not rebuilt). It is cleared only by a
+screen, `1000:378d`, from the Space command menu (`1000:2c50`: its fourth item when the menu has
+eight, with 'Mechs, its third when it has seven; DG:07ff; docs/town_loop.md). It is cleared only by a
 new game (`1000:4dc7`) and a load (`1000:32b3`), not by a fight's start or end, and it is not in
 the save: seen in one fight, he acts after the first round of the next fight he is in.
 
@@ -772,8 +772,8 @@ Window 6 is cleared and framed (`2656:0388`, `2656:0004(0)`), then by where he i
 
 Then a key (`273d:086a`, `273d:0259`), his record emptied (byte 0 = ff), figure 4 + him
 inactive, flag 27 = 0 and flag 24 = 0x7f. The mark is only added to the mark ring: his figure's
-frame is not set to the body as a killed person's is. Rebuilt (`Town::double_agent_acts`); the
-`1000:378d` screen is not.
+frame is not set to the body as a killed person's is. Rebuilt (`Town::double_agent_acts`), as is the
+`1000:378d` screen (`Town::inspect`).
 
 ### 2.10 Enemy people run (kind 0)
 

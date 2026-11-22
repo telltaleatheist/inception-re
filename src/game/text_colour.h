@@ -26,8 +26,9 @@ enum class TextRole : std::uint8_t {
     FileName,     // a saved game's file name
     Warning,      // a failure the player must know of (the save failed)
     MapPointer,   // the overhead map's arrow toward a place
+    Unease,       // what gives the double agent away (the inspect screen)
 };
-inline constexpr int kTextRoleCount = int(TextRole::MapPointer) + 1;
+inline constexpr int kTextRoleCount = int(TextRole::Unease) + 1;
 
 struct TextColour {
     enum class From : std::uint8_t { Data, Role };

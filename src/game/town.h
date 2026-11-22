@@ -411,6 +411,7 @@ private:
     bool command_menu(KeySource& keys);
     bool game_settings(KeySource& keys);
     bool allocate_crew(KeySource& keys);
+    bool inspect(KeySource& keys);
     // The command menu's map (game/overhead.cpp).
     bool overhead_map(KeySource& keys);
     std::optional<int> draw_overhead(formats::MapPosition party, formats::MapPosition cursor, KeySource& keys);

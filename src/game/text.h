@@ -106,6 +106,12 @@ public:
         windows_[n].y = y;
         windows_[n].height = height;
     }
+    // Moves the current window's left edge right by `cells`, keeping its
+    // right edge (F:39a0 and F:3990, the current window's x and width).
+    void indent_window(int cells) {
+        windows_[current_].x += cells;
+        windows_[current_].width -= cells;
+    }
     // Moves the cursor up a row (the yes/no question rewrites its line).
     void cursor_up() { --windows_[current_].row; }
 

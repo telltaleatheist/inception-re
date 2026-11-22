@@ -72,7 +72,7 @@ and 8 items, and the crew line is printed among the others (DG:051f, then 0543 w
 | 0 | back to the game |
 | 1 | game settings (`1000:3bd0`) |
 | 2 | the crew, with 'Mechs only (`1000:4d57`) |
-| 3 | inspect a character (`1000:378d`, docs/combat.md 2.9) |
+| 3 | inspect a 'Mech or a character (`1000:378d`, below) |
 | 4 | healing, `1c31:000a(0)` (docs/combat.md) |
 | 5 | load a game (`1000:32b3`) |
 | 6 | save a game (`1000:35d3`) |
@@ -83,9 +83,48 @@ near the party), the message box with DG:0ace and a key. Otherwise the crew scre
 argument 0 (docs/scripts.md), the panel (`1000:4cac(1)`) and window 1 cleared. After any item
 `273d:06c3` copies the page's map columns back over the windows.
 
-Rebuilt: items 0, 1, 2, 4, 5, 6 and 7 (`Town::command_menu`, `Town::game_settings` below,
+Rebuilt: all eight items (`Town::command_menu`, `Town::game_settings` and `Town::inspect` below,
 `Town::allocate_crew`, `Town::load_game`, `Town::save_game`, docs/formats/save.md;
-`Town::overhead_map`, docs/overhead_map.md); item 3 is logged.
+`Town::overhead_map`, docs/overhead_map.md). Item 3's 'Mech stats screen (`15ab:1afe`) is
+logged.
+
+### Inspect a 'Mech or a character (`1000:378d`)
+
+Window 6 is selected, cleared and framed (style 0). `1000:2867(text, col, row)` puts the
+window's cursor at (col, row) and prints in white (F:37fe = 15); the page below uses it for every
+value.
+
+1. Special 17 (flag 10 = 'Mech records 0-3 in use). With any: `inspect.mech_or_person` and the
+   Yes/No question (`1000:1a13(1)`, Yes first). Yes: the window cleared,
+   `inspect.which_mech`, the 'Mech chooser (`1c67:0b98`, docs/scripts.md) into DG:0068, that
+   record's heat (F:006e + m) = 0, the stats screen (`15ab:1afe(m)`, not rebuilt), the panel
+   (`1000:4cac(1)`) and the window cleared; done, with no key.
+2. Otherwise (no 'Mechs, or No): special 14 (flag 0e = members besides Jason). With any: the
+   window cleared, `inspect.which_character` and special 13 (the menu of present characters;
+   flag 0e = the chosen record). With none flag 0e is 0, Jason.
+3. The page, for character c = flag 0e. The window cleared; in light green (`1000:28a2`)
+   `inspect.labels` and `inspect.labels_2`, which lay out every label: name, weapon and armour
+   on rows 0-2, health on row 4, the skills' heading on row 11 and their seven names on rows
+   13-19, the MedKit and mapper labels on row 21 and the field surgery kit's on row 22. Then in
+   white: the name (DG:01ca by byte 0) at (8, 0), the weapon's name (the weapon table, byte
+   0x0b) at (8, 1), the armour type's name (DG:4e8a, byte 0x0d) at (8, 2).
+4. The window's left edge moved 8 columns right (F:39a0 + 8, width F:3990 - 8): the name again
+   at (0, 4), then the condition (`1e31:02e4`), so it wraps under the name; the edge back.
+5. If flag 27 is set and flag 25 is c (the double agent): `inspect.uneasy` at (0, 8) in yellow
+   (colour 14), white again, the message pause (`273d:086a`) and F:374a = 1, as the crew
+   screen's tell and the scan list do (docs/combat.md 2.9). Otherwise, with an armour type
+   (byte 0x0d not 0): `inspect.armour` at (0, 8), then `inspect.armour_whole` when the points
+   (byte 0x0e) equal the type's full points (DG:4ddb), else `inspect.armour_lost`, then
+   `inspect.armour_all` with 0 points or the points lost (full - left) in light green,
+   white, `inspect.armour_of`, the full points and `inspect.armour_points`.
+6. The seven skills (bytes 4-0x0a), each capped at 4, as words (DG:0194: the
+   `inspect.skill_level.N` texts) at column 12, rows 13-19.
+7. The kits: F:d450 (the MedKit) at (8, 21), flag 31 (F:d33d, the mapper) at (20, 21), F:d451
+   (the field surgery kit) at (19, 22), each `..._yes` or `..._no`.
+8. The message pause and a key (`273d:086a`, `273d:0259`).
+
+The window stays selected and is not cleared; the tick that follows draws the map back over it
+(`273d:06c3`).
 
 ### Game settings (`1000:3bd0`)
 

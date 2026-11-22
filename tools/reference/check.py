@@ -2054,6 +2054,38 @@ CHAIN_THEATER_CASES += [
     {"name": "chain_theater_out", "keys": "enter", "match": SCREEN},
 ] + [{"name": "chain_theater_step_%d" % i, "keys": "down", "match": SCREEN} for i in range(3)]
 
+# The command menu's inspect item (1000:378d, docs/town_loop.md "Inspect a character"), from the
+# armour shop's end: two characters and no 'Mechs, so no 'Mech question; the menu's bar stays on
+# the item after the first time. Jason's armour whole, then its points poked to 5 and to 0 (our
+# own test values), flag 31 poked set for the mapper's line; the poked second character has no
+# armour.
+INSPECT_CASES = [dict(case, compare=False) for case in SHOP_CASES] + [
+    {"name": "inspect_who", "keys": "space down*2 enter", "match": SCREEN},
+    {"name": "inspect_whole", "keys": "enter", "match": SCREEN},
+    {"name": "inspect_whole_out", "keys": "enter", "match": SCREEN},
+    {"name": "inspect_worn", "keys": "char:0:0e=05 space enter enter", "match": SCREEN},
+    {"name": "inspect_worn_out", "keys": "enter", "match": SCREEN},
+    {"name": "inspect_ruined", "keys": "char:0:0e=00 flag:31=01 space enter enter", "match": SCREEN},
+    {"name": "inspect_ruined_out", "keys": "enter", "match": SCREEN},
+    {"name": "inspect_second", "keys": "space enter down enter", "match": SCREEN},
+    {"name": "inspect_second_out", "keys": "enter", "match": SCREEN},
+]
+
+# The same from chain_party's end, with 'Mechs and the double agent aboard: the 'Mech question
+# (No), Jason, then Rick (the tell: F:374a set); last the question's Yes and the 'Mech chooser.
+CHAIN_INSPECT_CASES = [dict(case, compare=False) for case in CHAIN_PARTY_CASES] + [
+    {"name": "chain_inspect_question", "keys": "space down*3 enter", "match": SCREEN},
+    {"name": "chain_inspect_who", "keys": "n", "match": SCREEN},
+    {"name": "chain_inspect_jason", "keys": "enter", "match": SCREEN},
+    {"name": "chain_inspect_jason_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_inspect_again", "keys": "space enter", "match": SCREEN},
+    {"name": "chain_inspect_again_who", "keys": "n", "match": SCREEN},
+    {"name": "chain_inspect_rick", "keys": "down*4 enter", "match": SCREEN},
+    {"name": "chain_inspect_rick_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_inspect_mech", "keys": "space enter", "match": SCREEN},
+    {"name": "chain_inspect_which_mech", "keys": "y", "match": SCREEN},
+]
+
 # The start-up's load (1000:50c8, docs/startup.md): "No" to the first-time question, "Yes" to
 # loading, slot 0. Its Game1 is the one chain_save's original run wrote (SEEDED), on both drives.
 START_LOAD_CASES = [dict(case, compare=False) for case in CASES[:3]] + [
@@ -2079,7 +2111,7 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
-            "chain_theater"}
+            "chain_theater", "chain_inspect"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2130,6 +2162,8 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_frob", [], CHAIN_FROB_CASES, []),
              ("chain_mayor", [], CHAIN_MAYOR_CASES, []),
              ("chain_theater", [], CHAIN_THEATER_CASES, []),
+             ("inspect", [], INSPECT_CASES, []),
+             ("chain_inspect", [], CHAIN_INSPECT_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

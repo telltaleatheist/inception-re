@@ -34,7 +34,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 1000:231d | 0x1231d | `FUN_1000_231d` | 238 | After a key: a walking key moves the figures' walking scripts on, the 'Mechs' too | rebuilt |
 | 1000:240b | 0x1240b | `FUN_1000_240b` | 183 | Animated tiles: next of 3 frames, ANIMATE.ICN tile 1+3i+frame over each of the 10 tile numbers at DG:04b0 | rebuilt |
 | 1000:24c2 | 0x124c2 | `FUN_1000_24c2` | 933 | Townspeople, every third game tick: count down inside, come out at the last entrance; out and near the party, a step (1e31:0006), walking frame, at the target go in for random&31 rounds | rebuilt |
-| 1000:2867 | 0x12867 | `FUN_1000_2867` | 59 |  | - |
+| 1000:2867 | 0x12867 | `FUN_1000_2867` | 59 | Prints a text at (column, row) of the current window in white (F:3748, 374e, 37fe = 15) | rebuilt |
 | 1000:28a2 | 0x128a2 | `FUN_1000_28a2` | 42 | Sets the text colour to light green (CGA: 1) | rebuilt |
 | 1000:28cc | 0x128cc | `FUN_1000_28cc` | 71 |  | - |
 | 1000:2913 | 0x12913 | `FUN_1000_2913` | 226 |  | - |
@@ -49,7 +49,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 1000:320b | 0x1320b | `FUN_1000_320b` | 168 | Loads ANIMATE.ICN into the animation buffer | read |
 | 1000:32b3 | 0x132b3 | `FUN_1000_32b3` | 800 | Loads a saved game: picks a slot (menu 0x28) and reads it | - |
 | 1000:35d3 | 0x135d3 | `FUN_1000_35d3` | 442 |  | - |
-| 1000:378d | 0x1378d | `FUN_1000_378d` | 1091 |  | - |
+| 1000:378d | 0x1378d | `FUN_1000_378d` | 1091 | The command menu's inspect item: a 'Mech (chooser, stats screen) or a character's page (docs/town_loop.md) | rebuilt |
 | 1000:3bd0 | 0x13bd0 | `FUN_1000_3bd0` | 368 |  | - |
 | 1000:3d40 | 0x13d40 | `FUN_1000_3d40` | 622 | The overhead map: the cursor moved two areas at a time, then the nine-map load without townspeople (docs/overhead_map.md) | rebuilt |
 | 1000:3fae | 0x13fae | `FUN_1000_3fae` | 1556 | Draws the overhead map (5 x 3 areas, seen tiles only), its pointer, caption and the party's dot until a key | rebuilt |

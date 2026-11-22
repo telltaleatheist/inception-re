@@ -538,8 +538,8 @@ bool Town::crew_screen(int start, KeySource& keys) {
 // BTECH.EXE 1000:2c50 (Ghidra FUN_1000_2c50)
 // The Space command menu: menu 1 in window 1, one row higher and one item
 // longer when any of 'Mech records 0-3 is in use (the crew item). The crew
-// item, the settings, the healing, the load, the save and the overhead map
-// are rebuilt; the inspect item is logged.
+// item, the settings, the inspect item, the healing, the load, the save and
+// the overhead map are rebuilt.
 bool Town::command_menu(KeySource& keys) {
     bool mechs = false;
     for (int m = 0; m < 4; ++m) mechs = mechs || mechs_[std::size_t(m)][0] != character::kEmpty;
@@ -567,6 +567,9 @@ bool Town::command_menu(KeySource& keys) {
         break;
     case 2:
         if (!allocate_crew(keys)) return false;
+        break;
+    case 3:
+        if (!inspect(keys)) return false;  // 1000:378d
         break;
     case 4:
         if (!heal(0, keys)) return false;  // 1c31:000a(0)
@@ -689,6 +692,126 @@ bool Town::allocate_crew(KeySource& keys) {
     if (!crew_screen(0, keys)) return false;
     draw_panel(true);  // 1000:4cac(1)
     clear_window();    // 2656:0388
+    return true;
+}
+
+// BTECH.EXE 1000:378d (Ghidra FUN_1000_378d)
+// The command menu's inspect item, in window 6: with 'Mechs, whether to
+// inspect a 'Mech (its chooser, then the stats screen); otherwise a
+// character, chosen when the party has more than Jason, shown on one page:
+// name, weapon, armour, condition, the double agent's tell or the armour's
+// state, the seven skills and the three kits; then a key.
+bool Town::inspect(KeySource& keys) {
+    // 1000:2867: text at (col, row) of the current window, in white.
+    const auto print_at = [this](const std::string& id, int col, int row) {
+        text_.set_cursor(col, row);
+        text_.set_fg(TextRole::Text);
+        print_id(id);
+    };
+    text_.select_window(6);
+    clear_window();
+    text_.frame(0);
+    special(17, keys);  // flag 10 = 'Mech records 0-3 in use
+    if (flags_[0x10] != 0) {
+        print_id("inspect.mech_or_person");
+        const auto mech = yes_no(true, keys);  // 1000:1a13(1)
+        if (!mech) {
+            place_open_ = true;
+            return false;
+        }
+        if (*mech) {
+            clear_window();
+            print_id("inspect.which_mech");
+            const auto m = choose_mech(keys);  // 1c67:0b98, into DG:0068
+            if (!m) {
+                place_open_ = true;
+                return false;
+            }
+            combat_.heat[std::size_t(*m)] = 0;  // F:006e + m
+            log_.push_back("the stats screen (15ab:1afe): not rebuilt");
+            draw_panel(true);  // 1000:4cac(1)
+            clear_window();
+            return true;
+        }
+    }
+    special(14, keys);  // flag 0e = members besides Jason
+    if (flags_[flag::kMembers] != 0) {
+        clear_window();
+        print_id("inspect.which_character");
+        if (!special(13, keys)) {  // flag 0e = the chosen character
+            place_open_ = true;
+            return false;
+        }
+    }
+    const int c = std::int8_t(flags_[flag::kMembers]);
+    if (c < 0 || c >= 8) {
+        log_.push_back("the inspect screen: a character number past the records: not rebuilt");
+        return true;
+    }
+    const auto& r = characters_[std::size_t(c)];
+    clear_window();
+    text_.set_fg(TextRole::Label);  // 1000:28a2
+    print_id("inspect.labels");
+    print_id("inspect.labels_2");
+    const std::string name = "character." + std::to_string(r[character::kName]);
+    print_at(name, 8, 0);
+    print_at(formats::weapon_text_id(std::int8_t(r[character::kWeapon])), 8, 1);
+    const int armour = std::int8_t(r[character::kArmourType]);
+    const int full = armour >= 0 && armour < int(rules_->combat.personal_armour.size())
+                         ? std::int8_t(rules_->combat.personal_armour[std::size_t(armour)])
+                         : -1;
+    if (full < 0) {
+        log_.push_back("the inspect screen: an armour type past the table: not rebuilt");
+        return true;
+    }
+    print_at("armour." + std::to_string(armour), 8, 2);
+    // The name and the condition in the window from column 8 on.
+    text_.indent_window(8);
+    print_at(name, 0, 4);
+    const bool condition = print_condition(c);  // 1e31:02e4
+    text_.indent_window(-8);
+    if (!condition) return true;
+    if (flags_[0x27] != 0 && std::int8_t(flags_[0x25]) == c) {
+        text_.set_fg(TextRole::Unease);
+        text_.set_cursor(0, 8);
+        print_id("inspect.uneasy");
+        text_.set_fg(TextRole::Text);
+        // 273d:086a: the pause and the keyboard flushed.
+        agent_found_ = true;  // F:374a
+    } else if (armour != 0) {
+        print_at("inspect.armour", 0, 8);
+        const int points = std::int8_t(r[character::kArmour]);
+        if (full == points) {
+            print_id("inspect.armour_whole");
+        } else {
+            print_id("inspect.armour_lost");
+            if (points == 0) {
+                print_id("inspect.armour_all");
+            } else {
+                text_.set_fg(TextRole::Amount);  // 1000:28a2
+                text_.print(std::to_string(full - points));  // 273d:0053
+            }
+            text_.set_fg(TextRole::Text);
+            print_id("inspect.armour_of");
+            text_.print(std::to_string(full));
+            print_id("inspect.armour_points");
+        }
+    }
+    for (int i = 0; i < 7; ++i) {
+        const int level = std::min<int>(std::int8_t(r[std::size_t(character::kSkills + i)]), 4);
+        if (level < 0) {
+            log_.push_back("the inspect screen: a skill below the table: not rebuilt");
+            return true;
+        }
+        print_at("inspect.skill_level." + std::to_string(level), 12, 13 + i);
+    }
+    print_at(kits_[0] != 0 ? "inspect.medkit_yes" : "inspect.medkit_no", 8, 21);
+    print_at(flags_[flag::kMapper] != 0 ? "inspect.mapper_yes" : "inspect.mapper_no", 20, 21);
+    print_at(kits_[1] != 0 ? "inspect.surgery_kit_yes" : "inspect.surgery_kit_no", 19, 22);
+    if (!read_key(keys)) {  // 273d:086a, 273d:0259
+        place_open_ = true;
+        return false;
+    }
     return true;
 }
 
