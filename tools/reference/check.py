@@ -2026,6 +2026,34 @@ CHAIN_MAYOR_CASES += [
     {"name": "chain_mayor_again_out", "keys": "enter", "match": SCREEN},
 ]
 
+# THEATER (docs/scripts.md, "The theater"): from chain_agent's end, south and east across the
+# wilderness to map 10's theater (entrance 7), the planner's walk: two groups in reach declined
+# and evaded, one fled from (Flee from the fight's menu, then its texts), one more evaded and one
+# other door declined. Yes at the door and Yes to the show, its texts, the last of them ending in
+# special 42; then three steps with the audience coming out.
+_THEATER_FLEE = ["n", "n", "enter", "n", "up enter", "enter", "up enter", "enter", "enter", "enter"]
+CHAIN_THEATER_CASES = [dict(case, compare=False) for case in CHAIN_AGENT_CASES]
+for i, (walk, after) in enumerate([("down*96", "evade"), ("down*47 end*67", "flee"),
+                                   ("end*15 pgdn*7 down*15 end*8 down pgdn*8 down*15 end*40 down pgdn*8 down*15 end*55", "evade"),
+                                   ("end*54 home*4", "evade"), ("home*6 left*11 home*8 pgup home", "no")]):
+    CHAIN_THEATER_CASES.append({"name": "chain_theater_walk_%d" % i, "keys": walk, "match": SCREEN})
+    if after == "evade":
+        CHAIN_THEATER_CASES += [{"name": "chain_theater_%d_%s" % (i, n), "keys": k, "match": SCREEN}
+                                for n, k in [("no", "n"), ("eluded", "enter"), ("back", "enter")]]
+    elif after == "flee":
+        CHAIN_THEATER_CASES += [{"name": "chain_theater_%d_flee_%d" % (i, j), "keys": k, "match": SCREEN}
+                                for j, k in enumerate(_THEATER_FLEE)]
+    else:
+        CHAIN_THEATER_CASES.append({"name": "chain_theater_%d_no" % i, "keys": "n", "match": SCREEN})
+CHAIN_THEATER_CASES += [
+    {"name": "chain_theater_door", "keys": "pgup home*5 pgup home pgup home*2 pgup up*4 home*2 end home end home*7 left",
+     "match": SCREEN},
+    {"name": "chain_theater_inside", "keys": "y", "match": SCREEN},
+    {"name": "chain_theater_yes", "keys": "y", "match": SCREEN},
+] + [{"name": "chain_theater_show_%d" % i, "keys": "enter", "match": SCREEN} for i in range(9)] + [
+    {"name": "chain_theater_out", "keys": "enter", "match": SCREEN},
+] + [{"name": "chain_theater_step_%d" % i, "keys": "down", "match": SCREEN} for i in range(3)]
+
 # The start-up's load (1000:50c8, docs/startup.md): "No" to the first-time question, "Yes" to
 # loading, slot 0. Its Game1 is the one chain_save's original run wrote (SEEDED), on both drives.
 START_LOAD_CASES = [dict(case, compare=False) for case in CASES[:3]] + [
@@ -2050,7 +2078,8 @@ STALL_SECONDS = 600
 CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_poked", "chain_heal_poked", "chain_repair_poked",
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
-            "chain_cache_open", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor"}
+            "chain_cache_open", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
+            "chain_theater"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2100,6 +2129,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_arena", [], CHAIN_ARENA_CASES, []),
              ("chain_frob", [], CHAIN_FROB_CASES, []),
              ("chain_mayor", [], CHAIN_MAYOR_CASES, []),
+             ("chain_theater", [], CHAIN_THEATER_CASES, []),
              ("handover", [], HANDOVER_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at

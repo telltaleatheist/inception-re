@@ -199,13 +199,14 @@ each one.
 | 38 | 24d3:13c6 | JAIL | prints the name the next recruit will get: name number F:d456 (scripts.md, "A new member") |
 | 39 | 24d3:13e6 | JAIL | the crew screen with argument 1: everyone on foot, every seat empty first (below); not rebuilt |
 | 40 | 24d3:13ec | JAIL | Jason alone on foot for the impounded 'Mech (`19b8:152f`, mode 9, combat.md); then flag 28 = 1 if he fell (DG:014a = 0, the leader down: combat.md); not rebuilt |
+| 42 | 24d3:1515 | THEATER | the audience comes out: each townsperson i stands at the party's position (figure 16 + i and record +0/+2), route 0x77, inside for i rounds, its target (+4/+6) unchanged; then the party's y + 1: "The theater", below |
 | 45 | 24d3:15dd | ENDMECH | ENDMECH.CMP over the whole screen with its own palette (3858:0000, docs/formats/cmp.md) until a key; then STARLEAG.ICN loaded again, the standard palette, the screen set back for the town (287f:1fbe), the panel (`4cac(1)`) and the box cleared (2656:0388). CGA's colours are not rebuilt |
 | 47 | 24d3:174e | MAYOR | Jason (character record 0) loses 4 hit points if he has more than 5 (byte 0x0f, F:c623, compared signed); the panel is not redrawn: "The mayor", below |
 | 46 | 24d3:0e2c | GARAGE | the held 'Mechs back and the crew screen (below) |
 | 43 | 24d3:157e | TRAINING | after mission 5 is won (+1672, with flag 2d = 1): townsperson 0 is put at the Lounge's entrance (MAP entrance 7; record +0/+2 and figure 16), inside (+9 = ff), its route 0x70 (last the Lounge, next entrance 0) and its target entrance 0, the Training Center. Talk to others in the Lounge lets it out (below) |
 | others | see the table above | the other places | read with those places |
 
-Specials 18–20, 24–26, 28, 41, 42 and 44 belong to the other places and are read with them. The rebuild logs an
+Specials 18–20, 24–26, 28, 41 and 44 belong to the other places and are read with them. The rebuild logs an
 unrebuilt special and goes on.
 
 Special 05's texts are imported from BTECH.EXE as `course.*` (docs/import.md).
@@ -454,6 +455,24 @@ script and no code reads or writes it.
 So the first visit always ends in the second half, which costs Jason 4 hit points once (if he has
 more than 5); item 0 alone loops back to the menu.
 
+### The theater (THEATER, entrance 7 of maps 6 and 10)
+
+THEATER uses the plain ops, pictures, sounds and special 42; it sets no flag.
+
+1. A text and the Yes/No question. No: `end`.
+2. Yes: `if_cbills 5`. Short of 5 C-Bills: a text, a key, `end`.
+3. With 5 or more: the show, a run of texts with keys between, pictures 0-4, 7, 8 and 9
+   (mode 2, picture 8 with mode 1: "The picture", above) and sounds 0x0c, 2, 4 and 1.
+4. A last text and a key, special 42, `end`.
+
+Special 42 (`24d3:1515`) puts all eight townspeople where the party stands: each one's figure
+and its record's +0/+2 get the party's x and y, +8 (the route) becomes 0x77 (last in, and next,
+entrance 7, the theater on both maps) and +9 (the rounds inside) becomes i. The target (+4/+6)
+is not touched. The party's y word then goes up by 1, a half-cell south, with no check of the
+cell. So person 0 is out walking at once, from the party's old place, toward whatever target
+it had; the others count down inside (docs/townspeople.md) and come out at entrance 7 one round
+apart.
+
 ### The crew screen (BTECH.EXE 1c67:0002)
 
 Who pilots and who rides each 'Mech. 'Mech records 0-3 (byte 0 not ff) have a pilot (byte 0x79)
@@ -504,6 +523,9 @@ if none of the nine blocks around the party (P:07a4) has bit 0x80, the screen wi
 town is refused) and a key.
 
 ## Original quirks
+
+- **The theater never charges.** THEATER tests for 5 C-Bills (`if_cbills 5`) and turns away a
+  party with less, but has no `pay`: the show is free for anyone who could afford it.
 
 - **FROB sells the holoviewer more than once.** The salesman never tests flag 30: Jason, back
   alone, is offered it again, and Yes with 7000 C-Bills pays again. The mappers test flag 31
@@ -669,7 +691,7 @@ runs as the original does; the return visit itself is not captured.) The chain t
   24d3:0dc6/0dd3 (two of the specials, 24d3:0004) set; those are not rebuilt, so outside a loaded game the rebuild never jumps. UnBattletech names them "training complete" and a milestone.
 - **E4** (sound) is recorded, the event and the player's state (docs/sound.md), but no audio
   plays.
-- Specials 18-20, 24-26, 28, 36, 37, 41, 42 and 44 (in decimal, as in the table above and
+- Specials 18-20, 24-26, 28, 36, 37, 41 and 44 (in decimal, as in the table above and
   chr's log; the scripts and `tools/bld.py` write them in hex).
 - Talk outdoors (`17dc:17b9`): one of eight rumours (DGROUP:4e5e) at random. No rebuilt place
   is outdoors; the rebuild makes the draw and logs it.

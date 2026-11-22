@@ -764,6 +764,23 @@ bool Town::special(int n, KeySource& keys) {
         figs_.y[16] = w.at.y;
         return true;
     }
+    case 42:
+        // 24d3:1515: the audience leaves the theatre. Each townsperson i
+        // stands where the party is (its figure and its record's +0/+2),
+        // last in and bound for entrance 7, inside for i rounds; its target
+        // (+4/+6) is left as it was. Then the party one half-cell south (a
+        // plain add to the y word).
+        for (int i = 0; i < 8; ++i) {
+            auto& w = people_.walkers()[std::size_t(i)];
+            w.at = position_;
+            people_.kept()[std::size_t(i)] = position_;
+            w.route = 0x77;
+            w.wait = std::uint8_t(i);
+            figs_.x[std::size_t(16 + i)] = position_.x;
+            figs_.y[std::size_t(16 + i)] = position_.y;
+        }
+        position_.y = std::uint16_t(position_.y + 1);
+        return true;
     case 10:
         // 24d3:096f: the money in decimal at the cursor, then shop.cbills_end.
         text_.set_fg(TextRole::Funds);
