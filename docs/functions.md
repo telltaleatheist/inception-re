@@ -86,10 +86,10 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 15ab:0d12 | 0x167c2 | `FUN_15ab_0d12` | 43 |  | - |
 | 15ab:0d3d | 0x167ed | `FUN_15ab_0d3d` | 1834 | Sets up a random encounter: soldiers and 'Mechs, placed 10-17 cells away | rebuilt |
 | 15ab:1467 | 0x16f17 | `FUN_15ab_1467` | 741 | The scan list: each figure of a side in turn, Next / Detail / Done | rebuilt in part (no Detail) |
-| 15ab:174c | 0x171fc | `FUN_15ab_174c` | 268 |  | - |
-| 15ab:1858 | 0x17308 | `FUN_15ab_1858` | 144 |  | - |
+| 15ab:174c | 0x171fc | `FUN_15ab_174c` | 268 | The stats screen's bar: two parts from a bottom row up; the heat bar's lower part blinks (docs/town_loop.md) | rebuilt |
+| 15ab:1858 | 0x17308 | `FUN_15ab_1858` | 144 | The stats screen's pips: a row of squares, the first k green, five a row | rebuilt |
 | 15ab:18e8 | 0x17398 | `FUN_15ab_18e8` | 534 | A unit's heading: a 'Mech's pilot and name; a person's name, with the details flag its condition, weapon and armour | rebuilt (not the double agent) |
-| 15ab:1afe | 0x175ae | `FUN_15ab_1afe` | 2074 | Character stats screen (cycles its own palette, then restores 37e8:0000) | read |
+| 15ab:1afe | 0x175ae | `FUN_15ab_1afe` | 2074 | The 'Mech stats screen: BTSTATS.CMP, the record's text, bars and pips, its own pulsing colour, until a key (docs/town_loop.md) | rebuilt |
 
 ## CODE_3: segment 17dc, 7,610 bytes
 
@@ -173,7 +173,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 |---|---|---|---|---|---|
 | 1e31:0006 | 0x1e316 | `FUN_1e31_0006` | 734 | A figure's step toward a target: turn one eighth, try 8 directions (wander pattern flips every 30), free cell and no figure there | rebuilt |
 | 1e31:02e4 | 0x1e5f4 | `FUN_1e31_02e4` | 75 | A person's condition: line hit points / B of DG:2e0c | rebuilt |
-| 1e31:032f | 0x1e63f | `FUN_1e31_032f` | 124 |  | - |
+| 1e31:032f | 0x1e63f | `FUN_1e31_032f` | 124 | The map screen drawn again (with 1, the fight's figures), windows 4 and 3 cleared and framed | rebuilt |
 | 1e31:03ab | 0x1e6bb | `FUN_1e31_03ab` | 2058 | The computer's orders for a unit: target, waypoint, weapons; with show, the unit's screen (docs/combat.md) | rebuilt |
 | 1e31:0bb5 | 0x1eec5 | `FUN_1e31_0bb5` | 174 | Distance from the party position: min + max/2 | rebuilt |
 | 1e31:0c63 | 0x1ef73 | `FUN_1e31_0c63` | 705 | End of a combat round: heat, fired marks cleared, the dead removed | rebuilt |

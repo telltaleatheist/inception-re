@@ -66,6 +66,7 @@ add_library(chrgame STATIC
   src/game/fight.cpp
   src/game/encounter.cpp
   src/game/training_quiz.cpp
+  src/game/mech_stats.cpp
 )
 target_include_directories(chrgame PUBLIC src)
 target_link_libraries(chrgame PUBLIC chrformats)
@@ -103,6 +104,7 @@ if(SDL3_FOUND)
     src/platform/overhead_layer.cpp
     src/platform/panel_layer.cpp
     src/platform/quiz_layer.cpp
+    src/platform/stats_layer.cpp
     src/platform/renderer.cpp
     src/platform/text_layer.cpp
   )

@@ -159,7 +159,8 @@ machines of the day each probably took several display frames. The platform hold
 sounds are recorded but not played yet (no sound is rebuilt). A story picture is held 50 frames
 at its last frame.
 
-Not rebuilt yet: the sounds, Scan's Detail (the stats screen, 2.6), and the double agent.
+Not rebuilt yet: the sounds and the double agent. Scan's Detail (2.6) opens the 'Mech stats screen
+(docs/town_loop.md).
 
 **The cell window in a fight.** The planner's path (3.3) and the line of sight (3.6) read map
 cells from the 24x24-cell window P:07ad by index, as the townspeople do. The window and its
@@ -673,11 +674,12 @@ instead.
     condition (`1e31:02e4`) is the line hit points / B (character bytes 0x0f / 1) of the eleven
     at DG:2e0c. Then the unit's screen
     (`203b:1774(t, 1)`), and in window 3 Next Unit, Detail Scan (a 'Mech, while the list holds
-    'Mechs) and Done. Detail opens the stats screen (`15ab:1afe`) and redraws the screen
-    (`1e31:032f`), then shows the same figure again. In the Arena (F:e48e) the enemy list jumps
+    'Mechs) and Done. Detail opens the stats screen (`15ab:1afe(t)`, docs/town_loop.md) and
+    redraws the screen (`1e31:032f(1)`: the cell window built, the map and the fight's figures
+    drawn, windows 4 and 3 cleared and framed), then shows the same figure again. In the Arena (F:e48e) the enemy list jumps
     back to figure 12 after each figure, so the spectator (13) is never shown.
-  - Not rebuilt: the people in the list (the rebuild's fights have no people on foot yet) and
-    Detail Scan (the stats screen); either stops the fight with a log line.
+  - Rebuilt (`Town::scan_list`), the people and Detail Scan included (`Town::mech_stats`, then
+    `Town::redraw_map_screen(true)`).
 
 The menu's loop, as rebuilt (`Town::orders_menu`): each pass prints the unit's heading in
 window 4 (`15ab:18e8`), then either "The computer is moving" (DG:3a42) and the planner with show

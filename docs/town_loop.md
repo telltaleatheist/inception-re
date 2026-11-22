@@ -85,8 +85,8 @@ argument 0 (docs/scripts.md), the panel (`1000:4cac(1)`) and window 1 cleared. A
 
 Rebuilt: all eight items (`Town::command_menu`, `Town::game_settings` and `Town::inspect` below,
 `Town::allocate_crew`, `Town::load_game`, `Town::save_game`, docs/formats/save.md;
-`Town::overhead_map`, docs/overhead_map.md). Item 3's 'Mech stats screen (`15ab:1afe`) is
-logged.
+`Town::overhead_map`, docs/overhead_map.md), with item 3's 'Mech stats screen
+(`Town::mech_stats`, below).
 
 ### Inspect a 'Mech or a character (`1000:378d`)
 
@@ -97,8 +97,9 @@ value.
 1. Special 17 (flag 10 = 'Mech records 0-3 in use). With any: `inspect.mech_or_person` and the
    Yes/No question (`1000:1a13(1)`, Yes first). Yes: the window cleared,
    `inspect.which_mech`, the 'Mech chooser (`1c67:0b98`, docs/scripts.md) into DG:0068, that
-   record's heat (F:006e + m) = 0, the stats screen (`15ab:1afe(m)`, not rebuilt), the panel
-   (`1000:4cac(1)`) and the window cleared; done, with no key.
+   record's heat (F:006e + m) = 0, the stats screen (`15ab:1afe(m)`, below), the panel
+   (`1000:4cac(1)`) and the current window cleared, which is window 4, as the stats screen
+   left it; done, with no key.
 2. Otherwise (no 'Mechs, or No): special 14 (flag 0e = members besides Jason). With any: the
    window cleared, `inspect.which_character` and special 13 (the menu of present characters;
    flag 0e = the chosen record). With none flag 0e is 0, Jason.
@@ -125,6 +126,77 @@ value.
 
 The window stays selected and is not cleared; the tick that follows draws the map back over it
 (`273d:06c3`).
+
+### The 'Mech stats screen (`15ab:1afe`)
+
+Two callers: step 1 above, with a party record 0-3, and Detail Scan in the fight's scan list
+(`15ab:1467`, docs/combat.md 2.6), with figure t, a party 'Mech (0-3) or an enemy one (12-15).
+The record is m = t, or t - 8 from 12.
+
+1. Window 4 selected and cleared (`2656:0281`, `0388`). It stays the current window afterwards.
+2. BTSTATS.CMP (DG:1272), the training quiz's picture, read into the script buffer (P:00a0) when
+   F:4594 is 0 (the disk check `1000:28cc(1)` first), and F:4594 set: the place's script is
+   deciphered again after the next fight (docs/combat.md, the results step). F:4fbc = 0 (read
+   only by the unpacker), and the picture unpacked and copied over the whole screen (on EGA by
+   way of the page at A800). The rebuild keeps the script apart and has no disks; the renderer
+   draws the picture.
+3. Text straight onto the screen (`273d:00d5`, on black; a carriage return goes back to the first
+   column, a row down), white (15) for labels and yellow (14) for values:
+   - `stats.labels` at (0, 0): four labels on rows 0-3, the weapon list's heading on row 5.
+   - The record's name, its first eight characters (copied to DG:0012 and cut at DG:001a), at
+     (6, 0), and its tonnage (byte 0x10, in decimal) at (6, 1).
+   - m < 4: the pilot's name (byte 0x79, a character record, by its byte 0) at (6, 2), and the
+     second's (byte 0x7a; with ff `stats.none`) at (6, 3). m 4 and up, an enemy:
+     `stats.unknown` at (6, 2), which fills rows 2 and 3.
+   - Pips (`15ab:1858(col, row, n, k)`): n squares of 3x3 pixels at (8 col + 2, 8 row + 3), one
+     a column, the sixth starting a row down and 5 columns back; the first k green (2), the rest
+     red (4). Engine hits (byte 0x75): (0x25, 0), 3, 3 - hits. Gyro (0x76): (0x25, 1), 2,
+     2 - hits. Sensors (0x77): (0x25, 2), 2, 2 - hits. Heat sinks: (0x22, 6), 10, byte 0x26 plus
+     one for each item 0x22 among bytes 0x33-0x55.
+   - The weapon list from row 6, one row each: every byte of 0x33-0x55 whose item (& 0x7f) is
+     0x10-0x20, its name (the weapon table at DG:2ec7, so `weapon.(item - 1)`) at column 0 and
+     its location (`stats.location.0`-`7`) at column 11, in yellow, or grey (8) with bit 7 set
+     (the weapon destroyed). The location by slot: 0x33-0x39, 0x3a-0x40, 0x41-0x47, 0x48-0x4e,
+     0x4f-0x50, 0x51-0x52, 0x53-0x54, 0x55, in the eight texts' order.
+   - `stats.actuators` at (0, 0x13). F:37fe (the window's text colour) = 14, and it is not put
+     back: window text after the screen is yellow until something sets it.
+     `stats.actuator_names` at (0, 0x14), four rows.
+   - At column 10, rows 0x14-0x17, the left leg (byte 0x24's low nibble), right leg (0x25's low
+     nibble), left arm (0x24's high nibble) and right arm (0x25's high nibble): `stats.ok` in
+     white when whole, `stats.gone` in grey when 0, else `stats.hit` in white. A leg is whole at
+     f; an arm when its nibble equals the high nibble of byte 0x69 (left) or 0x6a (right).
+4. Then once a display frame until a key (`273d:002f`; while keys are played back, F:3938, 600
+   frames instead):
+   - The eleven armour bars (`15ab:174c(x, y, a, b)`): bar i at x DG:131c[i], its bottom row
+     DG:1332[i], 6 pixels wide and a pixel a point. From the bottom, b in red (4), then a in
+     green (2) above it. a is the armour (byte 0x11 + i); b is the byte DG:1306[i] names (the
+     structure, 0x1c + i, for the first eight; 0, none, for the three rear locations).
+   - The heat (F:006e + m) clamped to 0-30 in place, then its bar at (0x100, 0xb7): the heat in
+     red or yellow, 30 - heat in green. The bar at row 0xb7 blinks: each draw with heat counts
+     DG:1218 down; below 0 it is set to DG:121a = 10 - heat / 6 and the colour DG:121c changes
+     between 4 and 14 (it starts at 0 and becomes 4 on the first draw). The three persist from
+     one showing to the next.
+   - A frame's wait (`273d:0006`). A frame counter goes up; at 16 the palette is set from
+     DG:1348 (the standard colours, except colour 4 from DG:134c), a step counter goes up (mod
+     4), DG:134c = DG:1378[step] (brown, red, light red, red), and the frame counter goes back
+     to 0 (it is ANDed with 15 every frame, so only its low four bits count). Both counters are
+     stack words the function never sets: they hold whatever last used that part of the stack,
+     interrupts included, and differ from run to run on the same keys. In two runs (the inspect
+     item and Detail Scan) the palette was first set at frame 16 and colour 4 first changed at
+     frame 32, to the table's first entry (the counters held 0 and 3); in a third, on the inspect
+     path again, colour 4 was already light red at frame 44. Until the first setting the standard
+     palette shows, and that first setting gives colour 4 whatever DG:134c last held: in a run's
+     first showing that is its own value, the standard one, so the screen looks the same in
+     every run up to its 16th frame.
+5. The standard palette set again (37e8:0000), and the key read (`273d:0259`).
+
+The rebuild (`Town::mech_stats`) starts the counters at the first two runs' values, keeps the blink and
+DG:134c in the town's state, and gives the renderer the scene in game terms (`game::StatsScene`):
+the bars' numbers, the pips, the heat and its blink colour, and the palette step. DG:1306 is
+imported as `tables.stats_bar_structure`. How the scene looks is the renderer's
+(platform/stats_layer.cpp; the positions and colours are imported as `tables.stats_bar_x`,
+`stats_bar_y`, `stats_palette` and `stats_pulse`, docs/formats/tables.md). The text goes through
+the text screen in the roles `Text`, `StatValue` and `Destroyed`.
 
 ### Game settings (`1000:3bd0`)
 

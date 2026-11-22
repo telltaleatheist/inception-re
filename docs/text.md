@@ -155,7 +155,7 @@ narration of what happened, descriptions and flavour, and the original's own not
 | shot.* but shot.squashed, shot.arena_damaged, shot.urbanmechs | 26 | the pieces of a shot's message, hit and miss, critical, kill |
 | location.0-10 | 11 | the hit locations, as labels |
 
-### Imported only (775 IDs)
+### Imported only (791 IDs)
 
 | IDs | Count | Why |
 |---|---|---|
@@ -196,6 +196,7 @@ narration of what happened, descriptions and flavour, and the original's own not
 | load.which, load.not_a_save, load.not_found, load.not_found_end | 4 | the load's slot question, a file without the mark, and a file that cannot be opened (around its name) (1000:32b3); kept imported: not on Owen's approved list |
 | settings.* | 9 | the game settings and their questions (1000:3bd0); kept imported: not on Owen's approved list |
 | inspect.* (with inspect.skill_level.0-4) | 23 | the inspect screen's labels, questions, armour lines, kit answers and skill levels (1000:378d, docs/town_loop.md); kept imported: not on Owen's approved list |
+| stats.* | 16 | the 'Mech stats screen's labels, crew placeholders, weapon locations and actuator states (15ab:1afe, docs/town_loop.md); kept imported: not on Owen's approved list |
 
 ### The cases decided by hand
 

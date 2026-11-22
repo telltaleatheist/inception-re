@@ -728,9 +728,9 @@ bool Town::inspect(KeySource& keys) {
                 return false;
             }
             combat_.heat[std::size_t(*m)] = 0;  // F:006e + m
-            log_.push_back("the stats screen (15ab:1afe): not rebuilt");
+            if (!mech_stats(*m, keys)) return false;  // 15ab:1afe
             draw_panel(true);  // 1000:4cac(1)
-            clear_window();
+            clear_window();    // window 4, as the stats screen left it
             return true;
         }
     }

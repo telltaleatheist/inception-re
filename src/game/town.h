@@ -22,6 +22,7 @@
 #include "game/fight.h"
 #include "game/fixes.h"
 #include "game/training_quiz.h"
+#include "game/mech_stats.h"
 #include "game/figures.h"
 #include "game/flags.h"
 #include "game/map_view.h"
@@ -66,6 +67,7 @@ struct ScriptItem {
     bool poke_character = false;  // a character record (char:), else a 'Mech record (mech:)
     bool poke_cbills = false;     // the C-Bills (cbills:), poke_value the amount
     bool poke_random = false;     // the generator's state (random:), poke_value its three bytes
+    bool poke_heat = false;       // a 'Mech's heat (heat:), poke_byte the record, poke_value the heat
     int poke_byte = 0;
     int poke_value = 0;
     bool is_set() const { return set_flag >= 0; }
@@ -103,6 +105,7 @@ private:
 // next key or pass is taken (a test aid standing in for damage).
 // random:AABBCC (hex) sets the generator's three bytes (DG:4fc0-4fc2) the
 // same way (a test aid for a side branch that skips a walk).
+// heat:M=VV (hex) sets 'Mech record M's heat (F:006e + M) the same way.
 // Throws std::invalid_argument naming the bad token.
 std::deque<ScriptItem> parse_key_script(const std::string& script);
 
@@ -220,6 +223,9 @@ public:
     // The quiz scene, while it shows: the renderer draws BTSTATS.CMP and the
     // part's box instead of the town, then the text.
     std::optional<QuizScene> quiz() const { return quiz_; }
+    // The 'Mech stats screen while it shows: the renderer draws BTSTATS.CMP
+    // and the scene instead of the town, then the text.
+    const std::optional<StatsScene>& stats() const { return stats_; }
     // The overhead map while it shows (docs/overhead_map.md).
     const std::optional<OverheadMap>& overhead() const { return overhead_; }
 
@@ -248,6 +254,11 @@ public:
     void poke_random(int value) {
         random_ = Random({std::uint8_t(value >> 16), std::uint8_t(value >> 8), std::uint8_t(value)});
         log_.push_back("test aid: random state set");
+    }
+    // A test aid: a 'Mech's heat (the script's heat: items).
+    void poke_heat(int record, int value) {
+        combat_.heat[std::size_t(record)] = std::int8_t(value);
+        log_.push_back("test aid: 'Mech record " + std::to_string(record) + " heat set");
     }
     // A test aid: one byte of a character record (the script's char: items).
     void poke_character(int record, int byte, int value) {
@@ -420,7 +431,7 @@ private:
     std::optional<std::vector<std::uint8_t>> read_save(int slot) const;
     bool read_saved_game(const std::vector<std::uint8_t>& file);
     bool write_save(int slot);
-    void redraw_map_screen();
+    void redraw_map_screen(bool fight = false);
     void fight_ends();
     bool random_encounter(KeySource& keys);
     bool place_encounter();
@@ -456,6 +467,8 @@ private:
     Combat combat_rules();
     // game/training_quiz.cpp: the quiz's scene (--show-quiz).
     bool show_quiz(KeySource& keys);
+    // game/mech_stats.cpp: the 'Mech stats screen for figure `fig`.
+    bool mech_stats(int fig, KeySource& keys);
     static constexpr int kQuizMenu = 0x25;
     void build_window();
     void run_map_loads();
@@ -632,6 +645,10 @@ private:
     std::optional<OverheadMap> overhead_;
     bool people_skipped_ = false;  // DG:014c: map loads place no townspeople (the overhead map)
     std::optional<QuizScene> quiz_;
+    std::optional<StatsScene> stats_;
+    int stats_pulse_ = -1;        // DG:134c: the stats screen's pulsing colour, as a step (-1: its own)
+    int heat_blink_count_ = 10;   // DG:1218: draws until the heat bar's colour changes
+    int heat_blink_ = 0;          // DG:121c: 0 before the first draw, then 1 and 2 in turn
 };
 
 }  // namespace chr::game

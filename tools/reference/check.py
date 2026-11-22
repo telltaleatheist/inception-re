@@ -435,6 +435,7 @@ ORDERS_FULL_CASES = ORDERS_ROUNDS[1:] + [
 # map cursor, Run over the walk orders (asked, then deleted), Jump with a
 # Locust (no jump jets), then rounds fought on the run orders.
 SCREEN = {"the panel": WHOLE_PANEL, "the map": WHOLE_MAP}
+WHOLE_SCREEN = {"the screen": (0, 0, 320, 200)}
 MOVE_CASES = [dict(case, compare=False) for case in ORDERS_CASES[:12]] + [
     # Walk: "You have N movement points left", the cursor at the unit.
     {"name": "move_walk", "keys": "up*9 enter", "match": SCREEN, "fight": True},
@@ -542,6 +543,34 @@ SCAN_FULL_CASES = [
     {"name": "scan_cancel", "keys": "enter down*2 enter", "match": SCREEN, "fight": True},
     # Begin Fight from Scan Unit.
     {"name": "scan_round", "keys": "down*3 enter", "match": SCREEN, "fight": True},
+]
+
+# Detail Scan (15ab:1467): the stats screen (15ab:1afe, docs/town_loop.md),
+# after a round of fire. A fight's orders menu never comes with heat left,
+# so heat: sets Jason's Locust's (12: the bar blinks every 8 draws). arm:4
+# has the feeder's fourth poll be the screen's fourth frame on both sides.
+# The screen's pulsing colour starts from stack words the original never
+# sets, so only a run's first showing is the same in every run, up to its
+# 16th frame; a later showing compares the text column and the state.
+DETAIL_CASES = [dict(case, compare=False) for case in WEAPON_CASES + WEAPON_FULL_CASES[:4]] + [
+    {"name": "detail_friends", "keys": "up*3 enter enter", "match": SCREEN, "fight": True},
+    {"name": "detail_friend", "keys": "heat:0=0c down arm:4 enter", "match": WHOLE_SCREEN, "fight": True},
+    # Ten frames on: the heat bar in its second colour.
+    {"name": "detail_friend_flash", "keys": "idle:10", "match": WHOLE_SCREEN, "fight": True},
+    # A key: the screen drawn again, the same unit shown.
+    {"name": "detail_friend_out", "keys": "enter", "match": SCREEN, "fight": True},
+    # Again, with heat past 30: kept to 30 in place (the state's heat).
+    {"name": "detail_friend_again", "keys": "heat:0=28 down arm:4 enter", "match": {"the text": WHOLE_PANEL},
+     "fight": True, "known": ["the bars and pips: the pulsing colour depends on the run (docs/town_loop.md)"]},
+    {"name": "detail_friend_again_out", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "detail_done", "keys": "down*2 enter", "match": SCREEN, "fight": True},
+]
+# The enemy Locust's, first in its run: "Unknown" for its crew.
+DETAIL_ENEMY_CASES = [dict(case, compare=False) for case in WEAPON_CASES + WEAPON_FULL_CASES[:4]] + [
+    {"name": "detail_enemies", "keys": "up*3 enter down enter", "match": SCREEN, "fight": True},
+    {"name": "detail_enemy", "keys": "down arm:4 enter", "match": WHOLE_SCREEN, "fight": True},
+    {"name": "detail_enemy_out", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "detail_enemy_done", "keys": "down*2 enter", "match": SCREEN, "fight": True},
 ]
 
 # Mission 3 (training mode 3, docs/combat.md 1.3): three to six enemy
@@ -2084,6 +2113,12 @@ CHAIN_INSPECT_CASES = [dict(case, compare=False) for case in CHAIN_PARTY_CASES] 
     {"name": "chain_inspect_rick_out", "keys": "enter", "match": SCREEN},
     {"name": "chain_inspect_mech", "keys": "space enter", "match": SCREEN},
     {"name": "chain_inspect_which_mech", "keys": "y", "match": SCREEN},
+    # The first 'Mech: the stats screen (15ab:1afe, docs/town_loop.md). The
+    # feeder's fourth poll is the screen's fourth frame, on both sides
+    # (arm:4).
+    {"name": "chain_inspect_stats", "keys": "arm:4 enter", "match": WHOLE_SCREEN},
+    # A key: the panel drawn again, window 4 cleared, the map back.
+    {"name": "chain_inspect_stats_out", "keys": "enter", "match": SCREEN},
 ]
 
 # The start-up's load (1000:50c8, docs/startup.md): "No" to the first-time question, "Yes" to
@@ -2129,6 +2164,8 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("weapons", WEAPON_CASES, WEAPON_FULL_CASES, []),
              ("kick", KICK_CASES, KICK_FULL_CASES, []),
              ("scan", SCAN_CASES, SCAN_FULL_CASES, []),
+             ("detail_poked", [], DETAIL_CASES, []),
+             ("detail_enemy", [], DETAIL_ENEMY_CASES, []),
              ("people", PEOPLE_CASES, PEOPLE_FULL_CASES, []),
              ("course", COURSE_CASES, COURSE_FULL_CASES, []),
              ("spot", [], SPOT_CASES, []),
@@ -2252,6 +2289,24 @@ def random_poke(token):
     return "@poke:DG:%04x=%s" % (RANDOM_AT, body.lower())
 
 
+HEAT_AT = 0x006E  # F:006e, the eight 'Mech records' heat
+
+
+def heat_poke(token):
+    """The original's poke for a heat:M=VV token: one 'Mech's heat byte,
+    nothing else."""
+    try:
+        record, _, value = token[len("heat:"):].partition("=")
+        if len(record) != 1:
+            raise ValueError
+        m, v = int(record, 16), int(value, 16)
+    except ValueError:
+        raise ValueError(f"bad heat poke {token!r}: use heat:M=VV (hex)")
+    if not (0 <= m < 8 and 0 <= v <= 0xff):
+        raise ValueError(f"refused heat poke {token!r}: record 0-7, value one byte")
+    return "@poke:F:%04x=%02x" % (HEAT_AT + m, v)
+
+
 def original_token(k):
     """A case's key as the original's script has it: flag: is a poke, and
     orig: marks input that only the original asks for (the training quiz,
@@ -2266,6 +2321,8 @@ def original_token(k):
         return cbills_poke(k)
     if k.startswith("random:"):
         return random_poke(k)
+    if k.startswith("heat:"):
+        return heat_poke(k)
     if k.startswith("orig:"):
         return k[len("orig:"):]
     if k.startswith("arm:"):
@@ -2296,7 +2353,7 @@ def chr_script(cases, upto):
             if k.startswith("flag:"):
                 items.append("set:" + k[len("flag:"):])
                 continue
-            if k.startswith(("mech:", "char:", "random:")):
+            if k.startswith(("mech:", "char:", "random:", "heat:")):
                 items.append(k)  # applied as the next key is read; no passes of its own
                 continue
             items.append(k)

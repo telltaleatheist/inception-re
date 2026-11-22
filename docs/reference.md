@@ -166,7 +166,9 @@ of character record R (F:c614 + 0x11 R + BB), for a party the story has not give
 refuse anything outside the 16 records (R 0-f, BB below 0x11, so F:c614-c723). `cbills:VVVV`
 (hex, at most ffff) sets the C-Bills (F:d370, all four bytes), for money that play would take long
 to earn. `random:AABBCC` (hex, three bytes) sets the random generator's state (DG:4fc0-4fc2,
-docs/random.md), for a side branch that starts where a walk would have left the draws. None of them reaches flag 14 (F:d320) or any code. A sequence that uses them says so in its name (`_poked`).
+docs/random.md), for a side branch that starts where a walk would have left the draws. `heat:M=VV`
+(hex) sets 'Mech record M's heat (F:006e + M; M 0-7), for a stats screen with a heat bar, which no
+fight the rig plays reaches with heat left. None of them reaches flag 14 (F:d320) or any code. A sequence that uses them says so in its name (`_poked`).
 
 - **The original:** run.py's `@poke:SEG:OFFSET=BYTES` (here `@poke:F:d30c+NN=VV`). SNAP writes the
   bytes into the running copy's memory in DOSBox-X at that point; nothing is written to the

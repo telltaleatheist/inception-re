@@ -16,9 +16,11 @@ void ScriptKeys::apply_pokes() {
         items_.pop_front();
         if (!poke_) throw std::invalid_argument("a mech: or char: item with nothing to poke");
         // record -1: the C-Bills (cbills:), the value the amount; -2: the
-        // generator's state (random:), the value its three bytes.
-        poke_(item.poke_character, item.poke_cbills ? -1 : item.poke_random ? -2 : item.poke_record, item.poke_byte,
-              item.poke_value);
+        // generator's state (random:), the value its three bytes; -3: a
+        // 'Mech's heat (heat:), the byte its record.
+        poke_(item.poke_character,
+              item.poke_cbills ? -1 : item.poke_random ? -2 : item.poke_heat ? -3 : item.poke_record,
+              item.poke_byte, item.poke_value);
     }
 }
 
@@ -118,6 +120,28 @@ std::deque<ScriptItem> parse_key_script(const std::string& script) {
             ScriptItem item;
             item.poke_random = true;
             item.poke_record = 0;
+            item.poke_value = v;
+            keys.push_back(item);
+            return;
+        }
+        if (t.rfind("heat:", 0) == 0) {
+            // heat:M=VV: 'Mech record M's heat (F:006e + M), hex.
+            int m = -1, v = -1;
+            const auto eq = t.find('=');
+            try {
+                std::size_t used = 0;
+                if (eq == 6) m = std::stoi(t.substr(5, 1), &used, 16);
+                if (used != 1) m = -1;
+                v = std::stoi(t.substr(eq + 1), &used, 16);
+                if (used != t.size() - eq - 1) v = -1;
+            } catch (const std::exception&) {
+            }
+            if (m < 0 || m > 7 || v < 0 || v > 0xff)
+                throw std::invalid_argument("bad heat poke \"" + t + "\" (use heat:M=VV, hex, M 0-7)");
+            ScriptItem item;
+            item.poke_heat = true;
+            item.poke_record = 0;
+            item.poke_byte = m;
             item.poke_value = v;
             keys.push_back(item);
             return;

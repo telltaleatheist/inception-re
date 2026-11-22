@@ -137,6 +137,13 @@ struct Tables {
     // The orders screen (docs/combat.md 2.6).
     std::array<int, 12> path_arrows{};       // DG:3b06: by (dy + 1) 4 + dx + 1, a shown path step's glyph
 
+    // The 'Mech stats screen (15ab:1afe, docs/town_loop.md).
+    std::array<int, 11> stats_bar_structure{};  // DG:1306: each bar's structure byte in the record (0: none)
+    std::array<int, 11> stats_bar_x{};          // DG:131c: each bar's x
+    std::array<int, 11> stats_bar_y{};          // DG:1332: each bar's bottom row
+    std::array<int, 16> stats_palette{};        // DG:1348: the screen's colour numbers (EGA)
+    std::array<int, 4> stats_pulse{};           // DG:1378: colour 4's number, step by step
+
     // The terrain outside the towns (docs/wilderness.md).
     std::array<int, 256> world_heights{};        // 2c6c:0b0b: one height per area, 16 x 16
     std::array<int, 256> area_maps{};            // 37e8:0030: each area's map number, 0 for none

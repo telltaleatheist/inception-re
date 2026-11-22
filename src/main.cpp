@@ -52,6 +52,7 @@
 #include "platform/overhead_layer.h"
 #include "platform/panel_layer.h"
 #include "platform/quiz_layer.h"
+#include "platform/stats_layer.h"
 #include "platform/renderer.h"
 #include "platform/text_layer.h"
 
@@ -478,7 +479,8 @@ int main(int argc, char** argv) {
                 for (const auto& [f, v] : options.set_flags) town->set_flag_when_town_starts(f, v);
                 chr::game::ScriptKeys source(keys);
                 source.set_poke([&](bool character, int r, int b, int v) {
-                    if (r == -2) town->poke_random(v);
+                    if (r == -3) town->poke_heat(b, v);
+                    else if (r == -2) town->poke_random(v);
                     else if (r < 0) town->poke_cbills(v);
                     else if (character) town->poke_character(r, b, v);
                     else town->poke_mech(r, b, v);
@@ -605,6 +607,10 @@ int main(int argc, char** argv) {
             } else if (const auto quiz = town ? town->quiz() : std::nullopt) {
                 drawn = chr::platform::draw_quiz(renderer, *quiz, palette);
                 drawn = chr::platform::draw_text(renderer, town->text(), tables, palette) && drawn;
+            } else if (town && town->stats() && !playing()) {
+                const auto colours = chr::platform::stats_colours(*town->stats(), tables, palette);
+                drawn = chr::platform::draw_stats(renderer, *town->stats(), tables, palette, colours);
+                drawn = chr::platform::draw_text(renderer, town->text(), tables, colours) && drawn;
             } else if (town && town->overhead()) {
                 drawn = chr::platform::draw_overhead(renderer, *town->overhead(), tables, palette);
                 drawn = chr::platform::draw_text(renderer, town->text(), tables, palette) && drawn;

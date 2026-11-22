@@ -27,6 +27,8 @@ inline const AssetId kInfocomLogo{"INFOCOM.CMP", 0};
 inline const AssetId kTitleScreen{"BTTITLE.CMP", 0};
 // The training center's quiz (1c67:08a8): ten 'Mech parts.
 inline const AssetId kQuizPicture{"BTSTATS.CMP", 0};
+// The 'Mech stats screen (15ab:1afe) shows the same picture.
+inline const AssetId kStatsPicture{"BTSTATS.CMP", 0};
 // The cache's end: special 45 (24d3:15dd).
 inline const AssetId kEndMechPicture{"ENDMECH.CMP", 0};
 }  // namespace assets

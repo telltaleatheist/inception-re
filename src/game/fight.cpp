@@ -1058,9 +1058,12 @@ bool Town::scan_list(Combat& combat, int fig, int base, bool mechs, KeySource& k
             if (!c) return false;
             chosen = *c;
             if (chosen == 1 && detail) {
-                log_.push_back("the stats screen (15ab:1afe): not rebuilt");
-                fight_unfinished_ = true;
-                return false;
+                // Detail Scan: the stats screen, the screen drawn again, and
+                // the same figure shown again.
+                chosen = 0;
+                if (!mech_stats(t, keys)) return false;  // 15ab:1afe
+                redraw_map_screen(true);                 // 1e31:032f(1)
+                --t;
             }
         } else if (fixes_.fix_scan_list && ++unseen > 12) {
             log_.push_back("fix 32: a scan list with nobody in it ends");

@@ -265,13 +265,20 @@ bool Town::write_save(int slot) {
     return true;
 }
 
-// BTECH.EXE 1e31:032f (Ghidra FUN_1e31_032f), with argument 0
-// The map screen drawn again after a save or a load: the window built at
-// the party, the map and the figures drawn on the page and copied to the
+// BTECH.EXE 1e31:032f (Ghidra FUN_1e31_032f)
+// The map screen drawn again after a save or a load, or (`fight`) after the
+// scan list's stats screen: the window built at the party, the map and the
+// figures (the fight's, in a fight) drawn on the page and copied to the
 // screen, then windows 4 and 3 each cleared and framed.
-void Town::redraw_map_screen() {
-    build_window();          // 287f:1314
-    record_party_places();   // 287f:18ef, 1000:051b
+void Town::redraw_map_screen(bool fight) {
+    build_window();  // 287f:1314
+    if (fight) {
+        page_ = Frozen{live_view(), fight_figures_drawn()};  // 287f:18ef, 1000:0e4b
+        page_sprites_.clear();
+        show_page();
+    } else {
+        record_party_places();  // 287f:18ef, 1000:051b
+    }
     text_.forget(13, 0, kTextColumns - 13, kTextRows);  // 273d:06c3
     for (int w : {4, 3}) {
         text_.select_window(w);  // 2656:0281

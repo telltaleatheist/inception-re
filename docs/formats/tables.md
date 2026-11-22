@@ -72,6 +72,10 @@ word); anything else is refused, and the game asks for a new import.
 | `line_steps` | DG:41dc | 32 bytes | by octant (1e31:1ea2): the straight step's x and y, then the diagonal step's |
 | `person_quarters` | DG:0372 | 4 words | by parity, the tile bits of a person's cell (1000:0e4b) |
 | `path_arrows` | DG:3b06 | 12 bytes | by (dy + 1) x 4 + dx + 1, the glyph of a step of the path the orders screen shows (203b:1774) |
+| `stats_bar_structure` | DG:1306 | 11 words | the 'Mech stats screen (15ab:1afe): each bar's structure byte in the 'Mech record, 0 for none (docs/town_loop.md) |
+| `stats_bar_x`, `stats_bar_y` | DG:131c, DG:1332 | 11 words each | each bar's x and bottom row (15ab:174c) |
+| `stats_palette` | DG:1348 | 16 bytes | the stats screen's colour numbers (EGA), set every 16th frame |
+| `stats_pulse` | DG:1378 | 4 bytes | colour 4's number, step by step |
 | `world_heights` | 2c6c:0b0b | 256 bytes | one height per area of the 16 x 16 world, row by row (287f:104e; docs/wilderness.md) |
 | `terrain_templates` | 2c6c:0c1d | 1024 bytes | 16 blocks of 8 x 8, the block store's first 16: a terrain block's tiles by its neighbour mask (287f:13d9) |
 | `plain_block` | 2c6c:209d | 64 bytes | the one block every type-0x10 terrain block shows |
