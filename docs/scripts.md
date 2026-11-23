@@ -436,7 +436,8 @@ menu 0x17 (2656:0b5e) with as many items as lines, and DG:0068 = the chosen list
      whose letter is ff gets the saved record (F:3780), with the first held letter (F:d452);
    - otherwise: record 0 is the saved one again and records 0-3 get their held letters (the
      Arena's 'Mech is lost).
-   Then the nine area grids around area 0x89 (`287f:104e(0x89)`): the
+   Then the nine area grids around area 0x89 (`287f:104e(0x89)`; the cell window stays as the
+   fight last built it until `287f:1314` next builds one): the
    party is outside the town, west of it; the nine maps of the 3x3 neighbourhood are loaded
    (`1000:2da8`, from the table P:0078 + 16 row + 0x30 + column, where not 0), the masks again
    (`287f:1da8`), and `1d43:0c72(0)`. Every held letter = ff, every 'Mech's seats ff, characters

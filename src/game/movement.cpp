@@ -42,14 +42,18 @@ namespace {
 // One half-cell up, down, left or right. Past the edge of a 64x64-cell area
 // the position moves into the next area (the high byte's area number) and the
 // program shifts its area grids and loads the maps there; at the edge of the
-// 16x16-area world it does not move.
+// 16x16-area world it does not move. An axis the step does not move is left
+// as it is (1000:218f calls them only for -1 and 1), even a place off the
+// map such as y ffff.
 std::uint16_t move_x(std::uint16_t x, int dx) {
+    if (dx == 0) return x;
     const int low = (x & 0xff) + dx, area = x >> 8;
     if (low < 0) return area == 0 ? x : std::uint16_t((area - 1) << 8 | 0x7f);
     if (low > 0x7f) return area == 0x0f ? x : std::uint16_t((area + 1) << 8);
     return std::uint16_t((x & 0xff00) | low);
 }
 std::uint16_t move_y(std::uint16_t y, int dy) {
+    if (dy == 0) return y;
     const int low = (y & 0xff) + dy, area = y >> 8;
     if (low < 0) return area == 0 ? y : std::uint16_t((area - 0x10) << 8 | 0x7f);
     if (low > 0x7f) return area == 0xf0 ? y : std::uint16_t((area + 0x10) << 8);

@@ -1290,6 +1290,7 @@ void Town::arena_theft() {
     }
     // The nine areas around area 0x89, west of the town (287f:104e, 1000:2da8, 287f:1da8).
     constexpr int kArea = 0x89;
+    terrain_.hold_window();  // the cell window stays until 287f:1314 next builds it
     terrain_.generate(kArea);
     for (int k = 0; k < 9; ++k) {
         const int a = kArea - 0x11 + 16 * (k / 3) + k % 3;

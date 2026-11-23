@@ -467,9 +467,18 @@ The Arena's other paths (docs/scripts.md, "The Arena") branch from `chain_arena`
 door and back asks again. `chain_arena_lost_poked` pokes the rented LOCUST's armour and
 structure to 1 once special 33 has made it. The computer loses: the lost text with the deposit
 text, then two steps east to the door and a second rental, which shows the second renting text
-again (flag 21 is 0 after a loss). A plain Arena fight cannot end with the leader fallen. Each
-round's targets are chosen at its start and each weapon fires once a round, so nothing aims at
-Jason once he has ejected, and the round's end test then finds figure 0 down (combat.md 2.8).
+again (flag 21 is 0 after a loss). The leader cannot fall in an Arena fight while the spectator
+stands. Each round's targets are chosen at its start and each weapon fires once a round, so
+nothing aims at Jason once he has ejected, and the round's end test then finds figure 0 down
+(combat.md 2.8). `chain_arena_theft` is unpoked: `chain_arena`'s rental fought by the player,
+graphics on. Round 1 runs the LOCUST west. In round 2 the Med Laser destroys the spectator at long
+range; its shot line ends off screen, so it runs `1e31:1df8`'s leftward walk. Then the two message
+boxes, the URBANMECHs and the broken wall. Rounds 3-5 run and walk through the gap into the exit
+zone; the old run order has to be deleted with Walk first. Once the spectator is destroyed
+(flag 23 set) the round's end test no longer applies:
+`chain_arena_leader_poked` branches from `chain_arena_theft`'s round 2, pokes the LOCUST's armour
+and structure and Jason's hit points to 1, and Jason, on foot after the LOCUST falls, is killed
+the round after (flag 28). It stops at the game-over box.
 `chain_arena_own` is unpoked, from `chain_garage`, whose special 28 holds the Commando (flag 10
 = 1): the route plan's walk to the Arena crosses the Weapons Shop's door (No), then No to
 renting, the chooser (`1c67:0b98`) with the held Commando under Rex's name, the waivers, and the

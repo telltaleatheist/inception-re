@@ -82,8 +82,13 @@ public:
     // The fight saves the window's cells after a round's movement
     // (22e8:126a, around the party) and each redraw during a shot
     // (1e31:1f09) copies them back, leaving the window's place and block
-    // values as they were.
-    void save_cells(formats::MapPosition position) const { saved_ = window(position).cells; }
+    // values as they were. Its callers build the window first (287f:1314),
+    // from the map store as it is now.
+    void save_cells(formats::MapPosition position) const {
+        release_window();
+        built_.reset();
+        saved_ = window(position).cells;
+    }
     void restore_cells() const {
         if (saved_) restored_ = saved_;
     }

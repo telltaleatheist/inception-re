@@ -2537,6 +2537,57 @@ CHAIN_ARENA_OWN_CASES = [dict(case, compare=False) for case in CHAIN_GARAGE_CASE
     {"name": "chain_arena_own_step", "keys": "left", "match": SCREEN},
 ]
 
+# The Arena's spectator destroyed and the way out (combat.md 3.14 and 2.8; docs/scripts.md, "The
+# Arena"), unpoked: chain_arena's rental fought by the player, graphics on. Round 1 runs Jason's
+# LOCUST twelve cells west. Round 2: the Med Laser at the spectator ('Mech 5, figure 13, in the
+# west stands, at long range; its shot line ends off screen): destroyed, the message boxes, the
+# URBANMECHs as figures 14 and 15, the wall broken, flag 23 set. Rounds 3 and 4 run west and
+# down-left to the gap; round 5 walks (the old run order deleted first) through it into the exit
+# zone, which ends the fight.
+CHAIN_ARENA_THEFT_CASES = [dict(case, compare=False) for case in
+                           CHAIN_ARENA_CASES[:[c["name"] for c in CHAIN_ARENA_CASES].index("chain_arena_first_time") + 1]] + [
+    {"name": "chain_arena_theft_computer", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_theft_by_hand", "keys": "n", "match": SCREEN},
+    {"name": "chain_arena_theft_messages", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_theft_graphics", "keys": "y", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_run", "keys": "up*8 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_run_path", "keys": "left*12 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_round_1", "keys": "down*8 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_weapons", "keys": "up*6 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_laser", "keys": "down*2 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_spectator", "keys": "down enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_aimed", "keys": "up enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_weapons_done", "keys": "down enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_round_2", "keys": "up enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_wall", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_urbanmechs", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_round_2_end", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_round_3", "keys": "up*8 enter left*12 enter down*8 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_round_4", "keys": "up*8 enter end*11 enter down*8 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_walk", "keys": "up*9 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_walk_instead", "keys": "y", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_walk_path", "keys": "enter down*3 left*5 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_theft_exit_zone", "keys": "up enter", "match": SCREEN},
+]
+
+# The leader fallen in the Arena (combat.md 2.8; docs/scripts.md, "The Arena", 06a5): from
+# chain_arena_theft's round 2, once flag 23 is set the Arena-lost test no longer ends the fight
+# when figure 0 falls. The LOCUST's armour and structure poked to 1 and Jason's hit points to 1
+# (our own test values): the LOCUST is destroyed, Jason fights on foot, and is killed the round
+# after (DG:014a = 0, flag 28). The game over box; the play-again question after it is not
+# compared (Open items, "The new-game question after the game over").
+CHAIN_ARENA_LEADER_POKED_CASES = [dict(case, compare=False) for case in
+                                  CHAIN_ARENA_THEFT_CASES[:[c["name"] for c in CHAIN_ARENA_THEFT_CASES].index(
+                                      "chain_arena_theft_round_2_end") + 1]] + [
+    {"name": "chain_arena_leader_begin", "keys": ARENA_WEAK + " char:0:0f=01 up enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_leader_round_3", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_leader_round_4", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_leader_round_5", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_leader_round_6", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_leader_on_foot", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_arena_leader_died", "keys": "enter", "match": SCREEN},
+]
+
 # FROB (docs/scripts.md, "Frob's"): from chain_town's garage door, the walk to Frob's door
 # (map 2, entrance 11), 20000 C-Bills poked there, Jason alone buying the holoviewer (flag 30),
 # then a second visit buying the terrain mapper (flag 31), and three steps after it, which the
@@ -2691,7 +2742,8 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked",
             "chain_crit_poked", "chain_engine_poked", "chain_crush_poked", "chain_scan_poked",
             "chain_waypoints_edge", "chain_arena_refused_poked",
-            "chain_arena_lost_poked", "chain_arena_own"}
+            "chain_arena_lost_poked", "chain_arena_own",
+            "chain_arena_theft", "chain_arena_leader_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2757,6 +2809,8 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_arena_refused_poked", [], CHAIN_ARENA_REFUSED_POKED_CASES, []),
              ("chain_arena_lost_poked", [], CHAIN_ARENA_LOST_POKED_CASES, []),
              ("chain_arena_own", [], CHAIN_ARENA_OWN_CASES, []),
+             ("chain_arena_theft", [], CHAIN_ARENA_THEFT_CASES, []),
+             ("chain_arena_leader_poked", [], CHAIN_ARENA_LEADER_POKED_CASES, []),
              ("chain_frob", [], CHAIN_FROB_CASES, []),
              ("chain_mayor", [], CHAIN_MAYOR_CASES, []),
              ("chain_theater", [], CHAIN_THEATER_CASES, []),

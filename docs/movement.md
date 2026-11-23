@@ -103,6 +103,18 @@ area, and the program shifts its grid of loaded areas and loads the maps it now 
 the two moves (docs/wilderness.md). At the edge of the 16x16-area world the position does not
 change.
 
+An axis the step does not move is not touched: `1000:218f` calls the up or down move only for a
+y step of -1 or 1, and the left or right one only for an x step. So a place off the map stays as
+it is. After a leader-fell Arena fight with the theft (`chain_arena_leader_poked`) the party is at
+x 0970 and y ffff, Jason's killed figure's row. The step out of the Arena moves x to 0971 and
+leaves y ffff, and no map loads.
+
+**The window at such a place** (`287f:1314`, `287f:13d9`). The window's block row is
+((y >> 1) & 0x7f) >> 3 of y's low byte, so 15 for y ffff. Each block is found at the centre
+grid's start plus row x 8 (a byte) plus the column. Only row -1, row 8, column -1 and column 8
+step into a neighbouring grid. Rows 14-16 therefore read the grids that follow the centre one in
+memory, and the window holds whatever those blocks are.
+
 ## What the rebuild does differently, for now
 
 - A step into an area with a map logs that the map load is not rebuilt yet (docs/wilderness.md);

@@ -1357,8 +1357,10 @@ not at its place within its own area.
 - **The spectator** (F:e48e, figure 13): always in line of sight, never targeted by the computer,
   no "destroyed" text. Destroying it: a message box (DG:4209, a key), then DG:4235, 'Mech
   records 6 and 7 become URBANMECHs (27e8:065b) as figures 14 and 15 at x 0x097d, F:e48e = 0,
-  flag 23 = 1 (the exit zone opens, 2.8). Destroying 'Mech 4 also removes 'Mech 5 (figure 13);
-  destroying 'Mech 5 patches the map (`1d43:0c72(0)`).
+  flag 23 = 1 (the exit zone opens, 2.8). Destroying 'Mech 5 patches the map store (`1d43:0c72(0)`,
+  from `1d43:0a35`), and between the two message boxes the view walks to figure 0 and the window is
+  built again from the store (`287f:1314`, then `1ece`), so the broken wall is in the window from
+  the second box on (`chain_arena_theft`). Destroying 'Mech 4 also removes 'Mech 5 (figure 13).
 - After the shot: if an arm was destroyed and graphics are on, picture 0x10 (one draw); if a
   critical hit Jason's 'Mech and graphics are on, picture 5 (one draw). The pause, the target
   byte gets bit 7 (fired).

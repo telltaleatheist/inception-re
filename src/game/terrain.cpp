@@ -228,9 +228,16 @@ void Terrain::link_blocks() {
             }
 }
 
+// BTECH.EXE 287f:13d9 (Ghidra FUN_287f_13d9)
 std::uint8_t Terrain::copy_block(int column, int row, const formats::MtpMap& map, std::uint8_t* out) const {
-    const int grid = 4 + (column < 0 ? -1 : column > 7 ? 1 : 0) + 3 * (row < 0 ? -1 : row > 7 ? 1 : 0);
-    const int at = grid * kGridBlocks + ((row + 8) % 8) * 8 + (column + 8) % 8;
+    // Only row -1 / 8 and column -1 / 8 step into the next grid; any other
+    // row is taken as eight blocks a row from the centre grid's start (a
+    // byte), so a place off the map (y ffff, rows 14-16) reads the grids
+    // after it (docs/movement.md).
+    int at = row == -1 ? 1 * kGridBlocks + 7 * 8 : row == 8 ? 7 * kGridBlocks : 4 * kGridBlocks + ((row * 8) & 0xff);
+    if (column == -1) at += 7 - kGridBlocks;
+    else if (column == 8) at += kGridBlocks;
+    else at += column;
     const int mask = masks_[std::size_t(at)], entry = grids_[std::size_t(at)];
     // The block store: the templates, then the map's blocks.
     const auto stored = [&](int n, int i) -> int {
