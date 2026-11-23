@@ -1479,7 +1479,7 @@ bool Town::repair_shop(KeySource& keys) {
         place_open_ = true;
         return false;
     };
-    const auto number = [this](int n) { text_.print(std::to_string(n)); };  // 173d:0053
+    const auto number = [this](int n) { text_.print(std::to_string(n)); };  // 273d:0053
     const auto can_pay = [this](std::uint32_t price) { return std::uint32_t(money_.cbills) >= price; };
     const auto pay = [this](std::uint32_t price) {
         money_.cbills = std::int32_t(std::uint32_t(money_.cbills) - price);
@@ -1793,7 +1793,7 @@ bool Town::upgrade_buy(KeySource& keys) {
         return false;
     };
     print_id("upgrade.price");
-    text_.print(std::to_string(upgrade_price_));  // 173d:0053
+    text_.print(std::to_string(upgrade_price_));  // 273d:0053
     print_id("upgrade.question");
     const auto yes = yes_no(true, keys);  // 1000:1a13(1)
     if (!yes) return quit();
@@ -2066,9 +2066,9 @@ bool Town::talk(KeySource& keys) {
     flags_[flag::kLetOutDone] = 0;
     text_.clear_window();
     if (flags_[flag::kOutdoors] != 0) {
-        // Outdoors: one of eight rumours (DGROUP:4e5e) at random (docs/scripts.md).
-        random_.next();
-        log_.push_back("talk outdoors: not rebuilt");
+        // 17dc:19b2: outdoors, one of the eight rumours at DGROUP:4e5e, by a
+        // random number's low 3 bits (287f:0bc0), and a key.
+        print_id("talk.rumour." + std::to_string(random_.next() & 7));
         return read_key(keys).has_value();
     }
     print_id("talk.hello");

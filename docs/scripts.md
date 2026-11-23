@@ -264,8 +264,13 @@ none: a message. Any destroyed weapon: a message at the end.
    That local is the place of the last townsperson waiting anywhere, written before it is
    compared with this place (1000:95dd), not this place itself (see the quirk below). Otherwise flag 2e = 0, and the one chosen says why it is here
    (`talk.hello`, `talk.reason.<flag 0d>`) and where it goes next (`talk.going_to`, the place's
-   name from the map, `talk.end`), then a key. Outdoors it is a random rumour instead (not
-   rebuilt: there are no townspeople outdoors yet).
+   name from the map, `talk.end`), then a key. With flag 04 set (F:d310: from the raid on, for
+   the rest of the game) it is one of the eight rumours at DGROUP:4e5e instead (`17dc:19b2`),
+   chosen by a random number's low 3 bits, then a key (`talk.rumour.0` to `7`).
+
+The reasons (DGROUP:4e32, far pointers by flag 0d) have 11 entries, 0-10: the ten places that
+talk are scripts 0-7, 9 and 10. The rumours' table follows right after, so an index of 11 would
+read the first rumour; no script reaches that.
 
 ### The shops (WEAPON and ARMOR)
 
@@ -735,15 +740,10 @@ Special 40 is used nowhere else (every script searched for specials 37-40 and fl
 good, and coming back to the jail afterwards ends the game. (Read from the script, whose ops chr
 runs as the original does; the return visit itself is not captured.) The chain takes Yes.
 
-## Not rebuilt yet
+## Not rebuilt
 
-- Talk outdoors (`17dc:17b9`): with flag 04 set (F:d310, from the raid on, for the rest of the
-  game), the talk special answers with one of eight rumours (DGROUP:4e5e) at random instead of
-  where the person goes. The rebuild makes the draw, logs it and waits for the key; the
-  rumours' texts are not imported yet.
-
-(EB/EC read the kits HOSPITAL sells, specials 25 and 26 (`24d3:0dc2`, `0dcf`), rebuilt. Every special
-the scripts use is rebuilt, the garage's 'Mech paths 1c, 1d and 2e among them.)
+Nothing the scripts reach: every special they use is rebuilt (the garage's 'Mech paths 1c, 1d and
+2e among them), and EB/EC read the kits HOSPITAL sells (specials 25 and 26, `24d3:0dc2`, `0dcf`).
 
 ## Other descriptions
 

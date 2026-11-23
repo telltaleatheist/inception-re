@@ -261,7 +261,15 @@ constexpr std::array kDos103 = {
     ExeSpan{ExeSpan::Kind::Text, "talk.reason.8", 0x46db, 0x44d7, 1, "6e340b9cffb37a98"},
     ExeSpan{ExeSpan::Kind::Text, "talk.reason.9", 0x46db, 0x44d8, 14, "f4fe185aeca04164"},
     ExeSpan{ExeSpan::Kind::Text, "talk.reason.10", 0x46db, 0x44e6, 30, "a7770df18edb0d2e"},
-    ExeSpan{ExeSpan::Kind::Text, "talk.reason.11", 0x46db, 0x4504, 29, "804bfd9c1129a64c"},
+    // The eight rumours at DGROUP:4e5e (far pointers), told outdoors (17dc:17b9).
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.0", 0x46db, 0x4504, 29, "804bfd9c1129a64c"},
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.1", 0x46db, 0x4521, 56, "c3c273c8b4227ea1"},
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.2", 0x46db, 0x4559, 43, "3d90b9c952d35374"},
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.3", 0x46db, 0x4584, 65, "86065f114333f146"},
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.4", 0x46db, 0x45c5, 45, "ab204db5fe64c783"},
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.5", 0x46db, 0x45f2, 48, "0042b57eb0b2473f"},
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.6", 0x46db, 0x4622, 38, "e42076dfad2a1364"},
+    ExeSpan{ExeSpan::Kind::Text, "talk.rumour.7", 0x46db, 0x4648, 65, "699ff47274552153"},
     // Combat (docs/combat.md), by the function that prints them. Pieces that
     // a function strings together have their own IDs; a translation keeps
     // the pieces' order, or overrides them all.
