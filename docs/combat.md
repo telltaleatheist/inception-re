@@ -827,6 +827,16 @@ saved cells back, leaving the window's place (P:02cf) and block values (P:07a4) 
 another block than the place says. Nothing visible depends on it; the rig compares it, and it
 shows after the raid's map load, when the saved cells differ from the fresh ones.
 
+Line of sight (`1e31:1bfe`) builds the window too (`1314` and `1df8`, at the party's place,
+which the firing code has walked onto the shooter), first thing, even for the Arena's
+spectator. That replaces the saved cells a redraw put back, and they stay replaced until the
+next redraw. So when the round's last line-of-sight test is not followed by a redraw (no shot,
+or a shooter off screen), the window holds the cells around that shooter. In the raid's
+walk-out (`raid_walkout_poked`, round 5) the last test is an enemy's at 0c62,c05d, one block
+north-east of Jason, whose window the last redraw had put back. The rebuild's line of sight
+reads a fresh build, as the original does, and lets go of the put-back cells
+(`Terrain::release_window`), so that what the rig reads is the same.
+
 ### 2.12 After the loop
 
 A walk of the party position to a place (`1000:17bb`: the returns below, and every "the view
@@ -1618,7 +1628,7 @@ sequence compares the scene with the original's, over the whole screen and the s
     game tick and resets the countdown, docs/town_loop.md); 52 extra passes and six
     computer-fought rounds give a flee draw with r & 3 = 0.
 16. Answered: the raid's walk-out ending (a party figure past the raid area's edge, [bp-0x38] =
-    2: window 3, "You have eluded your enemies!" (DG:39f7) and `1000:2a4f`'s key) is compared by
+    2: window 3, the eluded line (DG:39f7) and `1000:2a4f`'s key) is compared by
     `raid_walkout_poked` (docs/reference.md): with its armour poked high, the Locust runs out
     past the east edge in nine rounds, and Begin Fight at the next orders menu is overruled; the
     story lines, flags 04 and 05 and the town follow as in the original. Unpoked, the Jenners

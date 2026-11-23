@@ -713,12 +713,6 @@ def raid_walkout_round(n, cursor):
 
 RAID_WALKOUT_POKED_CASES = [dict(case, compare=False) for case in RAID_CASES[:[c["name"] for c in RAID_CASES].index(
     "raid_orders") + 1]] + [raid_walkout_round(n + 1, w) for n, w in enumerate(RAID_WALKOUT_WAYPOINTS)]
-# Round 5: the screen and the state match, but the original's cell window is
-# not the one its own nine block values give: its cells are the rebuild's
-# moved one block north and one east (every cell of the 16 x 16 overlap the
-# same). Left out of the comparison and open (docs/reference.md).
-RAID_WALKOUT_POKED_CASES[[c["name"] for c in RAID_WALKOUT_POKED_CASES].index("raid_walkout_05")].update(
-    window=False, known=["the cell window: the original's is one block north-east of its block values (open)"])
 RAID_WALKOUT_POKED_CASES += [
     {"name": "raid_walkout_eluded", "keys": "left enter", "match": SCREEN, "fight": True},
     {"name": "raid_walkout_story_1", "keys": "enter", "match": SCREEN},

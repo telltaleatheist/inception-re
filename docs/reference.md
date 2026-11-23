@@ -578,14 +578,6 @@ vehicle menu) and out.
   are checked against the disassembly and in `chr --events` (one event a frame, held for its
   delay), not by a sequence.
 
-- **The raid walk-out's round 5 cell window** (`raid_walkout_poked`, the case's `window: False`).
-  The screen and every other state line match, and so do the window's nine block values (P:07a4)
-  and what follows it, but the original's cells (P:07ad) are the rebuild's moved one block north
-  and one block east: all 256 cells of the overlap are the same, the rest not. The original
-  last built it at 0c62,c05d (P:02cf/02d1, an enemy's position during the round); chr's window
-  there follows the block values, and no window chr builds one block away gives the original's
-  cells. Not traced yet: which build left those cells in the original.
-
 ## Findings
 
 Every case in `check.py` is identical over the whole screen and in the game state:

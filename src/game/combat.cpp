@@ -290,6 +290,7 @@ int Combat::slot_weapon(int m, int slot) const {
 
 bool Combat::line_of_sight(int s, int t, std::uint16_t tx, std::uint16_t ty) const {
     (void)s;
+    terrain_.release_window();  // 287f:1314, 1df8: the window built at the party's place
     if (s_.spectator && t == 13) return true;
     int index = 0x96;  // the view's middle cell
     int half_x = 1;
