@@ -1635,8 +1635,9 @@ sequence compares the scene with the original's, over the whole screen and the s
     bring it down in round 5, short of any edge.
 17. Answered: mission 6's draw lands on the raid in the campaign run (`chain`, docs/reference.md),
     and the raid matches from there to its ending text, Begin Fight round after round until the
-    Jenners bring the Chameleon down. Mission 6 without the raid (the draw's other side) is still
-    not compared.
+    Jenners bring the Chameleon down. Mission 6 without the raid (the draw's other side) is
+    compared by `sixth`: three Locusts, a fled fight (F:3992), not passed, and the two skill
+    draws.
 18. Answered: special 43 (scripts.md) is compared in the campaign run (`chain`, docs/reference.md),
     which wins mission 5 by orders. Its walker stays inside while flag 2d is set
     (docs/townspeople.md).
@@ -1648,6 +1649,11 @@ sequence compares the scene with the original's, over the whole screen and the s
     up or left across an area edge: no reference case reaches it. Every call in the campaign and
     full runs had the undrawn figure below and right of the view's centre. It needs a shot
     with one end off screen above or left of the view, across an area edge.
+21. F:3992 set from the computer's side: computer control planning a party person against an
+    enemy 'Mech (`1e31:03ab`, section 4 step 5, bug 13) fails a mission as fleeing does. No reference
+    case reaches it: in the training missions the party is Jason in his 'Mech alone, and no
+    test value is poked to make one. It needs a party person on foot in a mission fight with
+    the computer fighting.
 21. A duplicate waypoint recognised (203b:1c1f, the order removed): no reference case reaches it.
     It needs a fight in area rows 0-7 (bug 16 hides it in rows 8-15, `chain_waypoints_edge`).
 

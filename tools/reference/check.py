@@ -663,6 +663,34 @@ FOURTH_CASES = [dict(case, compare=False) for case in TRAINING_CASES[:4]] + [
     {"name": "fourth_in_town", "keys": "enter", "match": SCREEN},
 ]
 
+# Training mission 6 (flag 00 poked to 6): one r, the raid when r & 1; here
+# it is 0 (from a new game no idle passes are needed; each 11 shift the draw
+# by one), so three enemy LOCUSTs and fight kind 1, with the computer
+# question (answered no). Three rounds of Begin Fight (the Locusts keep out
+# of range: no draws), then Flee: its r & 3 is not 0, so the party escapes
+# and F:3992 is set. Kind 1's line telling the party to go back (DG:398b),
+# the walk back to the door,
+# the verdict (not passed: F:3992), the Gunnery and Piloting draws (mode 6 is
+# above 4) and the town (docs/combat.md 1.3, 2.7).
+SIXTH_CASES = [dict(case, compare=False) for case in FOURTH_CASES[:4]] + [
+    dict(FOURTH_CASES[4], name="sixth_question",
+         keys=FOURTH_CASES[4]["keys"].replace("flag:00=04", "flag:00=06")),
+    dict(FOURTH_CASES[5], name="sixth_greeting"),
+    dict(FOURTH_CASES[6], name="sixth_briefing"),
+    dict(FOURTH_CASES[7], name="sixth_mech_menu"),
+    {"name": "sixth_computer", "keys": "enter", "match": SCREEN},
+    {"name": "sixth_messages", "keys": "enter", "match": SCREEN},
+    {"name": "sixth_graphics", "keys": "up*2 enter", "match": SCREEN},
+    {"name": "sixth_orders", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "sixth_round_1", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "sixth_round_2", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "sixth_round_3", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "sixth_fled", "keys": "up enter", "match": SCREEN, "fight": True},
+    {"name": "sixth_walk", "keys": "enter", "match": SCREEN},
+    {"name": "sixth_over", "keys": "left*4", "match": SCREEN},
+    {"name": "sixth_in_town", "keys": "idle:9", "match": SCREEN},
+]
+
 # Training mission 7 (flag 00 poked to 7): always the raid. Its message,
 # the options without the computer question, then Begin Fight round after
 # round: a story line after each (the second with the place's picture,
@@ -2808,6 +2836,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("course", COURSE_CASES, COURSE_FULL_CASES, []),
              ("spot", [], SPOT_CASES, []),
              ("fourth", [], FOURTH_CASES, []),
+             ("sixth", [], SIXTH_CASES, []),
              ("raid", [], RAID_CASES, []),
              ("raid_walkout_poked", [], RAID_WALKOUT_POKED_CASES, []),
              ("rest", [], REST_CASES, []),

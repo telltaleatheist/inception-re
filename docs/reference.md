@@ -467,7 +467,14 @@ structure), and each round's random state poked (steered, found by searching see
 life support and an emptied leg, the head's item, then the cockpit; and in the other, the
 engine's third hit. Both end with the wreck refused at the salvage. `fourth` (long only) is mission 4 (flag 00
 poked to 4): no computer question (F:0090), the Locust flees at the first orders menu, the walk
-back, the verdict and the town. `raid` (long only) is mission 7 (flag 00 poked to 7), the
+back, the verdict and the town. `sixth` (long only) is mission 6 (flag 00 poked to 6) on the
+draw's other side: from a new game its r & 1 is already 0 (each 11 idle passes before the
+question would shift it by one draw), so three LOCUSTs and fight kind 1, with the computer
+question answered no. Three rounds of Begin Fight draw nothing (the Locusts stay out of
+range), then Flee draws r & 3 not 0: the party escapes and F:3992 is set. Kind 1's line about
+going back to base, the walk to the door, the verdict (not passed, for F:3992) and the
+Gunnery and Piloting draws of modes above 4 follow, and the town, with no key between the
+verdict and the town. `raid` (long only) is mission 7 (flag 00 poked to 7), the
 Kurita raid: the computer question (only mission 4 skips it), then Begin Fight round after round
 through the five story lines and the load of map 11, until the Jenners bring the Locust down,
 then the results and the script. `rest` (long only) is the third mission's first try with
