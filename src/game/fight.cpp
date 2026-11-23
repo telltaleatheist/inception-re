@@ -1393,8 +1393,16 @@ Combat Town::combat_rules() {
     hooks.sound = [this](int n) { play_sound(n); };
     hooks.picture = [this](int number, int mode) { show_picture(number, mode); };
     // 1e31:1dcc: 12 frames for each step of the message speed (DG:015e);
-    // from 5 up it waits for a key instead (docs/combat.md 3.8).
-    hooks.pause = [this] { hold_screen(12 * message_speed_); };
+    // from 5 up a key instead (273d:0259, docs/combat.md 3.8). Pauses come
+    // only inside a round, so a key that isn't there stops the fight as the
+    // key hook does.
+    hooks.pause = [this] {
+        if (message_speed_ < 5) {
+            hold_screen(12 * message_speed_);
+            return;
+        }
+        if (!round_keys_ || !read_key(*round_keys_)) throw KeysRanOut{};
+    };
     hooks.log = [this](const std::string& line) {
         if (log_.empty() || log_.back() != line) log_.push_back(line);
     };

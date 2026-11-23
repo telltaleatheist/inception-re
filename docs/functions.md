@@ -190,7 +190,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 1e31:1b8f | 0x1fe9f | `FUN_1e31_1b8f` | 111 | Prints a hit location's name and "." as one string (docs/combat.md 3.8) | rebuilt |
 | 1e31:1bfe | 0x1ff0e | `FUN_1e31_1bfe` | 429 | Line of sight from the party's position to a figure | rebuilt |
 | 1e31:1dab | 0x200bb | `FUN_1e31_1dab` | 33 | Prints a text into the current window when combat messages are on (DG:2e38) (docs/combat.md 3.8) | rebuilt |
-| 1e31:1dcc | 0x200dc | `FUN_1e31_1dcc` | 44 | The pause after a shot: 12 x DG:015e frames, or a key from 5 on (docs/combat.md 3.8) | rebuilt in part (speed 5's wait for a key is held as frames) |
+| 1e31:1dcc | 0x200dc | `FUN_1e31_1dcc` | 44 | The pause after a shot: 12 x DG:015e frames, or a key from 5 on (docs/combat.md 3.8) | rebuilt |
 | 1e31:1df8 | 0x20108 | `FUN_1e31_1df8` | 170 | A place's text cell in the view centred on another, half-cell by half-cell (into F:e486/e488) | rebuilt |
 | 1e31:1ea2 | 0x201b2 | `FUN_1e31_1ea2` | 103 | A line's octant from its y and x differences | rebuilt |
 | 1e31:1f09 | 0x20219 | `FUN_1e31_1f09` | 106 | The shot's redraw: the saved cell window back, the view onto Jason, tiles' frame, view and figures | rebuilt (not shown) |

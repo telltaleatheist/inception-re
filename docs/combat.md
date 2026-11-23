@@ -1184,8 +1184,7 @@ off the to-hit number:
    `1000:28a2`) and the destroyed line (DG:2b6d), then the colour goes back to 15.
 
 `1e31:1dcc` pauses after a shot: 12 x DG:015e frames, or until a key when DG:015e is 5 or more.
-The rebuild holds 12 x DG:015e frames at every speed: the wait for a key at speed 5 (the settings'
-last message speed) is not rebuilt yet.
+The settings' last message speed is 5, so a player can choose the key.
 Whatever the level, so a fight with messages None pauses as long.
 
 ### 3.9 The hit location
