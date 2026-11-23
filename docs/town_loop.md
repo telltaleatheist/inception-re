@@ -275,7 +275,7 @@ So a new game in town has 35 C-Bills after the first tick and 50 after the 257th
 come that way. Checked against the original by `check.py` (`money_step`).
 
 `1e31:1fdf`, the C-Bills line: in window 3, cursor column 0 row 9, it prints the string at
-DG:32da (colour code 15, "C-Bills:", a line break), sets the colour to 10 (`1000:28a2`; 1 on
+DG:32da (colour code 15, the money label, a line break), sets the colour to 10 (`1000:28a2`; 1 on
 CGA), prints the amount in decimal padded with spaces to 10 characters, sets 15 again, and
 selects the window that was current before.
 

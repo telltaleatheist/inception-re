@@ -20,7 +20,7 @@ thousands of keys and many fights, all played again on every key.
 ## Where the logic must stop
 
 At every point the original reads input:
-- a question's key (menus, yes/no, "press a key", the names);
+- a question's key (menus, yes/no, a press-a-key wait, the names);
 - the fight's once-a-round poll (203b:1015). A key pressed during a computer-fought fight
   hands the fight back to the player, so the poll must see keys pressed while the
   previous round was shown;

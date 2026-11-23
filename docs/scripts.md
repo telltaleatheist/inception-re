@@ -50,11 +50,11 @@ Answering Yes at an entrance calls `17dc:0008(n)` with the map's place number:
   | 08 | d314 | the course chosen (special 05) |
   | 09 | d315 | special 05's answer: 1 enrolled |
   | 0a | d316 | set on entering a place |
-  | 0d | d319 | which place, for "talk to others" |
+  | 0d | d319 | which place, for Talk |
   | 0e | d31a | members besides Jason (special 14) |
   | 14–16, 1d, 29, 37–39 | | timers the game tick counts down (docs/town_loop.md) |
   | 17 | d323 | the money step's countdown |
-  | 2d, 2e | d339, d33a | the let-out case of "talk to others" |
+  | 2d, 2e | d339, d33a | the let-out case of Talk |
   | 33–34 | d33f | the money floor, a word: 50 at a new game |
   | 4f | d35b | how often a place's picture shows |
 - **The current text window and its cursor** (docs/text.md).
@@ -137,9 +137,9 @@ starting answer.
    (Piloting) the hit points also lose 2 x byte 1.
 5. A seat: the first 'Mech record m (0-3) in use whose second seat (byte 0x7a) is ff gets
    k there, and byte 0x0c = m.
-6. "His name is " (DG:1e2f), the name, " and he will be " (DG:1e3c), then "on foot." (DG:1e4d),
-   or "riding as a passenger in " (DG:1e56), the pilot's name (the character in the 'Mech's
-   byte 0x79) and "'s 'Mech." (DG:1e70). The panel is drawn (`1000:4cac(1)`).
+6. A line introducing the new member by name (DG:1e2f, the name, DG:1e3c) and saying where he
+   will be: on foot (DG:1e4d), or riding with a pilot (DG:1e56, the pilot's name, the character
+   in the 'Mech's byte 0x79, and DG:1e70). The panel is drawn (`1000:4cac(1)`).
 7. Unless keys are being played back (F:3938), it waits for a key by polling, **drawing one
    random number each time no key is waiting** (`1000:a960`). Then the buffer is flushed
    (`1000:2a2b`), which eats that key, and a key is read (`273d:0259`): two keys in all. Then,
@@ -187,7 +187,7 @@ each one.
 | 08 | 24d3:04ad | COMSTAR | withdraws an investment: "ComStar", below |
 | 09 | 24d3:09c7 | ARMOR | buys the armour chosen: "The shops", below |
 | 11 | 24d3:0a4b | WEAPON | buys the weapon chosen: "The shops", below |
-| 12 | 24d3:0aea | ten places | "talk to others": `17dc:17b9`, below |
+| 12 | 24d3:0aea | ten places | Talk: `17dc:17b9`, below |
 | 13 | 24d3:0b26 | REPAIR, HOSPITAL | who attends: special 14, then menu 0x17 at the cursor's row, one item per present character (its name and a line end), the bar on the first; flag 0e = the chosen character's record |
 | 15 | 24d3:0bfc | REPAIR | the Tech course: with 500 C-Bills, the character in flag 0e pays, gets Tech + 1 and byte 0x10 bit 0; flag 0e = 1 and the C-Bills redrawn (it ends through special 21's tail, 0c9b). Short of 500: flag 0e = 0, nothing else |
 | 16 | 24d3:0be1 | REPAIR | flag 0f = byte 0x10 bit 0 of the character in flag 0e (the Tech course taken) |
@@ -525,11 +525,12 @@ foot and empties every seat.
 Then, until the player is done:
 1. Window 6, cleared and framed, colour from `1000:28a2`: the heading
    (DG:2622). Menu 23's first row is the cursor row. For each character record in use, in order:
-   his name, then " on foot" (DG:2643), or a space, the 'Mech's name (the record's first 19
-   bytes, trailing spaces trimmed) and " pilot" (DG:264d) or " rider" (DG:2655). Then "Done"
-   (DG:265d); menu 23 gets as many items as there are characters, plus one.
-2. From row 10, for each 'Mech in use: its name, then "Pilot:" (DG:2663) and the pilot's name or
-   "None" (DG:2670), "Rider:" (DG:2675) and the rider's or "None" (DG:2682), and a line end
+   his name, then the on-foot label (DG:2643), or a space, the 'Mech's name (the record's first
+   19 bytes, trailing spaces trimmed) and the pilot or rider label (DG:264d / DG:2655). Then the
+   Done item (DG:265d); menu 23 gets as many items as there are characters, plus one.
+2. From row 10, for each 'Mech in use: its name, then the pilot label (DG:2663) and the pilot's name
+   or the empty-seat word (DG:2670), the rider label (DG:2675) and the rider's or the empty-seat
+   word (DG:2682), and a line end
    (`24d3:181e`). The names of the people are in colour 2 and the labels in 15 (colour codes
    in the strings); after each 'Mech the colour is set to 15. So the first 'Mech's name is in
    step 1's light green and the others in white; on CGA (F:4fba = 0) each is in colour 1.
@@ -539,12 +540,14 @@ Then, until the player is done:
    byte 8, not 0) than there are 'Mechs: a pause and a key, DG:26af, a key, DG:26ed (the
    `24d3:17ea` box) and the yes/no question (`1000:1a13`). Yes abandons each 'Mech with no
    pilot (byte 0 = ff, anyone in it put on foot). Either way the screen goes round again, and
-   Done ends it once every 'Mech left has a pilot. With enough pilots: DG:271e (assign a
-   pilot to each) and a key, and round again.
-5. **A character**: in window 4, his name, " is " (DG:2736), "not " (DG:273b, after the colour
-   call) when his Piloting is 0, and DG:2740 (the end of "is (not) a qualified pilot"). Window 3: the vehicle
-   question (DG:275b), then each 'Mech in use's name and "None" (DG:2775); menu 3 gets one
-   item per 'Mech, plus one. He is taken out of every seat first. "None": on foot. A 'Mech: the
+   Done ends it once every 'Mech left has a pilot. With enough pilots: DG:271e (telling the
+   player every 'Mech needs one) and a key, and round again.
+5. **A character**: in window 4, a line saying whether he can pilot a 'Mech: his name,
+   DG:2736, DG:273b (the negation, after the colour call) only when his Piloting is 0, and
+   DG:2740. Window 3: the vehicle
+   question (DG:275b), then each 'Mech in use's name and a last item for no 'Mech (DG:2775); menu 3
+   gets one item per 'Mech, plus one. He is taken out of every seat first. The last item: on
+   foot. A 'Mech: the
    rider's seat, unless he can pilot; then the pilot's seat, but if the 'Mech has a pilot,
    the question whether to make him the pilot (DG:277a) and No gives the rider's seat. Whoever had the
    seat: a rider goes on foot; a pilot becomes the rider, and the rider he displaces goes on
@@ -700,7 +703,7 @@ for a party of one:
    up to 10-13 (2 + a random 0-3 of them, on foot, random stats, a 2d6 roll), placed around
    0a72/0a73,805d/805e by the offsets at DG:1e7a / DG:1e82, then calls the fight routine
    `203b:000a` with kind -1. On the original the scene's last screen stays up and the fight
-   begins at "Do you want the computer to fight for you?", with no encounter box: Jason and
+   begins at the question whether the computer should fight (DG:1115), with no encounter box: Jason and
    the new companion (record 1) against the soldiers. Kind -1 counts as not 0 where the routine
    tests for kind 0 and as below 1 where it compares (docs/combat.md, not written up yet).
 

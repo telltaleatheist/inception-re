@@ -53,7 +53,7 @@ result is thrown away.
 | 2 | the mission driver, mode 8 | the Arena |
 | 3 | the mission driver, mode 9 | the fights of mode 9 (Jason alone on foot) |
 
-Kind 0 is the only one that builds its own enemies, asks "Engage in combat?", allows evading,
+Kind 0 is the only one that builds its own enemies, asks whether to engage (`fight.engage`), allows evading,
 and gets the salvage tail; kind 3 shares that tail; kinds 1 and 2 get the mission tail. For
 kinds 1-3 the mission driver calls `17dc:0d49` to set up the opponents first.
 
@@ -127,7 +127,7 @@ itself is in 2.6.
 
 With "Should the computer fight?" answered Yes, at every combat messages level and with combat
 graphics off or on, the whole fight runs from random draws alone: the planner (section 4), the rounds (section 3) and
-the end tests (2.8), up to "You should return to base now." (2.12). Rebuilt in
+the end tests (2.8), up to kind 1's line sending the party back to base (2.12). Rebuilt in
 `src/game/combat.cpp` (the rules) and `Town::fight_rounds` (the loop), and matched on the
 original by the rig's `mission`, `verbose`, `brief` and `drawn` (graphics on) sequences
 (docs/reference.md): the
@@ -270,7 +270,7 @@ FUN_17dc_0d49. `a` is the number of enemy 'Mechs, `b` the number of enemy people
    - character 8 + i: byte 0 = 0, its 'Mech slot (byte 0x0c) = 4 + i;
    - 'Mech record 4 + i: the template's 0x7d bytes. In the raid the template is JENNER
      (27e8:0561). With F:e48e and i > 0, record 5 is also filled from 27e8:05de (the
-     "spectator", 3.14);
+     spectator, 3.14);
    - flag 03 (F:d30f): 0 in the raid; clamped to at most 6. Each armour byte 0x11-0x1b is cut by
      DG:165a[flag 03], to 0 if it is not more than the cut;
    - flag 03 above 4: five draws, each picks slot byte 0x34 + (r & 0x1f) and sets its destroyed
@@ -301,7 +301,7 @@ FUN_17dc_0d49. `a` is the number of enemy 'Mechs, `b` the number of enemy people
   then, only with flag 23 clear (the spectator not destroyed), `17dc:1b41` undoes it (slots
   back to 8); with flag 23 set it takes the theft's way instead. Either way F:e48e = 0 at the
   end (docs/scripts.md, "The Arena"). F:e48e marks figure 13 as
-  the "spectator" (3.14). The enemy 'Mech is made by `0d49`'s bit-0x80 branch (1.4, step 4).
+  the spectator (3.14). The enemy 'Mech is made by `0d49`'s bit-0x80 branch (1.4, step 4).
 - **The Kurita raid** (F:3772, modes 6 and 7): four JENNERs, the armour cut off, a story message
   first (2.4), one more story line per round (2.11), and fleeing only by walking out of the
   area (2.7).
@@ -359,8 +359,8 @@ in some places and kinds 1-3's in others. The kind is not stored anywhere else.
 | 203b:0ef6 | kind 1 ends when figure 0 is gone (2.8) | no |
 | 203b:0f13 | kind 2 ends when the Arena is lost (2.8) | no |
 | 203b:1051 | kinds below 1 and kind 3 go on to the after-fight steps (2.12) | yes: the win text, 2.15, healing, or "eluded" |
-| 203b:12f1 | kinds below 1 and kind 3: "You return to where you were..." and the walk back (2.12) | yes, to 0a69,805e |
-| 203b:1388 | kind 1: "You should return to base now." | not reached (kinds 1-2 only) |
+| 203b:12f1 | kinds below 1 and kind 3: the line about going back to where the fight began, and the walk back (2.12) | yes, to 0a69,805e |
+| 203b:1388 | kind 1: the back-to-base line (DG:398b) | not reached (kinds 1-2 only) |
 
 So the alley fight runs like a won or fled random encounter, with no encounter box: the computer
 question first (2.4), Flee allowed, and kind 0's ending, which walks the party back to 0a69,805e.
@@ -502,12 +502,12 @@ The encounter comes at the game tick's step 2, before the tick draws the map (do
 so the screen (and the page) still shows the map as the previous tick drew it, from before the
 step that started the encounter. Nothing draws the map again until a later tick, unless the
 fight's graphics or orders screen do.
-4. "Attacking force:" (DG:3402), the number of enemy 'Mechs with " 'Mech" / "s" if more than
-   one and " and", then always the number of enemy people placed with " human" and "s" unless
-   it is 1 (so "0 humans").
-5. "Engage in combat?" (DG:3428), yes/no, default yes.
-6. Declined: one r; r & 3 not 0 (3 in 4) evades (no fight, 2.12). Otherwise "You did not evade
-   them!" (DG:343a), a key, and the fight goes on.
+4. The attacking-force heading (DG:3402), the count of enemy 'Mechs with its noun (plural when
+   more than one) and a joining word, then always the count of enemy people placed with its
+   noun, plural unless the count is 1 (so a count of 0 is plural too).
+5. The engage question (DG:3428), yes/no, default yes.
+6. Declined: one r; r & 3 not 0 (3 in 4) evades (no fight, 2.12). Otherwise a line saying the
+   party failed to evade (DG:343a), a key, and the fight goes on.
 
 Rebuilt (`Town::random_encounter`, `Town::place_encounter`, `Combat::reaches`,
 `Town::encounter_end`). The rig checks it on the walk out of the town after the raid: four
@@ -524,11 +524,11 @@ Kinds 1-3 always fight.
 1. In the raid: a message box (DG:3452), a key.
 2. Kind 2: the view is set on the party and drawn.
 3. F:009e (the computer fights for the party) = 0. Unless F:0090 is set (mode 4), the
-   question "Do you want the computer to fight for you?" (`15ab:0b5e`, DG:1115), yes/no with
+   question whether the computer should fight for the party (`15ab:0b5e`, DG:1115), yes/no with
    F:009e as the default: always No, as it was just cleared.
-4. "Combat messages:" None / Brief / Verbose (`203b:24f0`, DG:3d3a) into DG:2e38 (0, 1, 2),
+4. The combat-messages question with its three levels, none, brief and verbose (`203b:24f0`, DG:3d3a) into DG:2e38 (0, 1, 2),
    remembered between fights.
-5. "See combat graphics:" yes/no (`203b:2556`, DG:3d5e) into DG:2e3a, remembered. **This
+5. The combat-graphics question, yes/no (`203b:2556`, DG:3d5e) into DG:2e3a, remembered. **This
    setting changes how many random numbers a fight draws** (section 5).
 
 ### 2.5 The round loop and the order of turns
@@ -582,9 +582,9 @@ instead.
 
 - **A move order** (`203b:1c1f`): if the 'Mech's orders are of another type (walk, run, jump),
   the player is asked whether to change; yes deletes them. With no movement points left a reason
-  is shown (no jump jets DG:3bad; overheated DG:3bca; leg damage or heat DG:3bf3; "You can't ...
-  any further this turn" DG:3c33, with a hint to try running). Otherwise "You have N" movement
-  points and the cursor: the eight direction keys move it (kept inside columns 0x0d-0x27, rows
+  is shown (no jump jets DG:3bad; overheated DG:3bca; leg damage or heat DG:3bf3; the no-more-movement
+  line DG:3c33, with a hint to try running). Otherwise the count of movement points left and
+  the cursor: the eight direction keys move it (kept inside columns 0x0d-0x27, rows
   0-0x18); each move puts a tentative waypoint at the cursor and redraws the path; Space or Enter
   accepts. There is no cancel key. Each call adds at most one waypoint (up to 12 per figure).
   The number shown is not updated as the cursor moves. The target may be out of reach: the path
@@ -592,13 +592,14 @@ instead.
   - A unit under the computer has its orders deleted and its screen redrawn first; computer
     control goes off.
   - The question (a 'Mech with orders of another type, unless it asks to jump with no jump jets):
-    "You are now" and one string built from the old type's name, "n" for Run, and "ing", then the
-    new type's name, as a yes/no question starting on yes. No leaves the order. Yes: "orders
-    deleted", the orders cleared, the screen shown again without redrawing, and a key.
+    a yes/no question starting on yes, asking whether to switch: the old type's name made into
+    its -ing form (Run with its n doubled) and the new type's name. No leaves the order. Yes: a
+    line saying the orders are gone, the orders cleared, the screen shown again without
+    redrawing, and a key.
   - The new waypoint goes in the first order whose type is ff. The movement points are worked
     out for the new type and the path simulated, window 4 is cleared.
-  - With no points: the reasons in that order, then "Press a key." On foot, F:377c and F:4592 are
-    cleared before the test, so a person only ever gets "You can't move any further". Both are
+  - With no points: the reasons in that order, then the press-a-key prompt (DG:050d). On foot, F:377c and F:4592 are
+    cleared before the test, so a person only ever gets the can't-move-further reason. Both are
     cleared afterwards.
   - The cursor starts where the shown path ends (F:3778/377a), a cell XORed with 14. Keys go
     through `2656:0d1d`. A move that would leave columns 0x0d-0x27 or rows 0-0x18 is undone on
@@ -617,8 +618,8 @@ instead.
   figures 12-23, with no range or line-of-sight check (the round decides). In detail (rebuilt,
   `Town::weapons_order`, `Town::pick_target`):
   - A 'Mech's list is its first twelve items 0x10-0x20 (bit 7 destroyed) in item order. Window 5
-    is sized to it: top row 0x16 - n, height n + 2 (the window record changes). "Select the
-    weapon to fire." is printed once in window 4; each pass shows the unit's screen again and the
+    is sized to it: top row 0x16 - n, height n + 2 (the window record changes). The prompt to
+    pick a weapon (`weapons.select`) is printed once in window 4; each pass shows the unit's screen again and the
     list in window 5 (frame 0): the heading in light green, then per weapon its name (yellow with
     a target, white without, grey destroyed; on the CGA 1, 15, 2), at column 0x0b its ammunition
     padded to three, at 0x10 its target and at 0x18 the range band from the unit; then Done. A
@@ -628,10 +629,10 @@ instead.
     framed again.
   - The picker starts from DG:2b20, the figure last offered, kept between calls (12 at start),
     skipping inactive figures and wrapping 23 to 12. Each shows the figure's screen
-    (`203b:1774(t, 1)`: the view moves onto the target), a menu of three in window 3 (target
-    here, next enemy, cancel; the bar where menu 3 was left), the target's name ('Mech) or its
-    weapon (person) and the range band from the unit. Target here sets the slot, cancel clears
-    it. If no enemy figure were active the loop would never end; a fight with none is over first.
+    (`203b:1774(t, 1)`: the view moves onto the target), a menu of three in window 3
+    (`pick.menu`: aim at this figure, move on to the next enemy, or give up; the bar where menu 3
+    was left), the target's name ('Mech) or its weapon (person) and the range band from the
+    unit. The first choice sets the slot, the last clears it. If no enemy figure were active the loop would never end; a fight with none is over first.
   - On foot: the weapon's target now and its range band, with a yes/no to change it; then the
     picker for slot 0.
 - **Kick** (`203b:2231`, rebuilt, `Town::kick_order`): window 4 cleared. With both hip
@@ -654,7 +655,7 @@ instead.
   second: Locust and Spectator 3, 3, 5; Wasp 2, 2, 5; Stinger 3, 5, 7; Commando 3, 4, 10.
 - **Computer** (`1e31:03ab(fig, 1)`): the planner, then the unit's screen with the planned path
   (`203b:1774(fig, 1)`), and the position restored. The menu's pass for a unit under the computer
-  shows "The computer is currently moving this unit" and does the same.
+  shows the line saying the computer is moving it (`orders.computer_moving`) and does the same.
 - **Scan** (`203b:2591`): a person cannot see enemy 'Mechs while any is active; a 'Mech whose
   sensors are destroyed (byte 0x77 = 2) cannot scan 'Mechs. In detail (rebuilt for 'Mechs,
   `Town::scan_order`, `Town::scan_list`):
@@ -667,8 +668,8 @@ instead.
   - The list (`15ab:1467(fig, 12 x side, mechs)`) takes the twelve figures of that side in turn,
     from the first (from the first person without 'Mechs), skipping any inactive or unplaced
     (x or y ffff). Each is shown in window 4: a party unit's heading (`15ab:18e8`); an enemy
-    'Mech, "Enemy", the record's name as it is stored (padded with spaces) and in light green
-    "Direction:" with the direction from the scanning unit (`287f:0971`, DG:01aa's names); an
+    'Mech, the enemy label (`scan.enemy`), the record's name as it is stored (padded with
+    spaces) and in light green the direction label (`scan.direction`) with the direction from the scanning unit (`287f:0971`, DG:01aa's names); an
     enemy person, the enemy-human label (DG:114f), its condition (`1e31:02e4`), at row 7 in light green
     the weapon label (DG:115b), at row 8 its weapon's name, then the direction as for a 'Mech.
     The heading is called with both flags 1 here: for a party person it is the character's name,
@@ -726,10 +727,10 @@ and fights three rounds on the run orders.
 - Flee chosen: one r; r & 3 not 0 (3 in 4) escapes. The draw is made even where fleeing is then
   refused.
 - Kinds 2 and 3: never (the result is set to 0).
-- The raid: choosing Flee gives "You cannot escape these Jenners!" (DG:3497). Instead, if figure
+- The raid: choosing Flee gives a line that the Jenners can't be escaped (DG:3497). Instead, if figure
   0 is outside the box x 0x0b7f-0x0cff, y 0xb07f-0xcfff at the orders step, the party escapes
   (value 2) without a draw.
-- Failed: window 3 is cleared, "You do not escape!" (DG:34b8), "Press a key." (DG:050d, `1000:2a4f`)
+- Failed: window 3 is cleared, the failed-escape line (DG:34b8), the press-a-key prompt (DG:050d, `1000:2a4f`)
   and a key; the round goes on. Kinds 2 and 3 always end here, after the draw.
 - Escaped in kinds 1-3: F:3992 = 1 (the mission is failed).
 - Computer control with no party 'Mech left: r & 3 (2.5).
@@ -790,8 +791,8 @@ frame is not set to the body as a killed person's is. Rebuilt (`Town::double_age
 
 If F:374c was set this round (an enemy person was planned against a 'Mech, 4.4):
 - With an enemy 'Mech still active: each active enemy person further than 25 (distance 3.6) from
-  its first target is removed. "Some of the enemy humans have fled!" (DG:38bc) if any. No draw.
-- With no enemy 'Mech: one r; r & 1 ends the fight with "The enemy humans have fled!" (DG:38e0).
+  its first target is removed. a line that some enemy people fled (DG:38bc), if any did. No draw.
+- With no enemy 'Mech: one r; r & 1 ends the fight with a line that the enemy people fled (DG:38e0).
 
 Only in a kind-0 fight that is not already over. The distance is measured from the person as if the
 party stood there: the party position is set to each active person's in turn and put back only
@@ -849,19 +850,19 @@ memory as it was (rebuilt, `Town::walk_position`).
 
 - **No fight** (kind 0 with no enemy or none reachable): the view goes back to the entry
   position (`203b:2aa3`).
-- **Kinds 0 and 3**, fought, not fled and the leader alive: window 1; "After an invigorating
-  scuffle, you defeated the Kuritans." (DG:38fc) if any enemy figure is destroyed; then the
+- **Kinds 0 and 3**, fought, not fled and the leader alive: window 1; the line about beating the
+  Kuritans (DG:38fc) if any enemy figure is destroyed; then the
   after-fight steps (2.15), flag 29 = 0, and healing `1c31:000a(0)` if any party character has
   lost hit points (the sum of 10 x byte 1 - byte 0x0f is not 0; healing is below).
-  Declined and evaded, or fled: "You have eluded your enemies!" (DG:3936).
-  Then, leader alive: the panel, "You return to where you were before combat took place."
+  Declined and evaded, or fled: the eluded line (DG:3936).
+  Then, leader alive: the panel, the line about going back to where the fight began
   (DG:3954), and the party position is walked back to the entry position, the areas around it
   reloaded (`203b:2835`) and the view drawn.
-- **Kind 1** (leader alive, not the raid): "You should return to base now." (DG:398b).
+- **Kind 1** (leader alive, not the raid): the back-to-base line (DG:398b).
 - **Kind 2** (leader alive, not the raid, the exit zone not reached): flag 21 (F:d32d) = 1 and
-  "Congratulations! You have won!" (DG:39aa) if Jason's 'Mech exists; otherwise flag 21 = 0 and
+  the victory line (DG:39aa) if Jason's 'Mech exists; otherwise flag 21 = 0 and
   the crowd boos (DG:39ca).
-- **The raid** escaped by leaving the area: "You have eluded your enemies!" (DG:39f7).
+- **The raid** escaped by leaving the area: the eluded line (DG:39f7).
 
 ### 2.13 Always last
 
@@ -872,7 +873,7 @@ townspeople with `1000:24c2`, which sets a facing only for a walker near the par
 first town tick after it starts their walking scripts afresh.
 
 Kinds 1 and 2 skip the after-fight steps (2.15): 203b:1051 goes on to them only for kinds 0 and 3.
-For kind 1 the ending is "You should return to base now." (DG:398b) and a key, unless the raid
+For kind 1 the ending is the back-to-base line (DG:398b) and a key, unless the raid
 (F:3772) or the fight is over without it (DG:014a = 0).
 
 ### 2.14 What the fight writes back
@@ -947,7 +948,7 @@ its last character, then the record's first letter (F:323e) and the rest of its 
 character: with wrecks left the loop goes on to the next character, with none it ends.
 
 **Loot** (`15ab:094b`, FUN_15ab_094b), always on this path. If any figure 4-11 or 16-23 is
-marked destroyed: "You dig through the soldiers' pockets and find" (DG:1085) a sum of (r & 0xf)
+marked destroyed: the line about money found on the soldiers (DG:1085), with a sum of (r & 0xf)
 + 3 per beaten enemy person (at least 2 in all) C-Bills. If weapons were found (bug 27), each
 beaten enemy person's weapon is offered: when Jason is alone, as a swap for his own (DG:10e5,
 default no); otherwise through `17dc:15e6`.
@@ -968,13 +969,13 @@ when the soldiers carried nothing. Rebuilt (`Town::loot`).
 number w). The party is the character records 0-7 whose byte 0 is not ff, in order: n of them.
 With n = 1, record 0's weapon (byte 0x0b) becomes w and it ends (the loot never calls it so).
 Otherwise, while w is not 0:
-1. The current window is cleared (`2656:0388`); "Give " (DG:16ae), w's name (the weapons table
+1. The current window is cleared (`2656:0388`); the offer's opening word (DG:16ae), w's name (the weapons table
    at DG:2ed8), " to:" and a line end (DG:16b4).
 2. For each member: his name, the cursor to column 10 (F:3748), his weapon's name, a line end
-   (`24d3:181e`). Then "Drop it" (DG:16ba).
+   (`24d3:181e`). Then the drop-it item (DG:16ba).
 3. Menu 4's item count (F:00d6) is set to n + 1, and menu 4 runs (`2656:0b5e`).
 4. The last item (Drop it): it ends, the weapon is left. A member: his weapon becomes w. If it
-   already was w, "He already has that weapon." (DG:16c2) is printed at column 0, row 20 in
+   already was w, the already-has-it line (DG:16c2) is printed at column 0, row 20 in
    white (`1000:2867`), then the message pause and a key (`273d:086a`, `0259`). Either way his
    old weapon becomes w, and the loop offers it next: so the old one goes round until someone
    is given a 0 (no weapon) or it is dropped. A member who already had w gets w again, and w is
@@ -986,7 +987,7 @@ chain_party, and Edward's Rifle and Crossbow in chain_money_1_swap); this is how
 works, not a fault in it, so it is not in the bug list.
 
 **Healing** (`1c31:000a`, FUN_1c31_000a; its argument is a doctor's level, 0 after a fight). With
-flag 29 set it only opens the message box with "Your characters need more time to recover."
+flag 29 set it only opens the message box with the line that the characters need more rest
 (DG:25a4) if anyone is hurt, otherwise DG:25cf, and waits for a key. Otherwise:
 - The medic is the first present character (records 0-7) with the highest Medical skill (byte
   0x0a, signed); Jason and 0 if nobody has any.
@@ -1003,7 +1004,7 @@ flag 29 set it only opens the message box with "Your characters need more time t
   by dice from DG:2601 + 4 x skill + care: the low nibble is a count of d6 (`1000:19f3`: r & 7,
   drawn again above 5, plus 1), and a high nibble, when not 0, multiplies their sum. Never above
   10 x B. Skills above 7 read past the table, into the text after it.
-- Colour 15, the message pause, "Press a key." and a key, the panel (`4cac(0)`), flag 29 = 0x3f.
+- Colour 15, the message pause, the press-a-key prompt and a key, the panel (`4cac(0)`), flag 29 = 0x3f.
   The panel's bars show the hit points from before the healing until that `4cac(0)`.
 
 F:d450 and F:d451 are `Town::kits_`: 0 at a new game, read back by a load, and set by nothing
@@ -1165,23 +1166,24 @@ off the to-hit number:
 1. With messages on: window 4 is made current and cleared (`2656:0281(4)`, `2656:0388`).
 2. The colour (F:37fe) is 15 for a party shooter, 14 for an enemy, whatever the level.
 3. The shooter. Verbose only, except the Kick:
-   - a party 'Mech: its pilot's name, "'s Mech" (DG:3e44), then "uses a" (DG:3e58), or for the
-     Kick the buffer "kicks" (DG:3e4d; Brief: "Kick", DG:3e53), at both levels;
-   - a party person: the name, "uses a" (DG:3e60);
-   - an enemy: "An enemy" (DG:3e69), then "Mech" (DG:3e81) and "uses a" (DG:3e87) or the Kick's
-     buffer (DG:3e8f / DG:3e95), or "human uses a" (DG:3e73).
+   - a party 'Mech: its pilot's name, the possessive 'Mech word (DG:3e44), then the verb for using
+     a weapon (DG:3e58), or for the Kick the kicking verb (DG:3e4d; Brief: the Kick's short
+     form, DG:3e53), at both levels;
+   - a party person: the name, the using verb (DG:3e60);
+   - an enemy: the enemy word (DG:3e69), then the 'Mech word (DG:3e81) and the using verb
+     (DG:3e87) or the Kick's buffer (DG:3e8f / DG:3e95), or the human's using words (DG:3e73).
 4. The weapon's name (its record's first bytes), unless it is the Kick: at both levels.
-5. Verbose only: " on " (DG:3e9a) and the target: a party 'Mech, its pilot's name and "'s Mech"
-   (DG:3e9f) and "." (DG:3ea7) in one buffer; a party person, the name and "."; an enemy, "an
-   enemy" (DG:3ea9) and "Mech." / "human." (DG:3eb3 / DG:3eb9); the Arena's spectator, "a
-   spectator." (DG:3ec0) instead.
-6. The result, at both levels: a 'Mech target "Missed!" (DG:3ede), or "Hit " (DG:3ee7) and then
-   `1e31:1b8f`'s buffer, the location's name (found through DG:3242, names at DG:324e) and "."
-   (DG:3240); a person "Missed!" (DG:3ecd) or "Hit!" (DG:3ed6). A personal weapon at a 'Mech
-   prints nothing (bug 5).
-7. A critical hit (3.12) makes window 4 current without clearing it and adds "Critical!"
+5. Verbose only: a joining word (DG:3e9a) and the target: a party 'Mech, its pilot's name, the
+   possessive 'Mech word (DG:3e9f) and a full stop (DG:3ea7) in one buffer; a party person, the
+   name and a full stop; an enemy, the enemy word (DG:3ea9) and the 'Mech or human word with a
+   full stop (DG:3eb3 / DG:3eb9); the Arena's spectator, its own word (DG:3ec0) instead.
+6. The result, at both levels: at a 'Mech, the miss word (DG:3ede), or the hit word (DG:3ee7)
+   and then `1e31:1b8f`'s buffer, the location's name (found through DG:3242, names at DG:324e)
+   and a full stop (DG:3240); at a person, the miss word (DG:3ecd) or the hit word (DG:3ed6). A
+   personal weapon at a 'Mech prints nothing (bug 5).
+7. A critical hit (3.12) makes window 4 current without clearing it and adds the critical word
    (DG:315e) after the line. A 'Mech destroyed (3.14) does the same with light green (colour 10,
-   `1000:28a2`) and "Mech is destroyed!" (DG:2b6d), then the colour goes back to 15.
+   `1000:28a2`) and the destroyed line (DG:2b6d), then the colour goes back to 15.
 
 `1e31:1dcc` pauses after a shot: 12 x DG:015e frames, or until a key when DG:015e is 5 or more.
 Whatever the level, so a fight with messages None pauses as long.
@@ -1254,7 +1256,7 @@ Target figure 0-3 or 12-15 ('Mech m = t or t - 8).
 
 `1e31:11ab(m, L)` (FUN_1e31_11ab), for every internal location damaged:
 1. 2d6: below 8, 1 critical; 8-9, 1; 10-11, 2; 12, 3 (bug 3). With combat messages on only:
-   "Critical!" (DG:315e) and F:4586 = 1 (so the picture after the shot needs messages too).
+   the critical word (DG:315e) and F:4586 = 1 (so the picture after the shot needs messages too).
 2. If the location's structure is now 0: every item in its slots is destroyed, and an arm or leg
    loses all its actuators. No more draws.
 3. Otherwise, until that many criticals have landed (a pick that finds nothing draws again):
@@ -1358,16 +1360,16 @@ not at its place within its own area.
   rows it sinks: a person 2, 4 in deep water; a 'Mech 8, 16), and for a 'Mech F:45ce (the tile
   one cell up, for the missed-shot mark) and F:4554 (1 in its cell's other half-row; both
   cleared first for every 'Mech that exists). A figure out of view keeps its old values.
-- **A person killed**: "Killed him!" (DG:41fc); destroyed, inactive, the record emptied, a body
+- **A person killed**: the killed line (DG:41fc); destroyed, inactive, the record emptied, a body
   mark 0x7e; every target byte aimed at him cleared. Character 0 or 1: DG:014a = 0, the fight ends
   at once (open question 6).
 - **A 'Mech destroyed** (`1d43:0a35`): inactive, destroyed flag, its first letter kept in
-  F:323e + m, record byte 0 = ff, targets at it cleared, "Mech is destroyed!" (DG:2b6d). A party
-  'Mech: "Men eject!" (DG:2b81, always, even when nobody is inside); its pilot and second
+  F:323e + m, record byte 0 = ff, targets at it cleared, the destroyed line (DG:2b6d). A party
+  'Mech: the eject line (DG:2b81, always, even when nobody is inside); its pilot and second
   occupant go on foot at its place (the second one a half-cell right). Enemy crews do not
   eject. A wreck mark 0x80 / 0x81 one half-cell up and left, sound 8.
 - **The spectator** (F:e48e, figure 13): always in line of sight, never targeted by the computer,
-  no "destroyed" text. Destroying it: a message box (DG:4209, a key), then DG:4235, 'Mech
+  no destroyed line. Destroying it: a message box (DG:4209, a key), then DG:4235, 'Mech
   records 6 and 7 become URBANMECHs (27e8:065b) as figures 14 and 15 at x 0x097d, F:e48e = 0,
   flag 23 = 1 (the exit zone opens, 2.8). Destroying 'Mech 5 patches the map store (`1d43:0c72(0)`,
   from `1d43:0a35`), and between the two message boxes the view walks to figure 0 and the window is
@@ -1507,8 +1509,8 @@ mistake; "quirk" means it may be intended.
 | 16 | A waypoint in area rows 8-15 is never recognised as a duplicate (sign extension), so it is added again. Harmless. `chain_waypoints_edge` checks the second copy against the original. | `203b:1c1f` | `fix_waypoint_compare` |
 | 17 | A 13th waypoint is written into the next figure's first order (each Move adds one, so thirteen Moves reach it). Kept: the rebuild holds that order, and the `waypoints` sequence matches the original's write. The fix drops the waypoint and logs it. | `203b:1c1f` | `fix_order_bound` |
 | 18 | The path is written without a bound; more than 12 steps would spill into the next figure's path. | `203b:193b` | `fix_path_bound` |
-| 19 | Scan: for a 'Mech without sensors the "no enemy humans" check is skipped and the list is opened empty. With no enemy person active the original's list then never ends (bug 32), so only the sensors message with a person active is compared (`chain_scan_poked`). | `203b:2591` | `fix_scan_sensors` |
-| 20 | The reachability test before "Engage" changes figure 0's heading. | `203b:28db` | `fix_probe_heading` |
+| 19 | Scan: for a 'Mech without sensors the check for active enemy people is skipped and the list is opened empty. With no enemy person active the original's list then never ends (bug 32), so only the sensors message with a person active is compared (`chain_scan_poked`). | `203b:2591` | `fix_scan_sensors` |
+| 20 | The reachability test before the engage question changes figure 0's heading. | `203b:28db` | `fix_probe_heading` |
 | 21 | An enemy person whose target byte is ff is measured against figure -1 when the people run (2.10): x F:4002 (always 0), y F:4034 (the last kind-2 sound's fourth word, docs/sound.md). Kept. The fix: a person with no target never counts as fled. Other bytes above 0x7f always take the fixed path, with a log line. | `203b:000a` | `fix_flee_target` |
 | 22 | Repairs with Tech 2+ mend every destroyed heat sink, even when the wrecks had none. Probable. | `15ab:0002` | `fix_heat_sink_count` |
 | 23 | The weapon count for item 0x20 (SRM 6) is never cleared: it starts with leftover stack data, the low byte of DGROUP's segment (0xe9 under the rig), so destroyed SRM 6s are mended without a spare (2.15). Confirmed. | `15ab:0002` | `fix_weapon_count` |
@@ -1536,7 +1538,7 @@ The switches are `game/fixes.h`. Each is off by default, except where the origin
 writes memory the rebuild does not hold, or never returns: bugs 18, 26 and 32 take the fixed
 path by default and log it. Bugs 2, 21 and 23 read such memory too, but what they read is
 known (this table's rows), so they are kept like the others. Bug 5 is kept, but the first shot of a session (whose
-flag the original leaves uninitialised) counts as "missed" and is logged. Bug 17 writes into
+flag the original leaves uninitialised) counts as a miss and is logged. Bug 17 writes into
 memory the rebuild holds (the next figure's orders), so it is kept like the others; the
 `waypoints` reference sequence checks that write against the original. Bugs 12, 15, 28, 30 and
 34 have no switch.
@@ -1552,8 +1554,8 @@ on the 'Mech parts pictured in the manual.
    first; not when F:4594). A message (DG:27f2, `quiz.message`) in the big box (window 6, frame
    style 0) says a written quiz comes first; a key.
 2. Three questions. For each: the picture is copied over the whole screen, a line drawn down
-   x 128 from row 0 to 192 (colour 9; 10 on CGA), the left strip (window 8) cleared, "Identify
-   this 'Mech part:" printed (DG:286c, `quiz.question`), and the 20 part names written from row 4,
+   x 128 from row 0 to 192 (colour 9; 10 on CGA), the left strip (window 8) cleared, the
+   question asking which part is shown printed (DG:286c, `quiz.question`), and the 20 part names written from row 4,
    white on black (`273d:00d5`; far pointers at DG:4de2, `quiz.part.0`-`quiz.part.19`). Then
    the part: r mod 10 (signed division), drawn again while it was asked before. Part i is boxed
    on the picture: a 9x9 square in white at (DG:28c4[i] - 3, DG:28d8[i] - 3), and a white bar

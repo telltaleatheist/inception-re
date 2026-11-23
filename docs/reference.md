@@ -17,7 +17,7 @@ Both kinds of waiting occur:
 
 - **Blocking**: `273d:0259` alone, e.g. the yes/no question (`1000:1a13`).
 - **Polling**: the main loop (`1000:002d`) asks whether a key is waiting; if not, it runs its
-  idle half (`1000:01f4`, below) and asks again. Some "press a key" waits are polling loops that
+  idle half (`1000:01f4`, below) and asks again. Some key waits are polling loops that
   never time out (e.g. 1000:a965).
 - **Flushing**: after reading a key the program often empties the buffer (`1000:2a2b`: while a key
   is waiting, read it), so type-ahead is thrown away. A key that ends a polling wait can be eaten
@@ -216,7 +216,7 @@ made fresh by every run and never kept anywhere else.
    leaves these to the platform (docs/startup.md).
 2. The Infocom/Westwood screen, then the title; a key each. Rig cases `start_infocom`,
    `start_title`.
-3. The panel and window 6 with the notice and "Is this your first time playing BattleTech?"
+3. The panel and window 6 with the notice and the first-time question (`intro.first_time`)
    (`1000:50c8`). Rig case `start_first_time`. Yes goes to the town; No asks whether to load a
    saved game.
 4. The town, map 1, at the start position.
@@ -537,8 +537,8 @@ vehicle menu) and out.
 - **The new-game question after the game over** (`chain_death`, docs/town_loop.md step 7): the
   original's capture after the key that closes the game-over box still shows the box, even with
   `idle:2` after the key, so the question is not compared. To come back to when a new game from
-  there ("play again", Yes) is rebuilt.
-- **A key ignored at "Some of the enemy humans have fled!"** (`chain_repair_poked`, docs/combat.md
+  there (Yes to playing again) is rebuilt.
+- **A key ignored at the some-fled box (DG:38bc)** (`chain_repair_poked`, docs/combat.md
   2.10): with the computer fighting, `arm:1 n`, then `idle:1` (round 1 ends at the box), the
   original never takes the next key (Enter): its captures after it still show the box, with the
   same random state, while chr reads the key and plays on. The box waits through `273d:0259`, the
@@ -620,7 +620,7 @@ Found by the comparison along the way:
   person's tile is read from the 24x24-cell window around the party, so past its side edge the
   cell of the next or the previous row decides.
 
-- The move log ("North" in the upper box): the main loop prints the direction (DG:01aa) in
+- The move log (a direction's name in the upper box): the main loop prints the direction (DG:01aa) in
   window 4 after each walking key unless a message came up. Once the box is full it scrolls a
   line at a time (each entry is a line break, then the word).
 - The main loop's pace is the display's vertical retrace, not the timer (docs/town_loop.md).

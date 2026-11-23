@@ -49,9 +49,9 @@ F:323e + m (the first letter of a destroyed 'Mech, read by salvage).
 | 24 | 1 | left actuators: high nibble the arm (bits 0x80, 0x40, 0x20, 0x10), low nibble the leg (bit 8 the hip, then 4, 2, 1); set = working | movement points, Kick, criticals | confirmed mechanics; which bit is which actuator a guess |
 | 25 | 1 | right actuators, the same layout | as 24 | as 24 |
 | 26 | 1 | heat sinks in the engine (not in slots) | end-of-round heat; with the slot heat sinks every template makes 10 | confirmed |
-| 27-30 | 10 | ammunition of weapon slots 0-9 in item order; ff = unlimited (energy weapons), 0 = out | `1e31:10a2`, Use Weapons ("Full", "Out"), decremented when firing | confirmed |
+| 27-30 | 10 | ammunition of weapon slots 0-9 in item order; ff = unlimited (energy weapons), 0 = out | `1e31:10a2`, Use Weapons (the full and out labels), decremented when firing | confirmed |
 | 31 | 1 | walking MP (the Locust 8) | `203b:22bc` | confirmed |
-| 32 | 1 | jumping MP; 0 = no jump jets | `203b:22bc`, the "no jump jets" text | confirmed |
+| 32 | 1 | jumping MP; 0 = no jump jets | `203b:22bc`, the no-jump-jets line (`orders.no_jump_jets`) | confirmed |
 | 33-55 | 35 | critical slots (below); item code, bit 0x80 = destroyed, 0 = empty | `203b:273d`, `1e31:11ab`, repairs | confirmed |
 | 56-60 | 11 | maximum armour, at 0x11-0x1b + 0x45 | repairs | confirmed |
 | 61-68 | 8 | maximum structure, at 0x1c-0x23 + 0x45 | repairs | confirmed |
@@ -127,21 +127,21 @@ docs/town_loop.md "Walking frames"). 27e8:0280 is figure 0's, 27e8:02e0 the enem
 | 0f | 1 | L, the long limit, never scaled |
 | 10 | 1 | skill number: 0 Bow & Blade, 1 Pistol, 2 Rifle, 3 Gunnery, 4 Piloting (character byte 4 + n) |
 
-Entries, by index (names as the table spells them, shortened):
+Entries, by index (the names themselves are imported, `weapons.name.*`):
 
-| W | names |
+| W | what they are |
 |---|---|
-| 00-0e (people) | Cudgel, Knife, Sword, VibroBlade, Shortbow, Longbow, Crossbow, Pistol, Rifle, MachineGun, SR Missile, Inferno, LaserPistl, LaserRifle, Flamer |
-| 0f-1f ('Mechs) | SmallLaser, Med Laser, LargeLaser, PPC, AutoCann/2, AutoCann/5, AutoCann10, AutoCann20, MachineGun, Flamer, LRMissile5, LRMissil10, LRMissil15, LRMissil20, SRMissile2, SRMissile4, SRMissile6 |
-| 20 | Kick |
+| 00-0e (people) | hand weapons in rising order: three melee weapons and a vibroblade, three bows, a pistol and a rifle, a machine gun, a short-range missile launcher and an inferno launcher, a laser pistol and a laser rifle, a flamer |
+| 0f-1f ('Mechs) | 'Mech weapons: small, medium and large lasers, the PPC, four autocannon sizes, a machine gun, a flamer, four long-range and three short-range missile racks |
+| 20 | the Kick |
 
 A character's weapon byte (0x0b) holds W; a 'Mech item byte holds W + 1. The people's SR Missile
 and Inferno are encoded like 'Mech weapons (bit 0x80 clear, skill Gunnery). The Kick's damage
 byte (DG:3103) is overwritten before each kick. Example: the Medium Laser does 5 damage for 3
 heat, with S 4, M 7, L 30, so short below 12, medium below 21, long below 30.
 
-The range band names: far pointers DG:2ebc to "Short", "Med", "Long", "OUT" (DG:2ce0, 2ce6,
-2cea, 2cef). The name of item code c is at DG:2ec7 + 0x11 c.
+The range band names (short, medium, long and out of range): far pointers DG:2ebc to
+DG:2ce0, 2ce6, 2cea, 2cef (`weapons.range.0` - `.3`). The name of item code c is at DG:2ec7 + 0x11 c.
 
 ## The other combat tables
 

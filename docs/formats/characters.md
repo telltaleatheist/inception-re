@@ -28,7 +28,7 @@ Sixteen records at F:c614 + 0x11 p:
 | 0b | personal weapon: an index into the weapon table DG:2ed8 (0-0x0e). Encounter soldiers: DG:2cf4[sum of 7 draws of r & 3]; mission people: r mod 14 | the fight, `15ab:18e8`, loot | confirmed |
 | 0c | the 'Mech the character is in (0-7), or 8 = on foot (any value from 8 counts as on foot) | placement, ejection, salvage | confirmed |
 | 0d | armour type: 0 None, 1 Flak Vest, 2 Flak Suit, 3 Lt Env Suit, 4 Hv Env Suit, 5 Ablative (names: far pointers DG:4e8a). Above 1 halves the walking MP | `15ab:18e8`, `203b:2474` | confirmed |
-| 0e | armour points left; the maximum for each type is DG:4ddb[type] (a Flak Vest 25). 0 shows "Ruined" | the person damage step, `15ab:18e8` | confirmed |
+| 0e | armour points left; the maximum for each type is DG:4ddb[type] (a Flak Vest 25). 0 shows the ruined-armour word (`unit.ruined`) | the person damage step, `15ab:18e8` | confirmed |
 | 0f | hit points; 0 = killed | the person damage step, the panel's red part | confirmed |
 | 10 | | | unknown |
 
@@ -126,7 +126,7 @@ slots 0-10 are its weapons in item order and slot 11 is the Kick.
 | address | meaning |
 |---|---|
 | F:3770 | movement points of the figure being planned, or left after the simulation |
-| F:4592, F:377c | heat loss and "legs reduced it", for the "Movement is inhibited by" text |
+| F:4592, F:377c | heat loss and leg damage, the two reasons the inhibited-movement line (`orders.inhibited`) names |
 | F:3992 | the party fled (kinds 1-3), or the computer retreated; read by the mission driver |
 | F:374c | an enemy person wants to run (kind 0) |
 | F:374a | the player has seen the traitor |

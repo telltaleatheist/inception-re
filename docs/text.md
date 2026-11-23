@@ -74,7 +74,7 @@ window up a row, clears the bottom row to colour 0 and writes there.
 
 ## The yes/no question (1000:1a13)
 
-Prints a new line and then "Yes No" with the picked answer in black on yellow (colour 0 on 14).
+Prints a new line and then the two answers, with the picked one in black on yellow (colour 0 on 14).
 Y or N answer at once; left picks Yes, right picks No; space or Enter accept the pick. After
 every key the line is printed again over itself. The window's foreground colour is put back at
 the end.
@@ -89,17 +89,17 @@ Every text the game shows has an ID and comes from the text provider (`src/game/
 never from a literal in the code. The importer (docs/import.md) writes the program's texts with
 their IDs; an override file can replace any of them.
 
-| ID | Address | Text |
+| ID | Address | What it is |
 |---|---|---|
-| walk.too_deep | 46db:0410 | The water is too deep that way. |
-| walk.enter_question | 46db:0430 | Will you enter the (new line) |
-| walk.enter_question_end | 46db:0444 | ? |
-| walk.mech_enter_question | 46db:0446 | Will you enter the (new line): the copy asked of a 'Mech |
-| walk.mech_enter_question_end | 46db:045a | ? |
-| walk.direction.north ... northwest | 46db:006c - 00a7 | (new line) North, Northeast, East, Southeast, South, Southwest, West, Northwest |
+| walk.too_deep | 46db:0410 | the message when water blocks the step |
+| walk.enter_question | 46db:0430 | the enter-a-place question's first part, ending in a new line |
+| walk.enter_question_end | 46db:0444 | its closing mark |
+| walk.mech_enter_question | 46db:0446 | the same first part, the copy asked of a 'Mech |
+| walk.mech_enter_question_end | 46db:045a | its closing mark |
+| walk.direction.north ... northwest | 46db:006c - 00a7 | the eight compass directions' names, each after a new line, north first and clockwise |
 | ui.answer_yes_picked | 46db:03ee | the yes/no line, Yes picked |
 | ui.answer_no_picked | 46db:03fe | the yes/no line, No picked |
-| panel.party_heading | 46db:0aca | BDC (over the bar columns 9-11) |
+| panel.party_heading | 46db:0aca | the party box's heading over the three bar columns (9-11) |
 | character.0 - character.7 | 46db:00b2 - 00d9 | the eight characters' names, Jason first |
 | mapN.place.E | MAPN.MTP | the place behind entrance E |
 | mapN.person.P | MAPN.MTP | the map's people |
@@ -132,7 +132,7 @@ Owen's rule (2026-11-15): generic interface text ships in a default text file in
 it plainly fits the interface rule; when in doubt, imported.
 
 **The rule used.** *Interface* covers menus, prompts and questions, labels and headings, the
-small pieces a message is built from (punctuation, line breaks, "uses a", "on"), and messages
+small pieces a message is built from (punctuation, line breaks, a shot line's verbs and joining words), and messages
 about the controls or a rule's state (out of ammo, overheated, can't kick). *Imported only*
 covers names (people, places, 'Mechs, weapons, armour, 'Mech parts), story and dialogue,
 narration of what happened, descriptions and flavour, and the original's own notices.

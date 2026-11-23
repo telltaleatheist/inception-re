@@ -1,7 +1,7 @@
 # The original program
 
-The reference is the DOS release, version 1.03 ("(C) 1988 Infocom, Inc.",
-"Computer program by Westwood Associates"). The program asks for a display
+The reference is the DOS release, version 1.03 (1988, Infocom, programmed by
+Westwood Associates, as its notice screen says). The program asks for a display
 on startup: CGA or 64K EGA, Tandy 1000, 256K EGA/VGA, or MCGA. All four
 drivers are in the one executable.
 

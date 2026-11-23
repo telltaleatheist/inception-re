@@ -34,7 +34,7 @@ The program's key reader hands back a character, or minus the scan code for keys
 turn: the main loop (`1000:002d`) reads it, empties the keyboard buffer, selects the upper panel
 box (window 4) and takes the step DG:015a times (1 at the start; the game settings change it, docs/town_loop.md). Unless a
 message or question came up during the step (F:d55c), it then writes the direction's name in
-that box ("North", "Northeast", ...; DG:01aa), blocked or not, so the box is a log of the last
+that box (the compass directions' names, DG:01aa), blocked or not, so the box is a log of the last
 eleven steps. The map, the figures and the panel are drawn again afterwards (`1000:01f4`), so a
 message drawn over the map lasts until the next key. The keyboard and the idle half of the loop
 are in docs/reference.md.
@@ -47,16 +47,16 @@ It returns "blocked" or "free". In order:
    axis, the program looks at the block it would enter (the diagonal one if both axes cross),
    using the window's nine block values (P:07a4, mask OR entry; DG:04a0 turns the edges crossed
    into the index, in the plain 3x3 order). A value of 0x0f, a terrain block of type 0 whose four
-   neighbours are all type 0, is deep water: it opens the message box (`24d3:17c6`), prints "The
-   water is too deep that way." (`24d3:17ea`, which then pauses a moment) and the step is
+   neighbours are all type 0, is deep water: it opens the message box (`24d3:17c6`), prints the
+   too-deep message (`walk.too_deep`, `24d3:17ea`, which then pauses a moment) and the step is
    blocked. A map block's value has bit 0x80 set, so this only happens outdoors.
 2. **Each character.** The party is up to eight characters, each at a fixed offset from the
    position (in half-cells): (0,0), (0,-1), (0,1), (1,0), (-1,0), (1,-1), (-1,1), (1,1). A new game
    has Jason alone, at (0,0). For each present character, with its position after the step:
    - **Entrance.** Unless a question has been asked this turn already (flag F:d55c) or the party
      is in its 'Mechs, if the character would stand exactly on one of the map's first 12 entrance
-     positions, the message box opens with "Will you enter the" + newline + the place's name +
-     "?" and the yes/no question (`1000:1a13`, Yes picked first). Yes goes into the place
+     positions, the message box opens with the enter question (`walk.enter_question`, the place's
+     name, `walk.enter_question_end`) and the yes/no question (`1000:1a13`, Yes picked first). Yes goes into the place
      (`17dc:0008`, not rebuilt yet). The check then carries on either way.
    - **Tile.** Read first (`1000:1d9e`), before the entrance: the cell of the window under the
      character's half-cell after the step, with the same arithmetic as the 'Mechs' (below). If
