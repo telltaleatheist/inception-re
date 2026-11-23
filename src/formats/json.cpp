@@ -1,8 +1,10 @@
 #include "formats/json.h"
 
 #include <cctype>
-#include <charconv>
+#include <cerrno>
 #include <cstdio>
+#include <cstdlib>
+#include <string>
 
 namespace chr::formats {
 
@@ -203,9 +205,14 @@ private:
             if (i_ < t_.size() && (t_[i_] == '+' || t_[i_] == '-')) ++i_;
             digits();
         }
-        double d = 0;
-        const auto r = std::from_chars(t_.data() + start, t_.data() + i_, d);
-        if (r.ec != std::errc() || r.ptr != t_.data() + i_) {
+        // strtod, not from_chars: a double's from_chars needs macOS 26, and
+        // packages run from macOS 12. The program never sets a locale, so
+        // the decimal point is '.'.
+        const std::string number(t_.substr(start, i_ - start));
+        char* end = nullptr;
+        errno = 0;
+        const double d = std::strtod(number.c_str(), &end);
+        if (errno == ERANGE || end != number.c_str() + number.size()) {
             i_ = start;
             fail("bad number");
         }
