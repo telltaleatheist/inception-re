@@ -20,9 +20,10 @@ void ScriptKeys::apply_pokes() {
         if (!poke_) throw std::invalid_argument("a mech: or char: item with nothing to poke");
         // record -1: the C-Bills (cbills:), the value the amount; -2: the
         // generator's state (random:), the value its three bytes; -3: a
-        // 'Mech's heat (heat:), the byte its record.
+        // 'Mech's heat (heat:), the byte its record; -4: the party's place
+        // (pos:), the byte x and the value y.
         poke_(item.poke_character,
-              item.poke_cbills ? -1 : item.poke_random ? -2 : item.poke_heat ? -3 : item.poke_record,
+              item.poke_cbills ? -1 : item.poke_random ? -2 : item.poke_heat ? -3 : item.poke_position ? -4 : item.poke_record,
               item.poke_byte, item.poke_value);
     }
 }
@@ -151,6 +152,20 @@ std::deque<ScriptItem> parse_key_script(const std::string& script) {
             item.poke_record = 0;
             item.poke_byte = m;
             item.poke_value = v;
+            keys.push_back(item);
+            return;
+        }
+        if (t.rfind("pos:", 0) == 0) {
+            // pos:XXXX:YYYY: the party's place (P:a44b, P:a44d), hex.
+            unsigned x = 0, y = 0;
+            char tail = 0;
+            if (t.size() != 13 || std::sscanf(t.c_str() + 4, "%4x:%4x%c", &x, &y, &tail) != 2)
+                throw std::invalid_argument("bad place poke \"" + t + "\" (use pos:XXXX:YYYY, hex)");
+            ScriptItem item;
+            item.poke_position = true;
+            item.poke_record = 0;
+            item.poke_byte = int(x);
+            item.poke_value = int(y);
             keys.push_back(item);
             return;
         }

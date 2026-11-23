@@ -48,7 +48,7 @@ map load `1000:2da8` sets for map 14 and clears for any other (docs/movement.md)
 on foot are checked in figure order as on any map, but none is asked about an entrance. The
 first whose tile is at or above the walk threshold (DG:0150) stops the step, and its tile is
 dispatched by its number t, with (x, y) that character's half-cell after the step (its
-formation offset, DG:0464 / 047c, plus the step plus the party's place, F:a44b / a44d). The
+formation offset, DG:0464 / 047c, plus the step plus the party's place, P:a44b / a44d). The
 characters after it are not checked, and the step is refused whatever the tile did; a place the
 function moves the party to (the way down, the way up) stands, since the step leaves the place in
 memory as it finds it. Any other

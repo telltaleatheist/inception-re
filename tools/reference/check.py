@@ -2183,6 +2183,36 @@ CHAIN_GARAGE_CASES = [dict(case, compare=False) for case in
     {"name": "chain_garage_step", "keys": "left", "match": SCREEN},
 ]
 
+# WEAPON2 (special 41, docs/scripts.md) on map 5, far across the wilderness: from chain_party's
+# crew screen, the party's place poked to just below the shop's door (entrance 5), which stands
+# in for the walk there. The command menu opens over the old view (the original draws the map
+# at the poked place first, from map 2's grids, which no play can show: that case compares the
+# panel). Its overhead map item (arm:4 as in overhead_map: the dot's passes draw numbers), then
+# Space, whose nine-map load (docs/overhead_map.md) loads map 5 around the new place. A step up to the
+# door, Yes, the menu's first item and its texts, No to the question, then special 41 with two
+# members: the weapon offered, Edward takes it and his own comes back, dropped. Then the hit
+# points capped and the visit's end; the step that asked goes on into a random encounter.
+CHAIN_WEAPON2_POKED_CASES = [dict(case, compare=False) for case in
+                             CHAIN_PARTY_CASES[:[c["name"] for c in CHAIN_PARTY_CASES].index(
+                                 "chain_party_crew_done") + 1]] + [
+    {"name": "chain_weapon2_moved", "keys": "pos:0208:c021 space", "match": {"the panel": WHOLE_PANEL}},
+    {"name": "chain_weapon2_overhead", "keys": "up arm:4 enter", "match": WHOLE_SCREEN},
+    {"name": "chain_weapon2_back", "keys": "space", "match": SCREEN},
+    {"name": "chain_weapon2_door", "keys": "up", "match": SCREEN},
+    {"name": "chain_weapon2_inside", "keys": "y", "match": SCREEN},
+    {"name": "chain_weapon2_item", "keys": "enter", "match": SCREEN},
+    {"name": "chain_weapon2_asked", "keys": "enter", "match": SCREEN},
+    {"name": "chain_weapon2_no", "keys": "n", "match": SCREEN},
+] + [{"name": "chain_weapon2_text_%d" % i, "keys": "enter", "match": SCREEN} for i in range(3)] + [
+    {"name": "chain_weapon2_given", "keys": "enter", "match": SCREEN},
+    {"name": "chain_weapon2_dropped", "keys": "down enter", "match": SCREEN},
+    {"name": "chain_weapon2_capped", "keys": "enter", "match": SCREEN},
+    # The visit's end goes on into a random encounter, whose attackers the original prints in
+    # white and chr in window 4's colour (docs/reference.md, open items): the map and the state.
+    {"name": "chain_weapon2_out", "keys": "enter", "match": {"the map": WHOLE_MAP}},
+    {"name": "chain_weapon2_step", "keys": "down", "match": {"the map": WHOLE_MAP}},
+]
+
 # The game settings (1000:3bd0, docs/town_loop.md) from the town start: the
 # command menu's item 1 and each of its items. The menus remember their last
 # item, so each case's keys count from there. Steps a key is walked at 2 and
@@ -2468,7 +2498,7 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
-            "chain_traitor_poked", "chain_garage"}
+            "chain_traitor_poked", "chain_garage", "chain_weapon2_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2516,6 +2546,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_ward_poked", [], CHAIN_WARD_POKED_CASES, []),
              ("chain_traitor_poked", [], CHAIN_TRAITOR_POKED_CASES, []),
              ("chain_garage", [], CHAIN_GARAGE_CASES, []),
+             ("chain_weapon2_poked", [], CHAIN_WEAPON2_POKED_CASES, []),
              ("chain_cache_poked", [], CHAIN_CACHE_POKED_CASES, []),
              ("chain_cache_open", [], CHAIN_CACHE_OPEN_CASES, []),
              ("chain_entrance", [], CHAIN_ENTRANCE_CASES, []),
@@ -2635,6 +2666,22 @@ def heat_poke(token):
     return "@poke:F:%04x=%02x" % (HEAT_AT + m, v)
 
 
+PLACE_AT = 0xA44B  # P:a44b, the party's x, then y at P:a44d
+
+
+def pos_poke(token):
+    """The original's poke for a pos:XXXX:YYYY token: the party's two
+    position words, nothing else."""
+    try:
+        x, _, y = token[len("pos:"):].partition(":")
+        if len(x) != 4 or len(y) != 4:
+            raise ValueError
+        xv, yv = int(x, 16), int(y, 16)
+    except ValueError:
+        raise ValueError(f"bad place poke {token!r}: use pos:XXXX:YYYY (hex)")
+    return "@poke:P:%04x=%02x%02x%02x%02x" % (PLACE_AT, xv & 0xff, xv >> 8, yv & 0xff, yv >> 8)
+
+
 def original_token(k):
     """A case's key as the original's script has it: flag: is a poke, and
     orig: marks input that only the original asks for (the training quiz,
@@ -2651,6 +2698,8 @@ def original_token(k):
         return random_poke(k)
     if k.startswith("heat:"):
         return heat_poke(k)
+    if k.startswith("pos:"):
+        return pos_poke(k)
     if k.startswith("orig:"):
         return k[len("orig:"):]
     if k.startswith("arm:"):
@@ -2681,7 +2730,7 @@ def chr_script(cases, upto):
             if k.startswith("flag:"):
                 items.append("set:" + k[len("flag:"):])
                 continue
-            if k.startswith(("mech:", "char:", "random:", "heat:")):
+            if k.startswith(("mech:", "char:", "random:", "heat:", "pos:")):
                 items.append(k)  # applied as the next key is read; no passes of its own
                 continue
             items.append(k)

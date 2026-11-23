@@ -198,6 +198,29 @@ TEST(key_script_poke_then_idle) {
     CHECK(!source.next());
 }
 
+// The test aid pos:XXXX:YYYY: the party's place, handed over as record -4
+// with x and y; a malformed one is refused.
+TEST(key_script_place_poke) {
+    ScriptKeys source(parse_key_script("pos:0208:c021 y"));
+    int x = -1, y = -1;
+    source.set_poke([&](bool, int record, int byte, int value) {
+        if (record == -4) x = byte, y = value;
+    });
+    CHECK(source.next() == std::optional<int>('y'));
+    CHECK(x == 0x0208 && y == 0xc021);
+    const auto refused = [](const char* script) {
+        try {
+            parse_key_script(script);
+        } catch (const std::invalid_argument&) {
+            return true;
+        }
+        return false;
+    };
+    CHECK(refused("pos:0208"));
+    CHECK(refused("pos:208:c021"));
+    CHECK(refused("pos:0208:c021x"));
+}
+
 namespace {
 
 // Plays `script` on map 1 from the new-game start. False if the game files

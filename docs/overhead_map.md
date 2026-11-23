@@ -13,7 +13,7 @@ the text and the dot. The original look is in `platform/overhead_layer.cpp`.
 ## The loop (1000:3d40)
 
 1. DG:014c = 1: map loads skip the townspeople (below).
-2. The position (F:a44b, F:a44d) is kept twice: as the party's place, and as the cursor.
+2. The position (P:a44b, P:a44d) is kept twice: as the party's place, and as the cursor.
 3. In the cache (flag 3a, F:d346), `1b5d:0327` swaps in the cache's cell colours (below).
 4. It is done after one pass if flag 3a is set or flag 04 (F:d310, outdoors) is clear; in the
    cache it also clears bit 7 of F:d178, a byte of the seen map (area row 12, its row 6, area

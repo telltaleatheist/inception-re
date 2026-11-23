@@ -69,6 +69,7 @@ struct ScriptItem {
     bool poke_cbills = false;     // the C-Bills (cbills:), poke_value the amount
     bool poke_random = false;     // the generator's state (random:), poke_value its three bytes
     bool poke_heat = false;       // a 'Mech's heat (heat:), poke_byte the record, poke_value the heat
+    bool poke_position = false;   // the party's place (pos:), poke_byte x, poke_value y
     int poke_byte = 0;
     int poke_value = 0;
     bool is_set() const { return set_flag >= 0; }
@@ -277,6 +278,12 @@ public:
     void poke_heat(int record, int value) {
         combat_.heat[std::size_t(record)] = std::int8_t(value);
         log_.push_back("test aid: 'Mech record " + std::to_string(record) + " heat set");
+    }
+    // A test aid: the party's place (the script's pos: items), the
+    // position words alone; nothing is loaded or drawn for it.
+    void poke_position(int x, int y) {
+        position_ = {std::uint16_t(x), std::uint16_t(y)};
+        log_.push_back("test aid: the party's place set");
     }
     // A test aid: one byte of a character record (the script's char: items).
     void poke_character(int record, int byte, int value) {
