@@ -312,6 +312,25 @@ specials). A record changed in between (a fight's damage, a special's hit points
 emptied) keeps its old bars until then. The rebuild keeps the bars `4cac` last drew
 (`Town::draw_panel`) and shows those.
 
+`4cac` clears window 3 (with its argument 1) and only frames window 4, which it leaves selected.
+Windows 3 and 4 with their frames fill columns 0-12 from top to bottom, so the panel's column
+is blank only when the caller clears window 4 (the move log's window). Most callers do, before
+or after:
+
+| Caller | Window 4 |
+|---|---|
+| load (`1000:32b3`), save (`1000:35d3`) | cleared and framed before, by `1e31:032f` |
+| inspect (`1000:378d`), overhead map (`1000:3d40`), crew (`1000:4d57`) | cleared after (`2656:0388`, window 4 still selected) |
+| new game (`1000:4dc7`), training quiz (`1c67:08a8`), specials (`24d3:0004`) | the whole screen cleared before (`287f:1fbe`), window 4 cleared after |
+| a place's end (`17dc:0008`), a fight's end (`203b:000a`) | selected and cleared before |
+| settings, after the message speed or the pictures (`1000:3bd0`; its menu is in window 1, so the move log stays) | not cleared |
+| healing (`1c31:000a`, `4cac(0)`) | not cleared: the move log stays |
+| a new member (`19b8:0d58`, script E9) | not cleared, before or after |
+
+`287f:1fbe` writes zeros over the display's whole memory (CGA, EGA or MCGA, by DG:b764). The
+rebuild blanks the column inside `Town::draw_panel` (`blank_column`), with the same result,
+and skips it where the original doesn't clear.
+
 `1000:4aa6` prints the name and draws three bars at columns 9, 10, 11 of the name's row, with
 the character's bytes 1, 2 and 3 (its 17-byte record at F:c614; Jason: 8, 9, 7). Over the
 first it draws a red part (colour 4; 2 on CGA), from the bar's top down, the bar's number less a

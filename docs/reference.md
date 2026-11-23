@@ -589,10 +589,11 @@ vehicle menu) and out.
   still shows the box (the key went to the box's flush), with the same game state; `arm:2 n`
   gives the box's read the key, as in chr.
 - **Where the original blanks the panel's column** (`Town::draw_panel`): chr blacks out columns
-  0-12 before drawing the party box, which `1000:4cac` itself never does. The heal's `4cac(0)`
-  leaves the column as it is (the direction lines stay, `chain_return_heal_done`), so it skips
-  the blackout. The other callers keep it, and their captures match; which of the original's
-  code clears the column on those paths is not yet found.
+  0-12 before drawing the party box, which `1000:4cac` itself never does. The original's
+  callers clear window 4 themselves, before or after (docs/town_loop.md, "The panel"). The
+  settings (speed, pictures), the heal's `4cac(0)` and a new member's `4cac(1)` (`19b8:0d58`)
+  don't, so chr skips the blackout there (the direction lines stay, `settings_speed`,
+  `chain_return_heal_done`; the recruits in `chain_party` match either way).
 
 - **A fleeing enemy person whose target byte is ff** (docs/combat.md 2.10, bug 21): rebuilt
   against figure -1 (docs/sound.md). `chain_entrance` fights the forced 'Mech encounter on the

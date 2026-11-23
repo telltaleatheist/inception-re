@@ -323,7 +323,7 @@ bool Town::new_member(int skill, KeySource& keys) {
             print_id("character." + std::to_string(characters_[std::size_t(pilot)][character::kName]));
             print_id("recruit.mech");
         }
-        draw_panel(true);  // 1000:4cac(1)
+        draw_panel(true, false);  // 1000:4cac(1): column 0-12 not blanked, before or after
         // 1000:a960: a draw for every poll with no key waiting; the flush
         // (1000:2a2b) eats the key that ends it, and another is read. While
         // the demo plays (19b8:0dd6, F:3938) there is no wait: its poll
