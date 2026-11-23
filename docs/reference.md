@@ -474,7 +474,10 @@ nothing aims at Jason once he has ejected, and the round's end test then finds f
 graphics on. Round 1 runs the LOCUST west. In round 2 the Med Laser destroys the spectator at long
 range; its shot line ends off screen, so it runs `1e31:1df8`'s leftward walk. Then the two message
 boxes, the URBANMECHs and the broken wall. Rounds 3-5 run and walk through the gap into the exit
-zone; the old run order has to be deleted with Walk first. Once the spectator is destroyed
+zone; the old run order has to be deleted with Walk first. Then the theft: the exit text's
+second page, the crew screen (Jason on foot), the vehicle menu, Jason as the LOCUST's pilot, Done
+to the map west of the town (0971,8064, the theft's area grids around area 0x89), and a step.
+Once the spectator is destroyed
 (flag 23 set) the round's end test no longer applies:
 `chain_arena_leader_poked` branches from `chain_arena_theft`'s round 2, pokes the LOCUST's armour
 and structure and Jason's hit points to 1, and Jason, on foot after the LOCUST falls, is killed

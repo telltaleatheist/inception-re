@@ -2568,6 +2568,12 @@ CHAIN_ARENA_THEFT_CASES = [dict(case, compare=False) for case in
     {"name": "chain_arena_theft_walk_instead", "keys": "y", "match": SCREEN, "fight": True},
     {"name": "chain_arena_theft_walk_path", "keys": "enter down*3 left*5 enter", "match": SCREEN, "fight": True},
     {"name": "chain_arena_theft_exit_zone", "keys": "up enter", "match": SCREEN},
+    {"name": "chain_arena_theft_exit_text", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_theft_crew", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_theft_vehicle", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_theft_pilot", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_theft_done", "keys": "down enter", "match": SCREEN},
+    {"name": "chain_arena_theft_step", "keys": "right", "match": SCREEN},
 ]
 
 # The leader fallen in the Arena (combat.md 2.8; docs/scripts.md, "The Arena", 06a5): from

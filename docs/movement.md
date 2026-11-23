@@ -113,7 +113,8 @@ leaves y ffff, and no map loads.
 ((y >> 1) & 0x7f) >> 3 of y's low byte, so 15 for y ffff. Each block is found at the centre
 grid's start plus row x 8 (a byte) plus the column. Only row -1, row 8, column -1 and column 8
 step into a neighbouring grid. Rows 14-16 therefore read the grids that follow the centre one in
-memory, and the window holds whatever those blocks are.
+memory, and the window holds whatever those blocks are. This is kept, with no fix switch
+(docs/combat.md, section 6, bug 42).
 
 ## What the rebuild does differently, for now
 
