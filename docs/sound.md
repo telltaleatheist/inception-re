@@ -321,7 +321,8 @@ The whole tune is not run, since its end starts the demo.
   `music_note_hz`). The octave shifts the table's divisor right by the octave less 2
   (`284b:01b8`), and all three are set to attenuation 3 (of 15) at the start (`284b:020b`). A rest byte
   on a voice is not silent there: it gives a very high divisor-derived pitch, to be checked.
-- The demo after the tune: not rebuilt (docs/startup.md, "The demo").
+- The demo after the tune: rebuilt, but the rig has no demo sequence yet (docs/startup.md,
+  "The demo").
 
 ## The rebuild
 

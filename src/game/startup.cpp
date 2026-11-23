@@ -8,6 +8,8 @@
 #include "game/records.h"
 #include "game/town.h"
 
+#include <stdexcept>
+
 namespace chr::game {
 
 namespace {
@@ -19,6 +21,97 @@ constexpr int kInfocomFrames = 700;
 }  // namespace
 
 void Town::start_up() { stage_ = Stage::Infocom; }
+
+DemoKeys::DemoKeys(std::vector<std::uint8_t> bytes, ScriptKeys& time) : bytes_(std::move(bytes)), time_(&time) {
+    if (bytes_.size() > kMaxBytes) bytes_.resize(kMaxBytes);
+}
+
+std::optional<int> DemoKeys::next() {
+    // Past the data the program reads whatever the buffer holds; the
+    // rebuild ends the demo there.
+    if (pos_ >= bytes_.size()) {
+        ended_ = true;
+        return std::nullopt;
+    }
+    // The pauses (273d:0006(30) each), then 287f:0b8a: a key the player
+    // pressed is read and dropped, and ends the demo (DG:0152); then
+    // 273d:0006(1).
+    if (!wait(frames_to_next())) return std::nullopt;
+    if (player_key_) ended_ = true;
+    player_key_ = false;
+    while (bytes_[pos_] == kPause) ++pos_;
+    const int b = bytes_[pos_++];
+    if (b == kEndMark) ended_ = true;
+    return int(std::int8_t(b));
+}
+
+bool DemoKeys::wait(int frames) {
+    while (frames_ < frames) {
+        const auto item = time_->next_item();
+        if (!item) return false;
+        if (item->is_set() || item->tune_end) throw std::invalid_argument("a set: or tune-end item in the demo");
+        if (item->idle > 0) {
+            frames_ += item->idle;
+            continue;
+        }
+        // A key: it waits for the next read, which ends the demo.
+        player_key_ = true;
+        frames_ = frames;
+    }
+    frames_ -= frames;
+    return true;
+}
+
+std::optional<bool> DemoKeys::poll() {
+    // 273d:002f takes nothing, and the flush that follows a wait (1000:2a2b)
+    // throws nothing away while the demo plays: the key is the next read's.
+    return true;
+}
+
+int DemoKeys::frames_to_next() const {
+    int frames = 1;
+    for (std::size_t i = pos_; i < bytes_.size() && bytes_[i] == kPause; ++i) frames += kPauseFrames;
+    return frames;
+}
+
+// BTECH.EXE 1000:51f9..525c (in Ghidra FUN_1000_50c8)
+// The demo's start: DEMOFILE into the key buffer, the random numbers set to
+// 25 13 90, F:3938 set, and a new game (1000:4dc7). The disk prompt
+// (1000:28cc(2)) has nothing to do, and the F:3988 it sets the new game
+// clears again.
+void Town::start_demo(ScriptKeys& input) {
+    std::vector<std::uint8_t> bytes;
+    if (game_dir_)
+        if (const auto path = formats::find_game_file(*game_dir_, "DEMOFILE")) bytes = formats::read_file(*path);
+    if (bytes.empty()) log_.push_back("demo: no DEMOFILE, so only the end mark");
+    random_ = Random({0x25, 0x13, 0x90});  // 1000:522c
+    demo_.emplace(std::move(bytes), input);
+    demo_ran_ = true;
+    new_game();
+    // 1000:0024: the main loop's 1000:48b7(0x0f, 0) draws first.
+    random_.next();
+    stage_ = Stage::Demo;
+    log_.push_back("demo");
+}
+
+// BTECH.EXE 1000:0000(1) (Ghidra FUN_1000_0000) under the demo
+// 273d:002f always finds a key, so every pass is a key half (1000:002d) with
+// the demo's next key, and no pass idles. After the pass in which DG:0152 is
+// set (1000:050d), the title and its tune come again (1000:46a7, 476d).
+// The demo's keys keep the time (DemoKeys).
+bool Town::run_demo() {
+    while (stage_ == Stage::Demo) {
+        const auto k = demo_->next();
+        if (!k && !demo_->ended()) return false;
+        if (k) key(*k, *demo_);
+        if (stopped()) return false;  // the time ran out inside the pass
+        if (!demo_->ended()) continue;
+        demo_.reset();  // 1000:476d clears F:3938
+        stage_ = Stage::Title;
+        log_.push_back("demo end");
+    }
+    return true;
+}
 
 // BTECH.EXE 1000:476d (Ghidra FUN_1000_476d)
 // Reads WWOODBT.SIF whole, ends it with four 0 bytes, and plays it on the
@@ -121,11 +214,26 @@ bool Town::run_start_up(ScriptKeys& input) {
             if (infocom_frames_ >= kInfocomFrames) stage_ = Stage::Title;
         }
     }
-    if (stage_ == Stage::Title) {
-        // 1000:476d plays the title's tune (WWOODBT.SIF) until a key; if the
-        // tune ends first, the demo plays (DEMOFILE). docs/startup.md.
-        if (!input.next()) return false;
+    // BTECH.EXE 1000:5126..5276 (in Ghidra FUN_1000_50c8): the title and its
+    // tune (1000:476d) until a key; when the tune runs out first, the demo,
+    // then the title again.
+    while (stage_ == Stage::Title || stage_ == Stage::Demo) {
+        if (stage_ == Stage::Demo) {
+            if (!run_demo()) return false;
+            continue;
+        }
+        const auto item = input.next_item();
+        if (!item) return false;
+        if (item->is_set()) throw std::invalid_argument("a set: item in the start-up");
+        if (item->tune_end) {
+            start_demo(input);
+            continue;
+        }
+        if (item->idle != 0) continue;  // the tune plays on
+        // 1000:5131: a key is waiting; 1000:2a2b throws it away. A new game
+        // (1000:4dc7): the Town as made is one, unless a demo has played.
         log_.push_back("title");
+        if (demo_ran_) new_game();
         stage_ = Stage::Question;
         new_game_screen();
     }

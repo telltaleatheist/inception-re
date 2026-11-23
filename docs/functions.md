@@ -262,7 +262,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 273d:0086 | 0x27456 | `FUN_273d_0086` | 79 | Copy a picture buffer to the screen (by display) | replaced |
 | 273d:00d5 | 0x274a5 | `FUN_273d_00d5` | 294 | Writes a string straight onto the screen at (column, row) in two colours with the 8x8 font | rebuilt |
 | 273d:01fb | 0x275cb | `FUN_273d_01fb` | 94 | A rectangle of pixels filled with a colour (x0, y0, x1, y1, colour) | rebuilt (as text cells) |
-| 273d:0259 | 0x27629 | `FUN_273d_0259` | 195 | Reads a key (287f:0b8a), or plays one back from / records one into the key buffer (F:3938, F:458c) | read |
+| 273d:0259 | 0x27629 | `FUN_273d_0259` | 195 | Reads a key (287f:0b8a), or plays one back from / records one into the key buffer (F:3938, F:458c; docs/startup.md, "The demo") | rebuilt (playback; the recorder is unreachable) |
 | 273d:031c | 0x276ec | `FUN_273d_031c` | 207 | A horizontal or vertical line (here a point) in a colour, clipped to the screen, on the visible screen | rebuilt (a line shot's pixels) |
 | 273d:03eb | 0x277bb | `FUN_273d_03eb` | 178 |  | - |
 | 273d:049d | 0x2786d | `FUN_273d_049d` | 136 | Unpack a loaded .CMP by its type byte (CGA: reduce to 4 colours) | rebuilt |

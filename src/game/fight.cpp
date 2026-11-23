@@ -219,7 +219,9 @@ bool Town::walk_in(KeySource& keys) {
     characters_[0][character::kMech] = 0;
     mechs_[0] = rules_->mechs[std::size_t(t)].record;
     mechs_[0][kPilot] = 0;
-    show_picture(0, 0);  // 1000:48b7(0, 0); window 4 stays selected
+    // 1000:48b7(0, 0), not while the demo plays (24d3:00a4, F:3938); window
+    // 4 stays selected.
+    if (!demo_) show_picture(0, 0);
 
     // Four half-cell steps east, six frames each.
     position_ = {0x0c3c, 0xc04f};
@@ -1543,9 +1545,9 @@ bool Town::fight_rounds(int kind, KeySource& keys) {
         }
         if (raid_ && !raid_lines(over, keys)) return false;
         // With the computer in control a waiting key hands the party back
-        // to the player (273d:002f, no demo playing), and is thrown away:
-        // the orders menu comes next round.
-        if (computer_) {
+        // to the player (273d:002f), and is thrown away: the orders menu
+        // comes next round. Not while the demo plays (203b:100d, F:3938).
+        if (computer_ && !demo_) {
             const auto waiting = keys.poll();
             if (!waiting) {
                 place_open_ = true;  // the keys ran out between rounds

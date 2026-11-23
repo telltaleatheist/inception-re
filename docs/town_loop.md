@@ -165,8 +165,8 @@ The record is m = t, or t - 8 from 12.
      nibble), left arm (0x24's high nibble) and right arm (0x25's high nibble): `stats.ok` in
      white when whole, `stats.gone` in grey when 0, else `stats.hit` in white. A leg is whole at
      f; an arm when its nibble equals the high nibble of byte 0x69 (left) or 0x6a (right).
-4. Then once a display frame until a key (`273d:002f`; while keys are played back, F:3938, 600
-   frames instead):
+4. Then once a display frame until a key (`273d:002f`; while the demo plays, F:3938, 600
+   frames and then the demo's next key: docs/startup.md, "The demo"):
    - The eleven armour bars (`15ab:174c(x, y, a, b)`): bar i at x DG:131c[i], its bottom row
      DG:1332[i], 6 pixels wide and a pixel a point. From the bottom, b in red (4), then a in
      green (2) above it. a is the armour (byte 0x11 + i); b is the byte DG:1306[i] names (the

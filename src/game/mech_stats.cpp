@@ -121,6 +121,7 @@ bool Town::mech_stats(int fig, KeySource& keys) {
         scene.bars[std::size_t(i)] = {rec[std::size_t(mech::kArmour + i)], structure ? rec[std::size_t(structure)] : 0};
     }
     int frame = kFirstFrame, step = kFirstStep;
+    int demo_frames = 0x258;  // 15ab:21b7
     for (;;) {
         // The heat, kept to 0-30 in the record's own place; with any, its
         // part of the bar blinks: a change every 10 - heat / 6 draws.
@@ -144,9 +145,16 @@ bool Town::mech_stats(int fig, KeySource& keys) {
         }
         frame &= kFramesPerStep - 1;
         stats_ = scene;
-        // 273d:002f, then 273d:0259 for the key it found. (While keys are
-        // played back, F:3938, it waits 600 frames instead; the rebuild
-        // plays none back.)
+        // 273d:002f, then 273d:0259 for the key it found. While the demo
+        // plays (F:3938, 15ab:22c5) it shows 600 frames, then reads the
+        // demo's next key.
+        if (demo_) {
+            if (!demo_->wait(1)) {
+                place_open_ = true;
+                return false;
+            }
+            if (--demo_frames != 0) continue;
+        }
         const auto key = keys.waiting_key();
         if (!key) {
             place_open_ = true;

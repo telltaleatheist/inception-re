@@ -106,7 +106,7 @@ to x <= 0x13e, y <= 0xbf), each pass of the wait draws it in the colour of a fre
 number's low four bits (`287f:0bc0`), then asks whether a key is waiting (`273d:002f`). When the
 dot is off the map no number is drawn. A key ends the wait: it is read (`273d:0259`), the rest
 of the buffer flushed (`1000:2a2b`), and returned. While a demo plays (F:3938), the wait instead
-counts 600 frames (`273d:0006(1)`); the rebuild plays no demo.
+runs 601 frames (`273d:0006(1)`), then reads the demo's next key (docs/startup.md, "The demo").
 
 ## Original bugs and quirks
 

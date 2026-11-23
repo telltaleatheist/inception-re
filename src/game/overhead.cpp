@@ -232,9 +232,20 @@ std::optional<int> Town::draw_overhead(formats::MapPosition party, formats::MapP
     const int y = ((party.y & 0x7f) >> 1) + ((((party.y & 0xf000) >> 8) - rowbase) << 2);
     const bool on_view = x >= 0 && x < 0x140 && y >= 0 && y < 0xc0;
     x = std::min(x, 0x13e);
+    // While the demo plays (F:3938, 1000:4578) the map stays up for 600
+    // frames and more, and the key is the demo's next.
+    int demo_frames = 0x258;  // 1000:4449
     for (;;) {
         if (on_view) shown.dot = OverheadMap::Dot{x, y, random_.next() & 0x0f};  // 287f:0bc0
         overhead_ = shown;
+        if (demo_) {
+            const bool done = demo_frames-- == 0;
+            if (!demo_->wait(1)) {
+                place_open_ = true;
+                return std::nullopt;
+            }
+            if (!done) continue;
+        }
         const auto k = keys.waiting_key();  // 273d:002f, 273d:0259
         if (!k) {
             place_open_ = true;

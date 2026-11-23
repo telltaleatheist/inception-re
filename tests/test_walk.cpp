@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <filesystem>
+#include <stdexcept>
 #include <memory>
 #include <optional>
 #include <string>
@@ -14,6 +16,7 @@
 #include "game/movement.h"
 #include "game/town.h"
 #include "game/townspeople.h"
+#include "formats/rules.h"
 #include "formats/tables.h"
 #include "test.h"
 
@@ -231,10 +234,12 @@ struct Map1 {
     std::unique_ptr<MapText> map_text;
     std::unique_ptr<LayeredText> texts;
     std::unique_ptr<formats::Tables> tables;
+    std::optional<formats::Rules> rules;
 };
 
 bool play_map1(const std::string& script, std::unique_ptr<Town>& town, Map1& m,
-               const TextProvider* overrides = nullptr, bool start_up = false, bool game_files = false) {
+               const TextProvider* overrides = nullptr, bool start_up = false, bool game_files = false,
+               bool with_rules = false) {
     const auto dir = chrtest::game_dir();
     if (dir.empty()) {
         chrtest::skip("no game folder (set CHR_GAME_DIR)");
@@ -252,6 +257,10 @@ bool play_map1(const std::string& script, std::unique_ptr<Town>& town, Map1& m,
     m.texts = std::make_unique<LayeredText>(layers);
     town = std::make_unique<Town>(m.map, 1, new_game_position(), *m.texts, *m.tables);
     if (game_files) town->set_game_dir(dir);
+    if (with_rules) {
+        m.rules = formats::read_rules(data);
+        town->set_rules(&*m.rules);
+    }
     if (start_up) town->start_up();
     else town->draw_panel();
     ScriptKeys keys(parse_key_script(script));
@@ -622,4 +631,85 @@ TEST(overhead_map_moves_two_areas_outdoors) {
     Map1 mc;
     play_map1("set:04=01 space down*6 enter right space", a, mc, nullptr, false, true);
     CHECK(!a->overhead().has_value());
+}
+
+TEST(demo_keys_from_made_up_bytes) {
+    // Made-up bytes, not the player's DEMOFILE: a key with its top bit set
+    // (an arrow, read as minus its scan code), two pauses, Enter, the end
+    // mark, and one more.
+    const std::vector<std::uint8_t> bytes{0xb8, DemoKeys::kPause, DemoKeys::kPause, 0x0d, DemoKeys::kEndMark, 0x0d};
+    ScriptKeys time(parse_key_script("idle:1 idle:60"));
+    DemoKeys demo(bytes, time);
+    CHECK(demo.next() == -0x48);
+    CHECK(demo.position() == 1 && !demo.ended());
+    // The next key waits two pauses and a frame: 61 frames, and only 60 are given.
+    CHECK(!demo.next());
+    CHECK(demo.position() == 1 && !demo.ended());
+
+    ScriptKeys time2(parse_key_script("idle:62 idle:1 idle:1"));
+    DemoKeys demo2(bytes, time2);
+    CHECK(demo2.next() == -0x48);
+    CHECK(demo2.next() == 0x0d && demo2.position() == 4 && !demo2.ended());
+    CHECK(demo2.next() == DemoKeys::kEndMark && demo2.ended());
+    CHECK(demo2.next() == 0x0d);
+    CHECK(!demo2.next() && demo2.ended());  // past the data
+    // The poll finds a key and takes nothing.
+    ScriptKeys none({});
+    DemoKeys demo3(bytes, none);
+    CHECK(demo3.poll() == true && demo3.position() == 0);
+}
+
+TEST(demo_ends_at_the_players_key) {
+    const std::vector<std::uint8_t> bytes{0x0d, 0x0d, 0x0d, 0x0d};
+    // A key in the script is the player's: the read after it ends the demo,
+    // and still returns the demo's key.
+    ScriptKeys time(parse_key_script("idle:1 x idle:1"));
+    DemoKeys demo(bytes, time);
+    CHECK(demo.next() == 0x0d && !demo.ended());
+    CHECK(demo.next() == 0x0d && demo.ended());
+    // A key during a wait is caught by the next read.
+    ScriptKeys time2(parse_key_script("idle:3 x idle:1"));
+    DemoKeys demo2(bytes, time2);
+    CHECK(demo2.wait(3) && !demo2.ended());
+    CHECK(demo2.wait(1));
+    CHECK(demo2.next() == 0x0d && demo2.ended());
+}
+
+TEST(tune_end_only_at_the_title) {
+    const auto items = parse_key_script("tune-end");
+    CHECK(items.size() == 1 && items.front().tune_end);
+    bool threw = false;
+    try {
+        ScriptKeys keys(parse_key_script("tune-end"));
+        keys.next();
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    CHECK(threw);
+}
+
+TEST(demo_plays_and_the_title_comes_back) {
+    auto play = [](const std::string& script, std::unique_ptr<Town>& town, Map1& m) {
+        return play_map1(script, town, m, nullptr, true, true, true);
+    };
+    std::unique_ptr<Town> town;
+    Map1 m;
+    // The tune runs out: the demo, which waits for its time.
+    if (!play("enter tune-end idle:100", town, m)) return;
+    CHECK(town->demo_playing());
+    // Given all its time it plays to its end mark, and the title is back.
+    Map1 m2;
+    play("enter tune-end idle:100000", town, m2);
+    const auto& log = town->log();
+    CHECK(std::find(log.begin(), log.end(), "demo end") != log.end());
+    CHECK(town->title_tune_playing());
+    // A key the player presses ends it after that pass.
+    Map1 m3;
+    play("enter tune-end idle:100 x idle:10", town, m3);
+    CHECK(town->title_tune_playing());
+    // A key at the title after a demo: a new game again, then the question.
+    Map1 m4;
+    play("enter tune-end idle:100000 enter enter", town, m4);
+    CHECK(!town->start_up_open() && town->log().back() == "new game");
+    CHECK(std::count(town->log().begin(), town->log().end(), std::string("new game")) == 3);
 }

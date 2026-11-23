@@ -47,6 +47,7 @@ std::optional<int> ScriptKeys::next() {
     const auto item = next_item();
     if (!item) return std::nullopt;
     if (item->is_set()) throw std::invalid_argument("a set: item where the game waits for a key");
+    if (item->tune_end) throw std::invalid_argument("tune-end where the title is not waiting");
     return item->key;
 }
 
@@ -59,6 +60,7 @@ std::optional<bool> ScriptKeys::poll() {
         return false;
     }
     if (item.is_set()) throw std::invalid_argument("a set: item where the game asks for a key");
+    if (item.tune_end) throw std::invalid_argument("tune-end where the title is not waiting");
     items_.pop_front();
     return true;
 }
@@ -72,6 +74,7 @@ std::optional<int> ScriptKeys::waiting_key() {
         return kNoKey;
     }
     if (item.is_set()) throw std::invalid_argument("a set: item where the game asks for a key");
+    if (item.tune_end) throw std::invalid_argument("tune-end where the title is not waiting");
     const int k = item.key;
     items_.pop_front();
     return k;
@@ -82,6 +85,13 @@ std::deque<ScriptItem> parse_key_script(const std::string& script) {
     std::string token;
     auto add = [&](const std::string& t) {
         if (t.empty()) return;
+        if (t == "tune-end") {
+            // The title's tune has run out: the demo starts (docs/startup.md).
+            ScriptItem item;
+            item.tune_end = true;
+            keys.push_back(item);
+            return;
+        }
         if (t.rfind("set:", 0) == 0) {
             const auto eq = t.find('=');
             int f = -1, v = -1;
@@ -538,6 +548,7 @@ void Town::run(ScriptKeys& input) {
     while (!stopped()) {
         const auto item = input.next_item();
         if (!item) break;
+        if (item->tune_end) throw std::invalid_argument("tune-end where the title is not waiting");
         if (item->is_set()) {
             flags_[std::size_t(item->set_flag)] = std::uint8_t(item->set_value);
             log_.push_back("test aid: flag " + std::to_string(item->set_flag) + " set");

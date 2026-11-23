@@ -73,6 +73,7 @@ struct ScriptItem {
     bool poke_position = false;   // the party's place (pos:), poke_byte x, poke_value y
     int poke_byte = 0;
     int poke_value = 0;
+    bool tune_end = false;  // the title's tune has run out (the demo comes next)
     bool is_set() const { return set_flag >= 0; }
     bool is_poke() const { return poke_record >= 0; }
     bool operator==(const ScriptItem&) const = default;
@@ -96,6 +97,49 @@ private:
     void apply_pokes();
     std::deque<ScriptItem> items_;
     std::function<void(bool, int, int, int)> poke_;
+};
+
+// The demo's keys (docs/startup.md, "The demo"): the player's DEMOFILE in
+// place of the keyboard while F:3938 is set.
+class DemoKeys : public KeySource {
+public:
+    // The program reads at most this much of the file (1000:5204).
+    static constexpr std::size_t kMaxBytes = 0x3ff;
+    static constexpr int kPause = 0x48;    // 30 display frames, then the next byte
+    static constexpr int kEndMark = 0x50;  // the last key: DG:0152 is set
+    static constexpr int kPauseFrames = 30;
+
+    // `time` is the script: its idle items are the frames that pass, and a
+    // key in it is one the player pressed.
+    DemoKeys(std::vector<std::uint8_t> bytes, ScriptKeys& time);
+    // BTECH.EXE 273d:0259 (Ghidra FUN_273d_0259), while F:3938 is set
+    // The next byte as a key (sign-extended: an arrow is minus its scan
+    // code), after any pauses and one frame. A key the player pressed is
+    // read and thrown away, and ends the demo; so does the end mark. Past
+    // the data the demo ends with nothing read.
+    std::optional<int> next() override;
+    // 273d:002f always finds a key waiting and takes none.
+    std::optional<bool> poll() override;
+    std::optional<int> waiting_key() override { return next(); }
+
+    // BTECH.EXE 273d:0006 (Ghidra FUN_273d_0006)
+    // Waits `frames` display frames; false if the script's time runs out.
+    bool wait(int frames);
+    // DG:0152: the demo ends after this pass.
+    bool ended() const { return ended_; }
+    // Bytes read so far (F:39f8 less 10000).
+    std::size_t position() const { return pos_; }
+
+private:
+    // The frames the next read waits: its pauses and one.
+    int frames_to_next() const;
+
+    std::vector<std::uint8_t> bytes_;
+    ScriptKeys* time_;
+    std::size_t pos_ = 0;
+    int frames_ = 0;  // frames given and not yet waited
+    bool player_key_ = false;
+    bool ended_ = false;
 };
 
 // Parses a key script: names separated by spaces or commas, each with an
@@ -152,6 +196,8 @@ public:
     // The keys ran out during the start-up, which waits for one (or, on the
     // Infocom screen, for time to pass too).
     bool start_up_open() const { return start_up_open_; }
+    // The demo is playing (F:3938): the keys ran out during it.
+    bool demo_playing() const { return start_up_open_ && stage_ == Stage::Demo; }
 
     // BTECH.EXE 1000:4cac (Ghidra FUN_1000_4cac)
     // The left panel: the party box (window 3) with the characters and
@@ -329,9 +375,11 @@ private:
                (entered_place_ && !game_dir_);
     }
     // The start-up's screens, in order (game/startup.cpp).
-    enum class Stage { Infocom, Title, Question, Town };
+    enum class Stage { Infocom, Title, Demo, Question, Town };
     // Runs the start-up from the keys; false if they ran out.
     bool run_start_up(ScriptKeys& input);
+    void start_demo(ScriptKeys& input);
+    bool run_demo();
     void new_game_screen();
     void turn(int key, KeySource& keys);
     // BTECH.EXE 1000:020a..050d (the main loop's game tick)
@@ -590,6 +638,8 @@ private:
     Stage stage_ = Stage::Town;
     int infocom_frames_ = 0;  // frames the Infocom screen has been up
     bool start_up_open_ = false;
+    std::optional<DemoKeys> demo_;  // set while the demo plays (F:3938)
+    bool demo_ran_ = false;         // a demo has played since the start
     // The menu table (385b:0092, imported: tables.json, menus): the items
     // count changes at run time (talk sets menu 20's), and each menu
     // remembers its last item (+6).

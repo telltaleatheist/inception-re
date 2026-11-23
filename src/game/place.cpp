@@ -54,7 +54,7 @@ bool Town::visit_place(int entrance, KeySource& keys) {
     // no demo plays (F:3938, F:458c). It has no check here (docs/rules.md,
     // rule 3; docs/combat.md 7): its draws are made, and with --show-quiz its
     // scene is shown.
-    if (file == 0 && flags_[flag::kQuizLock] == 0) {
+    if (file == 0 && flags_[flag::kQuizLock] == 0 && !demo_) {
         if (show_quiz_ && rules_) {
             if (!show_quiz(keys)) return false;
         } else {
@@ -229,7 +229,8 @@ bool Town::run_script(int file, KeySource& keys) {
             break;
         }
         case formats::Op::Picture:
-            show_picture(sbyte(pc + 1), sbyte(pc + 2));
+            // Not while the demo plays (17dc:04a8, F:3938).
+            if (!demo_) show_picture(sbyte(pc + 1), sbyte(pc + 2));
             break;
         case formats::Op::Sound:
             play_sound(sbyte(pc + 1));  // 1000:19bf
@@ -250,7 +251,10 @@ std::optional<int> Town::menu(int m, KeySource& keys, std::optional<int> start) 
     const auto& rec = menus_.at(std::size_t(m));
     int& last = menu_last_.at(std::size_t(m));
     if (last >= rec.items) last = 0;
-    int chosen = start && *start >= 0 && *start < rec.items ? *start : last;
+    // 2656:0ba6: while the demo plays (F:3938) the remembered item is set
+    // to the first, so the recorded keys find every menu the same.
+    if (demo_) last = 0;
+    int chosen =start && *start >= 0 && *start < rec.items ? *start : last;
     const auto& w = text_.window();
     const int top = w.y + rec.first_row;
     text_.menu_bar(w.x, top + chosen, rec.width, m);
@@ -321,7 +325,9 @@ bool Town::new_member(int skill, KeySource& keys) {
         }
         draw_panel(true);  // 1000:4cac(1)
         // 1000:a960: a draw for every poll with no key waiting; the flush
-        // (1000:2a2b) eats the key that ends it, and another is read.
+        // (1000:2a2b) eats the key that ends it, and another is read. While
+        // the demo plays (19b8:0dd6, F:3938) there is no wait: its poll
+        // finds a key at once, and the read takes the demo's next.
         for (;;) {
             const auto waiting = keys.poll();
             if (!waiting) {

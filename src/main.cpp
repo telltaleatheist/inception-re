@@ -603,6 +603,7 @@ int main(int argc, char** argv) {
         audio_opened = audio_opened || SDL_WasInit(SDL_INIT_AUDIO) != 0;
         std::size_t sounded = played;  // the events before it have had their sound started
         bool music_on = false;  // the title's tune has been started
+        int title_frames = 0;   // frames the title has waited with its tune
         const auto playing = [&] { return town && played < town->events().size(); };
         const auto resume = [&] {
             if (keys_meanwhile) {
@@ -674,6 +675,22 @@ int main(int argc, char** argv) {
                 }
             } else if (town && options.screenshot.empty() && town->poll_open()) {
                 resume();
+            } else if (town && frames > 0 && town->demo_playing() && options.screenshot.empty()) {
+                // The demo's keys keep its time (docs/startup.md, "The demo").
+                if (!keys.empty() && keys.back().idle > 0) keys.back().idle += frames;
+                else keys.push_back({0, frames});
+                replay();
+            } else if (town && frames > 0 && town->title_tune_playing() && options.screenshot.empty()) {
+                // When the tune has played to its end with no key, the demo.
+                title_frames += frames;
+                const double tune_ms = double(town->title_tune().size()) * chr::game::music_step_ms();
+                if (title_frames * 1000.0 >= tune_ms * chr::game::kVgaRefreshHz) {
+                    chr::game::ScriptItem item;
+                    item.tune_end = true;
+                    keys.push_back(item);
+                    title_frames = 0;
+                    replay();
+                }
             } else if (town && frames > 0 && town->start_up_open() && town->full_screen() == chr::assets::kInfocomLogo &&
                 options.screenshot.empty()) {
                 // The Infocom screen goes by itself after a while: time is
@@ -689,6 +706,7 @@ int main(int argc, char** argv) {
             }
             // The title's tune plays while the title waits for its key
             // (1000:476d); the key cuts it off.
+            if (!town || !town->title_tune_playing()) title_frames = 0;
             if (sound_player) {
                 const bool tune = town && town->title_tune_playing();
                 if (tune && !music_on) sound_player->play_music(chr::game::music_segments(town->title_tune()));

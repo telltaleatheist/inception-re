@@ -81,36 +81,68 @@ The title's tune plays while the title waits (docs/sound.md, "The title music").
 yet: the demo at the tune's end. After the tune (59.7 s on the speaker) the rebuild's title
 waits silently for a key however long.
 
-### The demo (not rebuilt)
+### The demo
 
-What it is (read, not traced through a run):
+When the title's tune runs out with no key, the game plays its demo: the keys in the player's
+DEMOFILE, read at run time. The repo holds nothing of the file but the counts below.
 
-- **The start** (`1000:51f9`): the panel (`1000:28cc(2)`), then DEMOFILE read into the key
-  buffer (at most 1023 bytes, at 2892:27b0, `173d:0814`). Its read position (F:39f8) starts at
-  10000, the buffer's offset from F:00a0. The random numbers are set to 25 13 90 (docs/random.md),
-  F:3988 = 0xffff, and F:3938 = 1 (the demo plays). Then a new game (`1000:4dc7`) and the main
-  loop (`1000:0000(1)`). After it, the title and its tune come again, and so on.
+- **The start** (`1000:51f9`): the disk prompt (`1000:28cc(2)`, nothing to do here), then
+  DEMOFILE read into the key buffer (at most 1023 bytes, at 2892:27b0, `173d:0814`). Its read
+  position (F:39f8) starts at 10000, the buffer's offset from F:00a0. The random numbers are set
+  to 25 13 90 (`1000:522c`, docs/random.md), F:3988 = 0xffff (the new game clears it again, so it
+  changes nothing), and F:3938 = 1: the demo plays. Then a new game (`1000:4dc7`) and the main
+  loop (`1000:0000(1)`), whose first act is its usual random draw (`1000:48b7(0x0f, 0)`).
 - **The keys** (`273d:0259`, the one key read). While F:3938 is set it takes the next byte from
   the buffer instead of the keyboard:
-  - 0x48 is a pause of 30 display frames (`273d:0006`), and the byte after it is read;
-  - any other byte waits one frame and is the key (arrows as minus their scan codes);
-  - a real key pressed meanwhile is read and thrown away, and DG:0152 is set: the demo ends;
-  - 0x50 is the end mark, and sets DG:0152 too.
-- **The file.** DEMOFILE (1023 bytes) has its end mark at byte 781. Before it: 64 pauses and
-  717 keys of 7 kinds, nearly all arrows (697), with 18 Enters. So it is mostly walking the new
-  game's party about, with a few menu choices. Whether it reaches a place or a fight is not yet
-  known; that needs a run of the original left on the title.
-- **Recording.** The same routine records keys into the buffer when F:458c is set (a typed `h`
-  becomes the pause mark). Nothing sets F:458c that we have found: a tool of the developers'.
-- **What the game does differently under F:3938:**
-  - no place pictures (scripts.md, EA; the training center's picture 0, combat.md 1.2);
-  - every menu starts on its first item (`2656:0b5e`, combat.md 2.6);
-  - the computer-in-control rounds don't take a waiting key (combat.md 2.5);
-  - the overhead map waits 600 frames instead of a key (overhead_map.md);
-  - the training quiz is not asked (scripts.md).
+  - 0x48 is a pause of 30 display frames (`273d:0006(30)`), and the byte after it is read;
+  - a key the player pressed meanwhile is read and thrown away (`287f:0b8a`), and DG:0152 is set;
+  - then one frame (`273d:0006(1)`), and the byte is the key, sign-extended (an arrow is minus
+    its scan code, as the rebuild's key codes are);
+  - 0x50 is the end mark: it sets DG:0152 too, and is still the key (to the town, a step on the
+    spot).
+- **Polls.** `273d:002f` reports a key whenever F:3938 is set, and takes none; so every pass of
+  the main loop is a key half, with the demo's next key, and the flush `1000:2a2b` throws nothing
+  away. The main loop ends after the pass in which DG:0152 was set (`1000:050d`). F:3938 is
+  cleared by the title's tune (`1000:476d`), and the title and the tune come again (`1000:46a7`,
+  `476d`). A key at the title then starts a new game again (`1000:4dc7`) before the questions.
+- **What the game does differently under F:3938** (each with its own check):
 
-**To rebuild it:** a key source that plays the buffer as above; the start (the seed, the new
-game, the main loop); the return to the title; and the F:3938 cases listed. Most of what the
-keys reach is rebuilt already. Size: the start-up's branch and the key source are small, and
-the F:3938 cases are a handful of one-line conditions. The rig can compare it by holding the
-title past the tune (`sound_title`'s hold, longer) and capturing the demo's screens.
+  | Where | Linear | What |
+  |---|---|---|
+  | `1000:2a2b` | 0x12a36 | the key flush does nothing |
+  | `1000:4578` (in `1000:3fae`) | 0x14578 | the overhead map stays up 601 frames (a counter of 600 from `1000:4449`, tested before it is lowered), one random draw for the party's dot each while it is on the view, then reads the demo's next key |
+  | `15ab:22c5` (in `15ab:1afe`) | 0x17d75 | the 'Mech stats screen shows 600 frames (the counter from `15ab:21b7`, lowered before the test), then reads the demo's next key |
+  | `17dc:0008` | 0x17e28 | the training quiz is not asked (nor while F:458c is set) |
+  | `17dc:04a8` (in `17dc:01c0`) | 0x18268 | script op EA shows no picture (docs/scripts.md) |
+  | `19b8:0dd6` (in `19b8:0d58`) | 0x1a956 | a joining member's wait for a key is skipped; the demo's next key is read |
+  | `203b:100d` (in `203b:000a`) | 0x213bd | with the computer in control, no poll for a key that would hand the party back |
+  | `24d3:00a4` (in `24d3:0004`) | 0x24dd4 | the training center's walk-in shows no picture 0 |
+  | `2656:0ba6` (in `2656:0b5e`) | 0x27106 | every menu starts on its first item (and while F:458c is set) |
+
+- **The file**, by counts: 1023 bytes, the end mark at byte 781; before it 64 pauses and 717
+  keys of 7 kinds (697 arrows, 18 Enters, 2 others). The party walks the town, is offered two
+  shops and says no, goes through the training course, and looks at the overhead map. C-Bills go
+  from 35 to 40.
+
+**The recorder (F:458c), not rebuilt.** The same key read records when F:458c is set: each key
+the player types is stored at the buffer's position and returned, a typed `h` is stored as the
+pause mark 0x48 and not returned (the read goes round again), and the menus and quiz behave as
+under playback (`2656:0b5e`, `17dc:0008`); the start-up skips the notice and questions after the
+title (`1000:5149`). Nothing sets F:458c: its only write is the 0 at `1000:51f0`, and the
+program's image holds 0. No write of the buffer to a file was found among its sites. It was
+the developers' tool for making DEMOFILE, unreachable in the shipped game.
+
+**The rebuild.** `DemoKeys` (src/game/town.h) plays the bytes as above, and keeps the demo's
+time: each read waits its frames (one, and 30 for each pause before it), the overhead map and
+the stats screen wait theirs, and the time comes from the key script's idle items (interactive
+play feeds the frames that pass). A key in the script while the demo plays is one the player
+pressed. The script item `tune-end` says the tune has run out at the title; interactive play
+pushes it when the title has lasted the tune's length. One difference: past the file's data the
+original would read whatever the buffer holds; the rebuild ends the demo there. The shipped file
+reaches its end mark long before.
+
+**Compared** against six captures of a run of the original left on the title (taken at buffer
+positions 47, 198, 374, 563, 713 and 782, the last after the demo ended), with chr given the same
+frames: the state (random numbers, C-Bills, party, walkers, flags, 'Mechs, characters, menus)
+matches line for line at five; at 563 the capture fell inside a pass, one step before chr's.
+The rig has no demo sequence yet; one needs new runs of the original.

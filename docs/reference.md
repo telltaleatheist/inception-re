@@ -9,8 +9,8 @@ delete it afterwards.
 
 There is one keyboard read in the whole program, `287f:0b8a`: BIOS int 16h function 0 (wait for
 a key), giving a character or minus the scan code. It sits behind `273d:0259`, which can also
-record keys into a buffer or play them back from one (F:3938, F:458c: a built-in demo or
-replay mechanism, not traced further). Whether a key is waiting is asked of DOS: `273d:002f`
+record keys into a buffer or play them back from one (F:3938, F:458c: the title's demo and
+the developers' recorder for it, docs/startup.md, "The demo"). Whether a key is waiting is asked of DOS: `273d:002f`
 calls `287f:3bdc`, int 21h function 0Bh. The program never hooks int 9.
 
 Both kinds of waiting occur:
