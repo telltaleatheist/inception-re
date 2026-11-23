@@ -737,17 +737,13 @@ runs as the original does; the return visit itself is not captured.) The chain t
 
 ## Not rebuilt yet
 
-- **EB/EC** read F:d451 and d450 (`Town::kits_`), which only a load or the original's
-  24d3:0dc6/0dd3 (two of the specials, 24d3:0004) set; those are not rebuilt, so outside a loaded game the rebuild never jumps. UnBattletech names them "training complete" and a milestone.
-- **E4** (sound) is recorded, the event and the player's state (docs/sound.md), but no audio
-  plays.
-- Specials 18-20, 24-26, 28, 36, 37, 41 and 44 (in decimal, as in the table above and
-  chr's log; the scripts and `tools/bld.py` write them in hex).
-- Talk outdoors (`17dc:17b9`): one of eight rumours (DGROUP:4e5e) at random. No rebuilt place
-  is outdoors; the rebuild makes the draw and logs it.
-- The garage on foot is rebuilt (special 11, then flag 18 and the party put inside at the rear
-  exit); its 'Mech paths (specials 1c, 1d, 2e) are not. Both follow-ons into VIEWDISK (step 7 of
-  "Entering a place") are rebuilt; the main chain runs the second barracks' one.
+- Talk outdoors (`17dc:17b9`): with flag 04 set (F:d310, from the raid on, for the rest of the
+  game), the talk special answers with one of eight rumours (DGROUP:4e5e) at random instead of
+  where the person goes. The rebuild makes the draw, logs it and waits for the key; the
+  rumours' texts are not imported yet.
+
+(EB/EC read the kits HOSPITAL sells, specials 25 and 26 (`24d3:0dc2`, `0dcf`), rebuilt. Every special
+the scripts use is rebuilt, the garage's 'Mech paths 1c, 1d and 2e among them.)
 
 ## Other descriptions
 

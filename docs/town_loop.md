@@ -339,8 +339,8 @@ party. For each of the 8 characters present (byte 0 of its record not 0xff, byte
 8), the k-th one drawn goes at the k-th formation place: screen (DG:02ae[k], DG:02be[k]),
 which is the party's half-cell plus the formation offset (docs/movement.md) plus one half-cell
 right. Its sprite slot is its base (F:d562; Jason's is 0x96, from the new game at `1000:4f0f`)
-plus its walking frame (F:409a). Only Jason's base is known so far; the others are set when
-characters join the party (not rebuilt yet). Then the townspeople (0x10-0x17,
+plus its walking frame (F:409a). Jason's is set by the new game; a character who joins gets 0
+(`19b8:0d58`). Then the townspeople (0x10-0x17,
 docs/townspeople.md) and the 'Mechs (docs/combat.md 1.2.1): each party 'Mech record 0-3 that is
 not empty, at the k-th 'Mech place. So a character in a 'Mech is not drawn as a person; the party
 shows as its 'Mech, on every map, in town or out. Rebuilt for every drawing (`Town::figures`,
@@ -359,7 +359,7 @@ codes: 0xfd n records direction n, 0xfe n jumps back n bytes, 0xff holds. The ch
 four frames per direction: north 0x18-0x1b, the east side 0x14-0x17, south 0x10-0x13, the west
 side 0x1c-0x1f. A new game starts everyone on the south script without stepping through it:
 frame 0x10. A key that asks a question gets its frame only after the answer. `1000:231d`
-moves the 'Mechs' scripts on too, when there are any; that part is not rebuilt yet.
+moves the 'Mechs' scripts on too, when there are any (`FigureAnimation::key`).
 
 ## Sprites
 

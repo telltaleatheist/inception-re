@@ -57,7 +57,7 @@ It returns "blocked" or "free". In order:
      is in its 'Mechs, if the character would stand exactly on one of the map's first 12 entrance
      positions, the message box opens with the enter question (`walk.enter_question`, the place's
      name, `walk.enter_question_end`) and the yes/no question (`1000:1a13`, Yes picked first). Yes goes into the place
-     (`17dc:0008`, not rebuilt yet). The check then carries on either way.
+     (`17dc:0008`). The check then carries on either way.
    - **Tile.** Read first (`1000:1d9e`), before the entrance: the cell of the window under the
      character's half-cell after the step, with the same arithmetic as the 'Mechs' (below). If
      that tile number is at least DG:0150 the step is blocked. DG:0150 is 0x55 on every map but
@@ -80,7 +80,7 @@ It returns "blocked" or "free". In order:
    Then the block, if any. The cells are read from the cell window (P:07ad) at the corner cell
    P:09ed with the same arithmetic as the townspeople's (docs/townspeople.md), the row from the
    table DG:048c (k x 24).
-4. **Map 14** (F:d346 set): blocking tiles run the tile handlers (`1b5d:*`) instead (docs/cache.md). Not rebuilt.
+4. **Map 14** (F:d346 set): blocking tiles run the tile handlers (`1b5d:*`) instead (docs/cache.md). Rebuilt (`src/game/cache.cpp`).
 
 **After a place.** The question runs the place inside the check, and the check then goes on
 reading memory as the place left it. The character's tile was read before the question, so it
@@ -115,14 +115,6 @@ grid's start plus row x 8 (a byte) plus the column. Only row -1, row 8, column -
 step into a neighbouring grid. Rows 14-16 therefore read the grids that follow the centre one in
 memory, and the window holds whatever those blocks are. This is kept, with no fix switch
 (docs/combat.md, section 6, bug 42).
-
-## What the rebuild does differently, for now
-
-- A step into an area with a map logs that the map load is not rebuilt yet (docs/wilderness.md);
-  the areas next to the town's have none.
-- Saying yes to an entrance stops the walk (`Town::entered_place`): places are not rebuilt yet.
-- Only the party's figures are drawn: the map's objects, the townspeople and the 'Mechs are not
-  rebuilt yet (docs/town_loop.md).
 
 ## Trying it
 

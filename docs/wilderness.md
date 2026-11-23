@@ -98,7 +98,7 @@ around 0xcc has a map. The table is game state, not a constant: the raid's third
 whose north wall is broken (map 1's is whole, and blocks a 'Mech's step along the whole edge).
 The rebuild keeps the table in the town (`area_maps_`); the raid writes it, and so do the
 follow-ons into VIEWDISK (area 0x34 becomes map 12, the HUT; docs/scripts.md); the area loads
-read it. Not rebuilt yet: the nine-map load of a saved game.
+read it, and so does the nine-map load of a saved game (`Town::read_saved_game`).
 
 ## The masks: 287f:1886 and 287f:11bb
 
@@ -227,12 +227,11 @@ rebuild skips such a write and logs it.
 
 Rebuilt (`Town::mark_seen`); the rig compares all 0x800 bytes in every case (`state seen`).
 
-## Not rebuilt yet
+## The area loads
 
-- The nine-map load (1000:3469, 1000:3edc), the two entries the save-game load changes,
-  1000:42c8, and 24d3:12db's `104e(0x89)`.
-
-What has been read of these so far:
+All rebuilt: the nine-map load (1000:3469 in the save-game load, 1000:3edc after the overhead map),
+the two entries the save-game load changes, the overhead map's drawing (1000:3fae) and
+24d3:12db's `104e(0x89)` (`Town::special`).
 
 - **The area-to-map table** is a plain table in the program image, 37e8:0030, 256 bytes (one map
   number per area, 0 for none), imported as `tables.area_maps`. The save-game load (1000:32b3) changes two entries first, in

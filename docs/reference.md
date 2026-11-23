@@ -414,8 +414,8 @@ From there the walk west to the Repair Center (map 2 entrance 3, 96 keys, no gro
 the way; the door is entered from the row below the entrance), its first menu item and the
 recruit (new_member 5, scripts.md "A new member"). The recruit's key wait starts right after the
 script's blocking read, so the feeder's key comes after 3 empty polls (`arm:4`), and each one
-draws a number; on this draw he is not the double agent. Then the menu again: the apprentice
-course (specials 0f and 10) is not rebuilt, so the case leaves (the last item), and the party
+draws a number; on this draw he is not the double agent. Then the menu again: the case leaves
+(the last item), not the apprentice course (specials 0f and 10), and the party
 stands at the map's second position for entrance 3.
 Then the walk to the garage (entrance 0) and its fee: with the Commando held there, leaving
 costs 150 and the party has 135, so the manager keeps the 'Mechs (docs/scripts.md). The money

@@ -106,7 +106,7 @@ A direction is taken if:
   last drawn (the end of `1000:051b` records them), or another person. Then a 'Mech figure
   (0-3 and 12-15, active or not) blocks three half-cells of its row: its x, and one either side
   (stepped with `1000:191b`). In town that is the party's 'Mech during a training mission's walk. If the place taken is the target itself,
-  F:d57e is set (read elsewhere, not rebuilt yet).
+  F:d57e is set (read by the fight's set-up).
 
 Then the person moves there and its heading becomes that direction. If none can be taken it
 stays put, heading unchanged.
@@ -127,9 +127,10 @@ the party does, with the quarter bits of DGROUP:032e (9, 3, 12, 6 by the odd/eve
 
 Nothing happens. The party's step check (`1000:1c12`) does not look at the townspeople, so the
 party walks over them; a person only steps around the party. Space opens the command menu
-(`1000:2c50`, not rebuilt yet), which is not about them.
+(`1000:2c50`), which is not about them.
 
-## Not rebuilt
+## A saved game
 
-- The 'Mechs' figures (0-3, 12-15): none in town at a new game.
-- What a saved game restores (DGROUP:014c set skips the placing).
+Loading a game (`1000:32b3`) places the townspeople again, with their random numbers, as any
+map load does: DGROUP:014c, which skips the placing, is set only by the overhead map
+(`1000:3d4c`, cleared at `1000:3f92`). The rebuild does the same (`Town::read_saved_game`).

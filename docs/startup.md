@@ -77,9 +77,8 @@ missing between the new game and the loop. The start-up's own new
 game is the Town's construction: the same values as members' starting values, and the 8 draws
 inside `Random::at_town_start`.
 
-The title's tune plays while the title waits (docs/sound.md, "The title music"). Not rebuilt
-yet: the demo at the tune's end. After the tune (59.7 s on the speaker) the rebuild's title
-waits silently for a key however long.
+The title's tune plays while the title waits (docs/sound.md, "The title music"). When it ends
+(59.7 s on the speaker) with no key, the demo plays ("The demo", below).
 
 ### The demo
 
@@ -87,7 +86,7 @@ When the title's tune runs out with no key, the game plays its demo: the keys in
 DEMOFILE, read at run time. The repo holds nothing of the file but the counts below.
 
 - **The start** (`1000:51f9`): the disk prompt (`1000:28cc(2)`, nothing to do here), then
-  DEMOFILE read into the key buffer (at most 1023 bytes, at 2892:27b0, `173d:0814`). Its read
+  DEMOFILE read into the key buffer (at most 1023 bytes, at 2892:27b0, `273d:0814`). Its read
   position (F:39f8) starts at 10000, the buffer's offset from F:00a0. The random numbers are set
   to 25 13 90 (`1000:522c`, docs/random.md), F:3988 = 0xffff (the new game clears it again, so it
   changes nothing), and F:3938 = 1: the demo plays. Then a new game (`1000:4dc7`) and the main

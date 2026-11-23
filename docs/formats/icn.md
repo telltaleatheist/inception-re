@@ -35,7 +35,7 @@ the same data in a different form.
 |---|---|---|
 | `BTTLTECH.ICN` | 1000:4621 (and 1000:320b) | the town and area maps: every map except 11 and 14 |
 | `DESTRUCT.ICN` | 1000:2da8, only for map 11 | map 11 |
-| `STARLEAG.ICN` | 1b5d:0004 (which also loads map 14), 1b5d:079c, 24d3:0004 | map 14, and screens not yet read |
+| `STARLEAG.ICN` | 1b5d:0004 (which also loads map 14), 1b5d:079c, 24d3:0004 | map 14 (the cache, docs/cache.md) and the ending's screens |
 | `MAP.ICN` | 1b5d:055a (with `MAP15.MTP`) | the map 15 screen (not read yet) |
 | `ANIMATE.ICN` | 1000:320b | The animated tiles' frames. 1000:320b copies 0x780 words of it (30 tiles, from tile 1) to a buffer of its own: three frames for each of the 10 animated tile numbers, tile 1 + 3i + frame (docs/town_loop.md). |
 

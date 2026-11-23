@@ -103,7 +103,7 @@ kind-2 words go. None of the others is known to be read by the game.
 | `1e31:1a13` | `1e31:16ab`, a person crushed | 18 | `Combat` (the place test) |
 | `22e8:152b..` | `22e8:12c7`, a shot: by weapon, the missile, after the line, a hit (combat.md 3) | 13, 3, 5, 6, 11, 1, 9, 2, 4 | `Combat` (its `sound` hook) |
 | `22e8:1c7a` | `22e8:12c7`, a 'Mech's wreck mark | 8 | `Combat` |
-| `22e8:1ca3` | `22e8:12c7`, the spectator destroyed | 7 | not rebuilt (combat.md 3) |
+| `22e8:1ca3` | `22e8:12c7`, the spectator destroyed | 7 | `Combat::spectator_down` |
 
 ## What an effect plays
 

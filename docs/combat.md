@@ -156,11 +156,10 @@ original shows without a wait (the round's redraw, a missile's steps, an explosi
 as fast as the machine could draw the next one, so their pace depended on the CPU: on the
 machines of the day each probably took several display frames. The platform holds each one
 `--step-hold` frames (default 1), a setting of the platform, not of the logic. A line is shown whole once plotted. The
-sounds are recorded but not played yet (no sound is rebuilt). A story picture is held 50 frames
+sounds are played by the platform (docs/sound.md). A story picture is held 50 frames
 at its last frame.
 
-Not rebuilt yet: the sounds and the double agent. Scan's Detail (2.6) opens the 'Mech stats screen
-(docs/town_loop.md).
+Scan's Detail (2.6) opens the 'Mech stats screen (docs/town_loop.md).
 
 **The cell window in a fight.** The planner's path (3.3) and the line of sight (3.6) read map
 cells from the 24x24-cell window P:07ad by index, as the townspeople do. The window and its
@@ -397,7 +396,7 @@ and with no key, every eleventh empty poll is a tick. After each step or tick:
   If Jason fell (DG:014a = 0), the mode ends.
 - **The bays.** On row y = 0x702d, at x = 0x0d14 + 4i (i = 0-3), a bay not visited before: it is
   marked visited, window 6 is cleared and two texts (DG:155d, 159a) say Jason climbs aboard;
-  `173d:086a`, a key, and a third text (DG:15d4) says he tries to start it. The found count
+  `273d:086a`, a key, and a third text (DG:15d4) says he tries to start it. The found count
   is then compared before it goes up:
   - **0 or 1:** `19b8:16b2` (below), then window 6 and DG:1611, the 'Mech will not start
     (`24d3:17ea`, with its pause), and a key.
@@ -408,10 +407,10 @@ and with no key, every eleventh empty poll is a tick. After each step or tick:
   and in whatever order: it is a count, not a place.
 
 `19b8:16b2` plays the failed start: the disk check (`1000:28cc(1)`, no disks in the rebuild),
-O0.ANM loaded at P:42c3 (`173d:0814`), its frame buffer (0x1e78 bytes at P:244b) cleared, the
+O0.ANM loaded at P:42c3 (`273d:0814`), its frame buffer (0x1e78 bytes at P:244b) cleared, the
 list cursor F:e48a at 0 and the frames' data at 42f6. Then `1000:1afd` shows frames until the
 frame list entry at the cursor is 0x49 or more. Then sound 14 (`1000:19bf`), a wait of 60 ticks
-(`173d:0006`), and window 4 cleared.
+(`273d:0006`), and window 4 cleared.
 
 The results step does not set flag 01 for mode 9; F:398e goes back to 0 (`17dc:0d21`).
 
@@ -647,8 +646,7 @@ instead.
   record is otherwise only ever a copy of a template or of a wreck. The same limit keeps the
   list's ammunition column (byte 0x27 + i) inside the ten ammunition bytes: an eleventh weapon
   would read the walking MP.
-- *The 'Mech upgrades* (`19b8:080a` offers, `19b8:0925` pays and applies; read only for the
-  weapon count, not rebuilt). The upgrade is chosen by the record's byte 0x7b (a model number,
+- *The 'Mech upgrades* (`19b8:080a` offers, `19b8:0925` pays and applies; special 19, rebuilt). The upgrade is chosen by the record's byte 0x7b (a model number,
   0-3 upgradable: 0 the Locust and the Spectator, 1 the Wasp, 2 the Stinger, 3 the Commando)
   and byte 0x7c (0 first upgrade, 1 second, 3 none left): eight cases, each writing fixed item
   slots, ammunition and armour bytes. Weapon counts before, after the first and after the
@@ -1186,6 +1184,8 @@ off the to-hit number:
    `1000:28a2`) and the destroyed line (DG:2b6d), then the colour goes back to 15.
 
 `1e31:1dcc` pauses after a shot: 12 x DG:015e frames, or until a key when DG:015e is 5 or more.
+The rebuild holds 12 x DG:015e frames at every speed: the wait for a key at speed 5 (the settings'
+last message speed) is not rebuilt yet.
 Whatever the level, so a fight with messages None pauses as long.
 
 ### 3.9 The hit location
@@ -1619,8 +1619,8 @@ sequence compares the scene with the original's, over the whole screen and the s
 8. A party 'Mech that reaches its last waypoint has no order left, so it counts as standing for
    to-hit and heat; enemies keep their order. This follows from the code as read; check in play.
 9. Flag 24's values and where it is set, besides the traitor's 0x7f.
-10. `1c31:000a` (healing after a fight), `17dc:15e6` (offering a weapon), `15ab:18e8`, `1000:0e4b`,
-    `287f:1df8`, `287f:1da8`: not read.
+10. (Answered: `1c31:000a`, `17dc:15e6`, `15ab:18e8`, `1000:0e4b`, `287f:1df8` and `287f:1da8`
+    are read and rebuilt.)
 11. (Answered: `2da8(4, 11)` loads map 11 into grid 4, 2.11.)
 12. Whether the menu `2656:0b5e` can return -1 (Esc).
 13. 'Mech byte 0x78, F:4586 / F:3986 readers besides those above, DG:015e and DG:0150 (where they

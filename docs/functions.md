@@ -13,20 +13,20 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 1000:0000 | 0x10000 | `switchD_1000:f462::caseD_6` | 45 |  | - |
+| 1000:0000 | 0x10000 | `switchD_1000:f462::caseD_6` | 45 | Main loop: stores its argument in F:3938 (1: the demo), clears DG:0152 and runs passes until it is set (docs/town_loop.md, docs/startup.md) | rebuilt |
 | 1000:002d | 0x1002d | `FUN_1000_002d` | 142 | Main loop, key half: reads a key, flushes, steps, logs the direction, walking frames (231d), then a game tick (docs/town_loop.md) | rebuilt |
-| 1000:00bb | 0x100bb | `FUN_1000_00bb` | 313 | Main loop: one turn per key; redraws the map, figures and panel each turn; resets the one-question-per-turn flag | read |
+| 1000:00bb | 0x100bb | `FUN_1000_00bb` | 313 | Main loop: one turn per key; redraws the map, figures and panel each turn; resets the one-question-per-turn flag | rebuilt |
 | 1000:01f4 | 0x101f4 | `FUN_1000_01f4` | 807 | Main loop, idle half: waits one display frame (273d:0006); every 11 passes a game tick: timers, random, money, tile animation 240b, 24c2 every third, redraw (docs/town_loop.md) | rebuilt |
 | 1000:051b | 0x1051b | `FUN_1000_051b` | 2352 | Draws the figures: map objects (2a93), the party (walking frame, sinking in water), the townspeople in view, 'Mechs; records the party's places | rebuilt |
 | 1000:0e4b | 0x10e4b | `FUN_1000_0e4b` | 2279 | The fight's figure drawer: the map's marks (2a93), people, then 'Mechs top to bottom; writes on screen, screen place, tile, sink (docs/combat.md 3.14) | rebuilt |
 | 1000:1732 | 0x11732 | `FUN_1000_1732` | 137 | Runs a figure's walking script to its next frame (0xfd direction, 0xfe jump back, 0xff hold) | rebuilt |
 | 1000:17bb | 0x117bb | `FUN_1000_17bb` | 92 | The party position walked to a place a cell at a time (y first) through the area steps | rebuilt |
 | 1000:1817 | 0x11817 | `FUN_1000_1817` | 88 |  | - |
-| 1000:186f | 0x1186f | `FUN_1000_186f` | 172 |  | - |
+| 1000:186f | 0x1186f | `FUN_1000_186f` | 172 | The party position set to a place directly, without the area steps | rebuilt |
 | 1000:191b | 0x1191b | `FUN_1000_191b` | 164 | Moves the party position by (dx, dy) half-cells, across area edges | rebuilt |
 | 1000:19bf | 0x119bf | `FUN_1000_19bf` | 30 | Plays sound effect n if sound is on (DG:015c) (docs/sound.md) | rebuilt |
-| 1000:19dd | 0x119dd | `FUN_1000_19dd` | 22 |  | - |
-| 1000:19f3 | 0x119f3 | `FUN_1000_19f3` | 32 |  | - |
+| 1000:19dd | 0x119dd | `FUN_1000_19dd` | 22 | 2d6: two d6, the first drawn first | rebuilt |
+| 1000:19f3 | 0x119f3 | `FUN_1000_19f3` | 32 | A d6: a random number's low 3 bits, drawn again while above 5, plus 1 | rebuilt |
 | 1000:1a13 | 0x11a13 | `FUN_1000_1a13` | 234 | Yes/no question: Y/N answer, left/right pick, space/Enter accept; reprints the answer line each key | rebuilt |
 | 1000:1afd | 0x11afd | `FUN_1000_1afd` | 277 | Shows one .ANM picture: its frames and delays (docs/formats/anm.md) | rebuilt |
 | 1000:1c12 | 0x11c12 | `FUN_1000_1c12` | 1405 | Can the party step by (dx, dy)? Deep water at a block edge; offers to enter a place at an entrance; blocks on tile >= DG:0150; the party's 'Mechs (two cells each); map 14's tile events (not rebuilt) | rebuilt |
@@ -36,34 +36,34 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 1000:24c2 | 0x124c2 | `FUN_1000_24c2` | 933 | Townspeople, every third game tick: count down inside, come out at the last entrance; out and near the party, a step (1e31:0006), walking frame, at the target go in for random&31 rounds | rebuilt |
 | 1000:2867 | 0x12867 | `FUN_1000_2867` | 59 | Prints a text at (column, row) of the current window in white (F:3748, 374e, 37fe = 15) | rebuilt |
 | 1000:28a2 | 0x128a2 | `FUN_1000_28a2` | 42 | Sets the text colour to light green (CGA: 1) | rebuilt |
-| 1000:28cc | 0x128cc | `FUN_1000_28cc` | 71 |  | - |
-| 1000:2913 | 0x12913 | `FUN_1000_2913` | 226 |  | - |
+| 1000:28cc | 0x128cc | `FUN_1000_28cc` | 71 | Asks for game disk n (a check file, then a prompt) (docs/scripts.md) | replaced (no disks) |
+| 1000:2913 | 0x12913 | `FUN_1000_2913` | 226 | The disk check after a disk prompt | replaced (no disks) |
 | 1000:29f5 | 0x129f5 | `FUN_1000_29f5` | 54 | The money floor: word F:d340/d33f | rebuilt |
-| 1000:2a2b | 0x12a2b | `FUN_1000_2a2b` | 36 | Empties the keyboard buffer (unless playing back recorded keys) | read |
+| 1000:2a2b | 0x12a2b | `FUN_1000_2a2b` | 36 | Empties the keyboard buffer (unless playing back recorded keys) | rebuilt |
 | 1000:2a4f | 0x12a4f | `FUN_1000_2a4f` | 26 | the press-a-key prompt (DG:050d) and a key | rebuilt |
-| 1000:2a69 | 0x12a69 | `FUN_1000_2a69` | 21 |  | - |
-| 1000:2a7e | 0x12a7e | `FUN_1000_2a7e` | 21 |  | - |
+| 1000:2a69 | 0x12a69 | `FUN_1000_2a69` | 21 | Prints the plural ending (DG:051b) | rebuilt |
+| 1000:2a7e | 0x12a7e | `FUN_1000_2a7e` | 21 | Prints the full stop (DG:051d) | rebuilt |
 | 1000:2a93 | 0x12a93 | `FUN_1000_2a93` | 445 | Draws the map's marks in view (the 64-place ring, docs/combat.md 3.13), toggling a fire's sprite 0x7c/0x7d each drawing | rebuilt |
-| 1000:2c50 | 0x12c50 | `FUN_1000_2c50` | 344 | Space: the command menu | read |
+| 1000:2c50 | 0x12c50 | `FUN_1000_2c50` | 344 | Space: the command menu | rebuilt |
 | 1000:2da8 | 0x12da8 | `FUN_1000_2da8` | 1123 | Loads MAP<n>.MTP into a grid (its blocks 0x90 on, docs/wilderness.md); blocking tile; places the 8 townspeople (8 random numbers) unless DG:014c | rebuilt |
-| 1000:320b | 0x1320b | `FUN_1000_320b` | 168 | Loads ANIMATE.ICN into the animation buffer | read |
-| 1000:32b3 | 0x132b3 | `FUN_1000_32b3` | 800 | Loads a saved game: picks a slot (menu 0x28) and reads it | - |
-| 1000:35d3 | 0x135d3 | `FUN_1000_35d3` | 442 |  | - |
+| 1000:320b | 0x1320b | `FUN_1000_320b` | 168 | Loads ANIMATE.ICN into the animation buffer | rebuilt |
+| 1000:32b3 | 0x132b3 | `FUN_1000_32b3` | 800 | Loads a saved game: picks a slot (menu 0x28) and reads it | rebuilt |
+| 1000:35d3 | 0x135d3 | `FUN_1000_35d3` | 442 | Saves a game: a slot from menu 0x28 and the file GameN; refused on the cache's second level (docs/formats/save.md) | rebuilt |
 | 1000:378d | 0x1378d | `FUN_1000_378d` | 1091 | The command menu's inspect item: a 'Mech (chooser, stats screen) or a character's page (docs/town_loop.md) | rebuilt |
-| 1000:3bd0 | 0x13bd0 | `FUN_1000_3bd0` | 368 |  | - |
+| 1000:3bd0 | 0x13bd0 | `FUN_1000_3bd0` | 368 | The command menu's settings: steps a key, message speed, sound, picture chance, quit (docs/town_loop.md) | rebuilt |
 | 1000:3d40 | 0x13d40 | `FUN_1000_3d40` | 622 | The overhead map: the cursor moved two areas at a time, then the nine-map load without townspeople (docs/overhead_map.md) | rebuilt |
 | 1000:3fae | 0x13fae | `FUN_1000_3fae` | 1556 | Draws the overhead map (5 x 3 areas, seen tiles only), its pointer, caption and the party's dot until a key | rebuilt |
 | 1000:45c2 | 0x145c2 | `FUN_1000_45c2` | 95 | A town block drawn small for the overhead map (287f:1f51), converted for CGA or Tandy | replaced (platform/overhead_layer.cpp) |
 | 1000:4621 | 0x14621 | `FUN_1000_4621` | 134 | Load BTTLTECH.ICN as the map tile sheet | rebuilt |
 | 1000:46a7 | 0x146a7 | `FUN_1000_46a7` | 198 | Shows the title screen (BTTITLE.CMP, with its palette) (docs/startup.md) | rebuilt |
-| 1000:476d | 0x1476d | `FUN_1000_476d` | 330 | Plays the title's tune (WWOODBT.SIF) until a key or its end (docs/startup.md) | read |
+| 1000:476d | 0x1476d | `FUN_1000_476d` | 330 | Plays the title's tune (WWOODBT.SIF) until a key or its end (docs/startup.md) | rebuilt |
 | 1000:48b7 | 0x148b7 | `FUN_1000_48b7` | 495 | Shows place picture O<n>.ANM in the picture box, or not, by chance (docs/formats/anm.md) | rebuilt |
 | 1000:4aa6 | 0x14aa6 | `FUN_1000_4aa6` | 14 | Panel: a character's name and three bars (columns 9-11), the first with a red part | rebuilt |
 | 1000:4ab4 | 0x14ab4 | `FUN_1000_4ab4` | 269 |  | - |
 | 1000:4bc1 | 0x14bc1 | `FUN_1000_4bc1` | 235 | Panel: one bar, a yellow outline and a green fill from the bottom | rebuilt |
 | 1000:4cac | 0x14cac | `FUN_1000_4cac` | 171 | The left panel: party box (window 3, frame style 3, 'BDC' heading, up to 4 names) and the box above (window 4, style 4) | rebuilt |
-| 1000:4d57 | 0x14d57 | `FUN_1000_4d57` | 112 |  | - |
-| 1000:4dc7 | 0x14dc7 | `FUN_1000_4dc7` | 769 | New game: reset the party, load map 1 into area 4, set the start position | read |
+| 1000:4d57 | 0x14d57 | `FUN_1000_4d57` | 112 | The command menu's crew item: the crew screen, refused near a map block | rebuilt |
+| 1000:4dc7 | 0x14dc7 | `FUN_1000_4dc7` | 769 | New game: reset the party, load map 1 into area 4, set the start position | rebuilt |
 | 1000:50c8 | 0x150c8 | `FUN_1000_50c8` | 434 | Start-up: 256 random numbers into P:09fb; the title; the notice and first-time question; the demo if no key (docs/startup.md) | rebuilt |
 
 ## CODE_1: segment 1527, 2,104 bytes
@@ -80,12 +80,12 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 15ab:0002 | 0x15ab2 | `FUN_15ab_0002` | 1271 | After a fight: repairs from the wrecks and scrap money | rebuilt |
 | 15ab:04f9 | 0x15fa9 | `FUN_15ab_04f9` | 1106 | After a fight: salvage a wreck for a pilot on foot | rebuilt |
 | 15ab:094b | 0x163fb | `FUN_15ab_094b` | 531 | After a fight: loot the beaten soldiers (C-Bills, a weapon swap; bug 27) | rebuilt |
-| 15ab:0b5e | 0x1660e | `FUN_15ab_0b5e` | 55 | Asks whether the computer fights for you (F:009e) | read |
-| 15ab:0b95 | 0x16645 | `FUN_15ab_0b95` | 250 |  | - |
-| 15ab:0c8f | 0x1673f | `FUN_15ab_0c8f` | 131 |  | - |
+| 15ab:0b5e | 0x1660e | `FUN_15ab_0b5e` | 55 | Asks whether the computer fights for you (F:009e) | rebuilt |
+| 15ab:0b95 | 0x16645 | `FUN_15ab_0b95` | 250 | The speaker speed test: passes in four timer ticks (docs/sound.md) | replaced (DG:5006 fixed, docs/sound.md) |
+| 15ab:0c8f | 0x1673f | `FUN_15ab_0c8f` | 131 | Sets the sound delay DG:5006 from the speed test (docs/sound.md) | replaced (DG:5006 fixed, docs/sound.md) |
 | 15ab:0d12 | 0x167c2 | `FUN_15ab_0d12` | 43 |  | - |
 | 15ab:0d3d | 0x167ed | `FUN_15ab_0d3d` | 1834 | Sets up a random encounter: soldiers and 'Mechs, placed 10-17 cells away | rebuilt |
-| 15ab:1467 | 0x16f17 | `FUN_15ab_1467` | 741 | The scan list: each figure of a side in turn, Next / Detail / Done | rebuilt in part (no Detail) |
+| 15ab:1467 | 0x16f17 | `FUN_15ab_1467` | 741 | The scan list: each figure of a side in turn, Next / Detail / Done | rebuilt |
 | 15ab:174c | 0x171fc | `FUN_15ab_174c` | 268 | The stats screen's bar: two parts from a bottom row up; the heat bar's lower part blinks (docs/town_loop.md) | rebuilt |
 | 15ab:1858 | 0x17308 | `FUN_15ab_1858` | 144 | The stats screen's pips: a row of squares, the first k green, five a row | rebuilt |
 | 15ab:18e8 | 0x17398 | `FUN_15ab_18e8` | 534 | A unit's heading: a 'Mech's pilot and name; a person's name, with the details flag its condition, weapon and armour | rebuilt (not the double agent) |
@@ -98,8 +98,8 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 17dc:0008 | 0x17dc8 | `FUN_17dc_0008` | 440 | Enters a place: loads and runs its .BLD script, then puts the town screen back (docs/scripts.md) | rebuilt |
 | 17dc:01c0 | 0x17f80 | `FUN_17dc_01c0` | 1079 | The .BLD script interpreter: opcodes E4-FF (docs/scripts.md) | rebuilt |
 | 17dc:05f7 | 0x183b7 | `FUN_17dc_05f7` | 50 | Reads a script word (jump targets) | rebuilt |
-| 17dc:0629 | 0x183e9 | `FUN_17dc_0629` | 1824 | Scene driver: training missions 0-7, the arena (8), the jail break (9); results in flag 01 (docs/combat.md); modes 0-7 (not the raid) and the walk rebuilt | rebuilt (in part) |
-| 17dc:0d49 | 0x18b09 | `FUN_17dc_0d49` | 1538 | Sets up the opponents: enemy pilots and 'Mechs from templates, difficulty armour cut (docs/combat.md) | read |
+| 17dc:0629 | 0x183e9 | `FUN_17dc_0629` | 1824 | Scene driver: training missions 0-7, the arena (8), the jail break (9); results in flag 01 (docs/combat.md); modes 0-7 (not the raid) and the walk rebuilt | rebuilt |
+| 17dc:0d49 | 0x18b09 | `FUN_17dc_0d49` | 1538 | Sets up the opponents: enemy pilots and 'Mechs from templates, difficulty armour cut (docs/combat.md) | rebuilt |
 | 17dc:134b | 0x1910b | `FUN_17dc_134b` | 147 | Puts the party at figure 0 (or 4) after a fight and redraws | rebuilt |
 | 17dc:13de | 0x1919e | `FUN_17dc_13de` | 520 | Armour offered to the party (ARMOR's purchase; docs/scripts.md, "The shops") | rebuilt |
 | 17dc:15e6 | 0x193a6 | `FUN_17dc_15e6` | 467 | A weapon offered to the party (after a fight, WEAPON's purchase) | rebuilt |
@@ -117,31 +117,31 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 19b8:0002 | 0x19b82 | `FUN_19b8_0002` | 2056 | REPAIR's repair shop, special 18: armour, structure, heat sinks, weapons by type (bug 40), actuators (docs/scripts.md, "The repair shop") | rebuilt |
 | 19b8:080a | 0x1a38a | `FUN_19b8_080a` | 283 | The 'Mech upgrade offer, special 19: the upgrade from bytes 0x7b and 0x7c (docs/combat.md 2.6, Kick) | rebuilt |
 | 19b8:0925 | 0x1a4a5 | `FUN_19b8_0925` | 1075 | Pays for and applies a 'Mech upgrade, special 20: eight cases by model and stage (docs/combat.md 2.6, Kick) | rebuilt |
-| 19b8:0d58 | 0x1a8d8 | `FUN_19b8_0d58` | 758 | A new party member joins (script E9) | read |
-| 19b8:104e | 0x1abce | `FUN_19b8_104e` | 817 |  | - |
+| 19b8:0d58 | 0x1a8d8 | `FUN_19b8_0d58` | 758 | A new party member joins (script E9) | rebuilt |
+| 19b8:104e | 0x1abce | `FUN_19b8_104e` | 817 | PARTY's alley: the first companion joins, then soldiers on foot attack (special 1e, docs/combat.md 1.6) | rebuilt |
 | 19b8:137f | 0x1aeff | `FUN_19b8_137f` | 194 | One of three wall patches in the Arena, by chance (DG:0010) | rebuilt |
 | 19b8:1441 | 0x1afc1 | `FUN_19b8_1441` | 238 | The Arena's patch made floor again, one draw a middle cell | rebuilt |
-| 19b8:152f | 0x1b0af | `FUN_19b8_152f` | 387 |  | - |
-| 19b8:16b2 | 0x1b232 | `FUN_19b8_16b2` | 176 |  | - |
+| 19b8:152f | 0x1b0af | `FUN_19b8_152f` | 387 | Jason alone on foot, the rest hidden, then mission mode 9 (the jail break) | rebuilt |
+| 19b8:16b2 | 0x1b232 | `FUN_19b8_16b2` | 176 | The 'Mech that won't start: its animation, sound 14 and a wait (docs/combat.md) | rebuilt |
 | 19b8:1762 | 0x1b2e2 | `FUN_19b8_1762` | 754 | REPAIR's ammunition, special 44 (docs/scripts.md, "The repair shop") | rebuilt |
 
 ## CODE_5: segment 1b5d, 3,397 bytes
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 1b5d:0004 | 0x1b5d4 | `FUN_1b5d_0004` | 485 | Load map 14 with STARLEAG.ICN (from its calls) | read |
-| 1b5d:01e9 | 0x1b7b9 | `FUN_1b5d_01e9` | 159 |  | - |
-| 1b5d:0288 | 0x1b858 | `FUN_1b5d_0288` | 32 |  | - |
-| 1b5d:02a8 | 0x1b878 | `FUN_1b5d_02a8` | 42 |  | - |
-| 1b5d:02d2 | 0x1b8a2 | `FUN_1b5d_02d2` | 85 |  | - |
+| 1b5d:0004 | 0x1b5d4 | `FUN_1b5d_0004` | 485 | Load map 14 with STARLEAG.ICN (from its calls) | rebuilt |
+| 1b5d:01e9 | 0x1b7b9 | `FUN_1b5d_01e9` | 159 | The cache: the wall at cells x 0-2, y 42-47 changed from a table (docs/cache.md) | rebuilt |
+| 1b5d:0288 | 0x1b858 | `FUN_1b5d_0288` | 32 | The cache: ENDMECH at the tiles above f5 while F:d34b is clear (docs/cache.md) | rebuilt |
+| 1b5d:02a8 | 0x1b878 | `FUN_1b5d_02a8` | 42 | The cache: a text and a key at tiles 83 and a5-a7 (docs/cache.md) | rebuilt |
+| 1b5d:02d2 | 0x1b8a2 | `FUN_1b5d_02d2` | 85 | The cache: the hint at its own place; from then on the way out answers (docs/cache.md) | rebuilt |
 | 1b5d:0327 | 0x1b8f7 | `FUN_1b5d_0327` | 131 | Swaps the cache level's cell colour table into the overhead map's (P:215d) | replaced (a table choice) |
-| 1b5d:03aa | 0x1b97a | `FUN_1b5d_03aa` | 257 |  | - |
-| 1b5d:04ab | 0x1ba7b | `FUN_1b5d_04ab` | 175 |  | - |
-| 1b5d:055a | 0x1bb2a | `FUN_1b5d_055a` | 578 |  | - |
-| 1b5d:079c | 0x1bd6c | `FUN_1b5d_079c` | 375 |  | - |
-| 1b5d:0913 | 0x1bee3 | `FUN_1b5d_0913` | 109 |  | - |
-| 1b5d:0980 | 0x1bf50 | `FUN_1b5d_0980` | 310 |  | - |
-| 1b5d:0ab6 | 0x1c086 | `FUN_1b5d_0ab6` | 659 |  | - |
+| 1b5d:03aa | 0x1b97a | `FUN_1b5d_03aa` | 257 | The cache: the items at a place offered for their slots (docs/cache.md) | rebuilt |
+| 1b5d:04ab | 0x1ba7b | `FUN_1b5d_04ab` | 175 | The cache: the way out (tile 4d), and the ending once everything is done (docs/cache.md) | rebuilt |
+| 1b5d:055a | 0x1bb2a | `FUN_1b5d_055a` | 578 | The cache: tile 28, FINDIT and the way down (docs/cache.md) | rebuilt |
+| 1b5d:079c | 0x1bd6c | `FUN_1b5d_079c` | 375 | The cache: tile 94, back up to the first level (docs/cache.md) | rebuilt |
+| 1b5d:0913 | 0x1bee3 | `FUN_1b5d_0913` | 109 | The cache: a puzzle cell turned into its pair (docs/cache.md) | rebuilt |
+| 1b5d:0980 | 0x1bf50 | `FUN_1b5d_0980` | 310 | The cache: the puzzle's check, sound 16 or 17, flag 3e (docs/cache.md) | rebuilt |
+| 1b5d:0ab6 | 0x1c086 | `FUN_1b5d_0ab6` | 659 | The cache: a door and the three items it needs (docs/cache.md) | rebuilt |
 
 ## CODE_6: segment 1c31, 857 bytes
 
@@ -153,10 +153,10 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 1c67:0002 | 0x1c672 | `FUN_1c67_0002` | 2214 |  | - |
-| 1c67:08a8 | 0x1cf18 | `FUN_1c67_08a8` | 752 | The training center's first visit: the copy-protection quiz (docs/combat.md) | read |
+| 1c67:0002 | 0x1c672 | `FUN_1c67_0002` | 2214 | The crew screen: who pilots and who rides each 'Mech (docs/scripts.md) | rebuilt |
+| 1c67:08a8 | 0x1cf18 | `FUN_1c67_08a8` | 752 | The training center's first visit: the copy-protection quiz (docs/combat.md) | rebuilt (its draws always; the scene with --show-quiz; no check, docs/rules.md) |
 | 1c67:0b98 | 0x1d208 | `FUN_1c67_0b98` | 486 | Chooses a 'Mech by menu 0x17 (the Arena's own 'Mech) | rebuilt |
-| 1c67:0d7e | 0x1d3ee | `FUN_1c67_0d7e` | 70 |  | - |
+| 1c67:0d7e | 0x1d3ee | `FUN_1c67_0d7e` | 70 | Clears every figure's path | rebuilt |
 
 ## CODE_8: segment 1d43, 3,810 bytes
 
@@ -164,9 +164,9 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 |---|---|---|---|---|---|
 | 1d43:0004 | 0x1d434 | `FUN_1d43_0004` | 1991 | The Use Weapons screen | rebuilt |
 | 1d43:07cb | 0x1dbfb | `FUN_1d43_07cb` | 618 | The target picker | rebuilt |
-| 1d43:0a35 | 0x1de65 | `FUN_1d43_0a35` | 573 | A 'Mech destroyed: targets cleared, the party crew ejects | rebuilt in part |
+| 1d43:0a35 | 0x1de65 | `FUN_1d43_0a35` | 573 | A 'Mech destroyed: targets cleared, the party crew ejects | rebuilt |
 | 1d43:0c72 | 0x1e0a2 | `FUN_1d43_0c72` | 108 | The Arena's broken wall: map-store cells 0xc00-0xc25 patched (DG:2b8e) or put back (DG:5804) | rebuilt |
-| 1d43:0cde | 0x1e10e | `FUN_1d43_0cde` | 520 |  | - |
+| 1d43:0cde | 0x1e10e | `FUN_1d43_0cde` | 520 | A whole number typed at the cursor, up to 7 digits, until Enter (docs/scripts.md) | rebuilt |
 
 ## CODE_9: segment 1e31, 8,356 bytes
 
@@ -178,19 +178,19 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 1e31:03ab | 0x1e6bb | `FUN_1e31_03ab` | 2058 | The computer's orders for a unit: target, waypoint, weapons; with show, the unit's screen (docs/combat.md) | rebuilt |
 | 1e31:0bb5 | 0x1eec5 | `FUN_1e31_0bb5` | 174 | Distance from the party position: min + max/2 | rebuilt |
 | 1e31:0c63 | 0x1ef73 | `FUN_1e31_0c63` | 705 | End of a combat round: heat, fired marks cleared, the dead removed | rebuilt |
-| 1e31:0f24 | 0x1f234 | `FUN_1e31_0f24` | 307 |  | - |
+| 1e31:0f24 | 0x1f234 | `FUN_1e31_0f24` | 307 | The range band (short, medium, long, out) from the party's position to a figure with a weapon | rebuilt |
 | 1e31:1057 | 0x1f367 | `FUN_1e31_1057` | 75 | A message in window 4 and a key, then the window that was current | rebuilt |
-| 1e31:10a2 | 0x1f3b2 | `FUN_1e31_10a2` | 128 |  | - |
+| 1e31:10a2 | 0x1f3b2 | `FUN_1e31_10a2` | 128 | The weapon in a 'Mech's slot, or ff when none or out of ammunition | rebuilt |
 | 1e31:1122 | 0x1f432 | `FUN_1e31_1122` | 137 | Damage transfer to the next location inward | rebuilt |
 | 1e31:11ab | 0x1f4bb | `FUN_1e31_11ab` | 1103 | Critical hits in a location | rebuilt |
-| 1e31:15fa | 0x1f90a | `FUN_1e31_15fa` | 68 |  | - |
-| 1e31:163e | 0x1f94e | `FUN_1e31_163e` | 109 |  | - |
+| 1e31:15fa | 0x1f90a | `FUN_1e31_15fa` | 68 | Counts a run of slots' intact items | rebuilt |
+| 1e31:163e | 0x1f94e | `FUN_1e31_163e` | 109 | Destroys items in a run of a 'Mech's slots (docs/combat.md) | rebuilt |
 | 1e31:16ab | 0x1f9bb | `FUN_1e31_16ab` | 1177 | Is a place taken? Party characters, townspeople, 'Mechs (3 half-cells); 'Mechs also crush (combat.md 3.4) | rebuilt |
 | 1e31:1b44 | 0x1fe54 | `FUN_1e31_1b44` | 75 |  | - |
 | 1e31:1b8f | 0x1fe9f | `FUN_1e31_1b8f` | 111 | Prints a hit location's name and "." as one string (docs/combat.md 3.8) | rebuilt |
-| 1e31:1bfe | 0x1ff0e | `FUN_1e31_1bfe` | 429 |  | - |
+| 1e31:1bfe | 0x1ff0e | `FUN_1e31_1bfe` | 429 | Line of sight from the party's position to a figure | rebuilt |
 | 1e31:1dab | 0x200bb | `FUN_1e31_1dab` | 33 | Prints a text into the current window when combat messages are on (DG:2e38) (docs/combat.md 3.8) | rebuilt |
-| 1e31:1dcc | 0x200dc | `FUN_1e31_1dcc` | 44 | The pause after a shot: 12 x DG:015e frames, or a key from 5 on (docs/combat.md 3.8) | rebuilt in part |
+| 1e31:1dcc | 0x200dc | `FUN_1e31_1dcc` | 44 | The pause after a shot: 12 x DG:015e frames, or a key from 5 on (docs/combat.md 3.8) | rebuilt in part (speed 5's wait for a key is held as frames) |
 | 1e31:1df8 | 0x20108 | `FUN_1e31_1df8` | 170 | A place's text cell in the view centred on another, half-cell by half-cell (into F:e486/e488) | rebuilt |
 | 1e31:1ea2 | 0x201b2 | `FUN_1e31_1ea2` | 103 | A line's octant from its y and x differences | rebuilt |
 | 1e31:1f09 | 0x20219 | `FUN_1e31_1f09` | 106 | The shot's redraw: the saved cell window back, the view onto Jason, tiles' frame, view and figures | rebuilt (not shown) |
@@ -201,8 +201,8 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 203b:000a | 0x203ba | `FUN_203b_000a` | 5240 | The fight: set-up, engage question, the round loop, the end, the after-fight steps (docs/combat.md) | read |
-| 203b:1482 | 0x21832 | `FUN_203b_1482` | 65 |  | - |
+| 203b:000a | 0x203ba | `FUN_203b_000a` | 5240 | The fight: set-up, engage question, the round loop, the end, the after-fight steps (docs/combat.md) | rebuilt |
+| 203b:1482 | 0x21832 | `FUN_203b_1482` | 65 | The computer plans a side's active figures | rebuilt |
 | 203b:14c3 | 0x21873 | `FUN_203b_14c3` | 689 | The player's orders menu for each unit; 1 = flee | rebuilt |
 | 203b:1774 | 0x21b24 | `FUN_203b_1774` | 455 | A unit on the orders screen: the view on it, the box, its path as arrows | rebuilt |
 | 203b:193b | 0x21ceb | `FUN_203b_193b` | 740 | A figure's path from its orders, and its movement cost | rebuilt |
@@ -210,12 +210,12 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 203b:2231 | 0x225e1 | `FUN_203b_2231` | 139 | The Kick order: the target picker for slot 11, with both hips | rebuilt |
 | 203b:22bc | 0x2266c | `FUN_203b_22bc` | 440 | A 'Mech's movement points (walk/run/jump, damage, heat) | rebuilt |
 | 203b:2474 | 0x22824 | `FUN_203b_2474` | 124 | A person's movement points | rebuilt |
-| 203b:24f0 | 0x228a0 | `FUN_203b_24f0` | 102 |  | - |
-| 203b:2556 | 0x22906 | `FUN_203b_2556` | 59 |  | - |
+| 203b:24f0 | 0x228a0 | `FUN_203b_24f0` | 102 | The combat-messages question: none, brief, verbose (docs/combat.md) | rebuilt |
+| 203b:2556 | 0x22906 | `FUN_203b_2556` | 59 | The combat-graphics question (docs/combat.md) | rebuilt |
 | 203b:2591 | 0x22941 | `FUN_203b_2591` | 428 | Scan Unit: Friends / Enemies / Cancel, then the scan list | rebuilt |
 | 203b:273d | 0x22aed | `FUN_203b_273d` | 140 | A critical slot's location's internal structure (1 for model 200) | rebuilt |
-| 203b:27c9 | 0x22b79 | `FUN_203b_27c9` | 108 |  | - |
-| 203b:2835 | 0x22be5 | `FUN_203b_2835` | 166 | After an encounter: the nine areas' maps loaded again where a grid's first entry isn't 0x90, then the masks | read |
+| 203b:27c9 | 0x22b79 | `FUN_203b_27c9` | 108 | Adds a mark to the map's marks | rebuilt |
+| 203b:2835 | 0x22be5 | `FUN_203b_2835` | 166 | After an encounter: the nine areas' maps loaded again where a grid's first entry isn't 0x90, then the masks | rebuilt |
 | 203b:28db | 0x22c8b | `FUN_203b_28db` | 456 | Can Jason reach the first enemy: 30 steps of 1e31:0006 in mode 0x80 (docs/combat.md 2.3) | rebuilt |
 | 203b:2aa3 | 0x22e53 | `FUN_203b_2aa3` | 57 | The view walked back to a place (1000:17bb) and the window built there | rebuilt |
 
@@ -224,16 +224,16 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
 | 22e8:000c | 0x22e8c | `FUN_22e8_000c` | 4795 | One combat round: 12 phases of moving and firing; to-hit, location, damage (docs/combat.md) | rebuilt |
-| 22e8:12c7 | 0x24147 | `FUN_22e8_12c7` | 2943 | A shot's animation and sound; kills, wrecks, the leader's death | rebuilt (sounds recorded, not played; the spectator in part) |
-| 22e8:1e46 | 0x24cc6 | `FUN_22e8_1e46` | 110 |  | - |
+| 22e8:12c7 | 0x24147 | `FUN_22e8_12c7` | 2943 | A shot's animation and sound; kills, wrecks, the leader's death | rebuilt |
+| 22e8:1e46 | 0x24cc6 | `FUN_22e8_1e46` | 110 | On a miss, the fire check: on 2d6 outside 5-9, a fire mark (0x7c) beside the target | rebuilt |
 
 ## CODE_12: segment 24d3, 6,191 bytes
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 24d3:0004 | 0x24d34 | `FUN_24d3_0004` | 6082 | The script specials, F5 n (docs/scripts.md); the rebuilt ones are listed there | read |
+| 24d3:0004 | 0x24d34 | `FUN_24d3_0004` | 6082 | The script specials, F5 n (docs/scripts.md); the rebuilt ones are listed there | rebuilt |
 | 24d3:17c6 | 0x264f6 | `FUN_24d3_17c6` | 36 | Opens the message box over the map: window 7, cleared, frame style 0 | rebuilt |
-| 24d3:17ea | 0x2651a | `FUN_24d3_17ea` | 31 | Prints a message in the open box, waits a moment (273d:086a) | read |
+| 24d3:17ea | 0x2651a | `FUN_24d3_17ea` | 31 | Prints a message in the open box, waits a moment (273d:086a) | rebuilt |
 | 24d3:1809 | 0x26539 | `FUN_24d3_1809` | 21 | Prints DGROUP:4f7e (special 5) | rebuilt |
 | 24d3:181e | 0x2654e | `FUN_24d3_181e` | 21 | Prints DGROUP:4fa0, a line end (talk) | rebuilt |
 
@@ -247,7 +247,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 2656:0388 | 0x268e8 | `FUN_2656_0388` | 109 | Clears the current window to its background colour, cursor to the corner | rebuilt |
 | 2656:03f5 | 0x26955 | `FUN_2656_03f5` | 982 | Text printer: word wrap into the current window; codes 0d newline, 02 bg, 06 fg, 09 column, 13 pad; top bit ends | rebuilt |
 | 2656:07cb | 0x26d2b | `FUN_2656_07cb` | 624 | Puts one line in the current window at the cursor; past the bottom scrolls the window up a row | rebuilt |
-| 2656:0a3b | 0x26f9b | `FUN_2656_0a3b` | 170 |  | - |
+| 2656:0a3b | 0x26f9b | `FUN_2656_0a3b` | 170 | Part of the text cell layout, with 2656:0ae5 | rebuilt |
 | 2656:0ae5 | 0x27045 | `FUN_2656_0ae5` | 121 | Cuts N 8x8 cells from a picture, left to right from a cell position (frame pieces from BTBORDER.CMP) | rebuilt |
 | 2656:0b5e | 0x270be | `FUN_2656_0b5e` | 447 | A menu: the bar over the remembered item, arrows, Enter (docs/scripts.md) | rebuilt |
 | 2656:0d1d | 0x2727d | `FUN_2656_0d1d` | 345 | Maps keypad keys and letters to arrows, for menus | rebuilt |
@@ -257,7 +257,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
 | 273d:0006 | 0x273d6 | `FUN_273d_0006` | 41 | Waits N display frames (vertical retrace, 287f:0b40) | replaced |
-| 273d:002f | 0x273ff | `FUN_273d_002f` | 36 | Is a key waiting? (DOS int 21h 0Bh through 287f:3bdc, or recorded keys) | read |
+| 273d:002f | 0x273ff | `FUN_273d_002f` | 36 | Is a key waiting? (DOS int 21h 0Bh through 287f:3bdc, or recorded keys) | rebuilt |
 | 273d:0053 | 0x27423 | `FUN_273d_0053` | 51 | A number printed in decimal (itoa, then the printer) | rebuilt |
 | 273d:0086 | 0x27456 | `FUN_273d_0086` | 79 | Copy a picture buffer to the screen (by display) | replaced |
 | 273d:00d5 | 0x274a5 | `FUN_273d_00d5` | 294 | Writes a string straight onto the screen at (column, row) in two colours with the 8x8 font | rebuilt |
@@ -268,31 +268,31 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 273d:049d | 0x2786d | `FUN_273d_049d` | 136 | Unpack a loaded .CMP by its type byte (CGA: reduce to 4 colours) | rebuilt |
 | 273d:0525 | 0x278f5 | `FUN_273d_0525` | 151 | Set the 16-colour palette for the chosen display | rebuilt |
 | 273d:05bc | 0x2798c | `FUN_273d_05bc` | 127 |  | - |
-| 273d:063b | 0x27a0b | `FUN_273d_063b` | 136 | Reads a length-prefixed file (.BLD) into a buffer; asks for the disk if missing | read |
+| 273d:063b | 0x27a0b | `FUN_273d_063b` | 136 | Reads a length-prefixed file (.BLD) into a buffer; asks for the disk if missing | rebuilt |
 | 273d:06c3 | 0x27a93 | `FUN_273d_06c3` | 71 | The off-screen page's map columns copied to the screen | rebuilt |
 | 273d:070a | 0x27ada | `FUN_273d_070a` | 266 | Cuts a rectangle of a picture into a sprite slot | rebuilt |
-| 273d:0814 | 0x27be4 | `FUN_273d_0814` | 86 |  | - |
-| 273d:086a | 0x27c3a | `FUN_273d_086a` | 24 | Short pause after a message, then flushes the keyboard | read |
+| 273d:0814 | 0x27be4 | `FUN_273d_0814` | 86 | Reads a file into a buffer, up to a limit (DEMOFILE, the cache's tiles, O0.ANM) | replaced (formats::read_file) |
+| 273d:086a | 0x27c3a | `FUN_273d_086a` | 24 | Short pause after a message, then flushes the keyboard | rebuilt |
 
 ## CODE_15: segment 27c5, 2,155 bytes
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 27c5:0002 | 0x27c52 | `FUN_27c5_0002` | 673 | Finds sound effect n in the lists at DG:5008 and plays its entries, storing their words in the far data (docs/sound.md) | rebuilt (the stores; no audio) |
-| 27c5:02a3 | 0x27ef3 | `FUN_27c5_02a3` | 72 |  | - |
-| 27c5:02eb | 0x27f3b | `FUN_27c5_02eb` | 90 |  | - |
-| 27c5:0345 | 0x27f95 | `FUN_27c5_0345` | 99 | A kind-2 sound entry: the sweep, count times (docs/sound.md) | read |
-| 27c5:03a8 | 0x27ff8 | `FUN_27c5_03a8` | 99 |  | - |
-| 27c5:040b | 0x2805b | `FUN_27c5_040b` | 99 |  | - |
+| 27c5:0002 | 0x27c52 | `FUN_27c5_0002` | 673 | Finds sound effect n in the lists at DG:5008 and plays its entries, storing their words in the far data (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:02a3 | 0x27ef3 | `FUN_27c5_02a3` | 72 | A note entry: its tone, code times (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:02eb | 0x27f3b | `FUN_27c5_02eb` | 90 | A kind-1 entry: bursts with the entry's own words (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:0345 | 0x27f95 | `FUN_27c5_0345` | 99 | A kind-2 sound entry: the sweep, count times (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:03a8 | 0x27ff8 | `FUN_27c5_03a8` | 99 | A kind-3 entry: a sweep down (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:040b | 0x2805b | `FUN_27c5_040b` | 99 | A kind-4 entry: a sweep up (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
 | 27c5:046e | 0x280be | `FUN_27c5_046e` | 13 |  | - |
-| 27c5:047b | 0x280cb | `FUN_27c5_047b` | 105 |  | - |
+| 27c5:047b | 0x280cb | `FUN_27c5_047b` | 105 | One tone: a divisor for a length (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
 | 27c5:04e4 | 0x28134 | `FUN_27c5_04e4` | 13 |  | - |
-| 27c5:04f1 | 0x28141 | `FUN_27c5_04f1` | 169 |  | - |
-| 27c5:059a | 0x281ea | `FUN_27c5_059a` | 169 |  | - |
-| 27c5:0643 | 0x28293 | `FUN_27c5_0643` | 179 | One sweep on the speaker; stores its five arguments back in F:0000, 39f4, 4000, 4034, 0062 (docs/sound.md) | read |
-| 27c5:06f6 | 0x28346 | `FUN_27c5_06f6` | 81 |  | - |
-| 27c5:0747 | 0x28397 | `FUN_27c5_0747` | 147 |  | - |
-| 27c5:07da | 0x2842a | `FUN_27c5_07da` | 147 |  | - |
+| 27c5:04f1 | 0x28141 | `FUN_27c5_04f1` | 169 | A burst on the speaker: off, a short wait, then flips (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:059a | 0x281ea | `FUN_27c5_059a` | 169 | A kind-1 burst (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:0643 | 0x28293 | `FUN_27c5_0643` | 179 | One sweep on the speaker; stores its five arguments back in F:0000, 39f4, 4000, 4034, 0062 (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:06f6 | 0x28346 | `FUN_27c5_06f6` | 81 | The tone wait for a length (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:0747 | 0x28397 | `FUN_27c5_0747` | 147 | A kind-3 sweep's steps (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
+| 27c5:07da | 0x2842a | `FUN_27c5_07da` | 147 | A kind-4 sweep's steps (docs/sound.md) | rebuilt (as tones, docs/sound.md) |
 
 ## CODE_16: segment 284b, 831 bytes
 
