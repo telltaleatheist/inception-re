@@ -1489,7 +1489,7 @@ mistake; "quirk" means it may be intended.
 | 16 | A waypoint in area rows 8-15 is never recognised as a duplicate (sign extension), so it is added again. Harmless. | `203b:1c1f` | `fix_waypoint_compare` |
 | 17 | A 13th waypoint is written into the next figure's first order (each Move adds one, so thirteen Moves reach it). Kept: the rebuild holds that order, and the `waypoints` sequence matches the original's write. The fix drops the waypoint and logs it. | `203b:1c1f` | `fix_order_bound` |
 | 18 | The path is written without a bound; more than 12 steps would spill into the next figure's path. | `203b:193b` | `fix_path_bound` |
-| 19 | Scan: for a 'Mech without sensors the "no enemy humans" check is skipped and the list is opened empty. | `203b:2591` | `fix_scan_sensors` |
+| 19 | Scan: for a 'Mech without sensors the "no enemy humans" check is skipped and the list is opened empty. With no enemy person active the original's list then never ends (bug 32), so only the sensors message with a person active is compared (`chain_scan_poked`). | `203b:2591` | `fix_scan_sensors` |
 | 20 | The reachability test before "Engage" changes figure 0's heading. | `203b:28db` | `fix_probe_heading` |
 | 21 | An enemy person whose target byte is ff is measured against figure -1 when the people run (2.10): x F:4002 (always 0), y F:4034 (the last kind-2 sound's fourth word, docs/sound.md). Kept. The fix: a person with no target never counts as fled. Other bytes above 0x7f always take the fixed path, with a log line. | `203b:000a` | `fix_flee_target` |
 | 22 | Repairs with Tech 2+ mend every destroyed heat sink, even when the wrecks had none. Probable. | `15ab:0002` | `fix_heat_sink_count` |

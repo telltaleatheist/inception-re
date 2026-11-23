@@ -1068,6 +1068,21 @@ CHAIN_CRUSH_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_crush_round_3", "keys": "enter", "match": SCREEN, "fight": True},
 ]
 
+# Scan Unit with the sensors destroyed (203b:2591), from chain_salvage_poked's hand-back with
+# Jason's Chameleon the current unit: sensor hits poked to 2 (our own test value), Scan, Enemies:
+# the no-sensors message, a key, then the enemy people's list (the soldier), Next Unit (back to
+# him, the only one), Done. Bug 19's empty list needs no enemy person active, and there the
+# original's list never ends (bug 32), so it is not compared.
+CHAIN_SCAN_POKED_CASES = [dict(case, compare=False) for case in
+                          CHAIN_ORDERS_POKED_CASES[:[c["name"] for c in CHAIN_ORDERS_POKED_CASES].index(
+                              "chain_salvage_player") + 1]] + [
+    {"name": "chain_scan_blind", "keys": "mech:0:77=02 up*3 enter down enter", "match": SCREEN, "fight": True},
+    {"name": "chain_scan_blind_list", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_scan_blind_next", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_scan_blind_done", "keys": "down enter", "match": SCREEN, "fight": True},
+    {"name": "chain_scan_blind_begin", "keys": "down*3 enter", "match": SCREEN, "fight": True},
+]
+
 # Poked, for the critical hits (1e31:11ab, docs/combat.md 3.12), from chain_salvage_poked's fight
 # at the hand-back. Our own test values: both 'Mechs' armour and structure high (so the fight
 # lasts), head armour 0 (every head hit reaches the structure and draws criticals), Jason's
@@ -2581,7 +2596,7 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
             "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked",
-            "chain_crit_poked", "chain_engine_poked", "chain_crush_poked"}
+            "chain_crit_poked", "chain_engine_poked", "chain_crush_poked", "chain_scan_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2623,6 +2638,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_crit_poked", [], CHAIN_CRIT_POKED_CASES, []),
              ("chain_engine_poked", [], CHAIN_ENGINE_POKED_CASES, []),
              ("chain_crush_poked", [], CHAIN_CRUSH_POKED_CASES, []),
+             ("chain_scan_poked", [], CHAIN_SCAN_POKED_CASES, []),
              ("chain_town", [], CHAIN_TOWN_CASES, []),
              ("chain_party", [], CHAIN_PARTY_CASES, []),
              ("chain_jail_no", [], CHAIN_JAIL_NO_CASES, []),
