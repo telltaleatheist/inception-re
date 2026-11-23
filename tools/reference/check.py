@@ -42,6 +42,7 @@ import cache  # noqa: E402
 import compare  # noqa: E402
 import memory  # noqa: E402
 import run  # noqa: E402
+import sound  # noqa: E402
 import state  # noqa: E402
 import window  # noqa: E402
 
@@ -2832,6 +2833,22 @@ FIRST_PASSES = 3
 PASSES_AFTER_KEY = 2
 
 
+# The sound effects against the original's speaker (docs/sound.md,
+# sound.py): only with --sound, under the port-logging DOSBox-X
+# (docs/reference.md, "Sound"), whose runs have their own cache entries.
+# Each plays a sequence's keys and compares every effect played up to its
+# last case; the screens are compared by the sequence itself.
+def _sound_upto(cases, name):
+    return [dict(c, compare=False) for c in cases[:[c["name"] for c in cases].index(name) + 1]]
+
+
+SOUND_SEQUENCES = [
+    # The story picture's effect 12 (two burst sweeps), then the soldiers'
+    # shots: effect 1 (a tone sweep) and effect 4 (a burst sweep).
+    ("sound_people", _sound_upto(PEOPLE_CASES + PEOPLE_FULL_CASES, "people_round_8")),
+]
+
+
 # A test aid in a case's keys: "flag:NN=VV" (hex) sets a flag in both
 # programs at that point: a test poke in the original (run.py, data only)
 # and set:NN=VV in chr. A case that uses one says so and what play it stands
@@ -3054,7 +3071,7 @@ def save_differences(ref, ours):
     return lines
 
 
-def run_original(a, sequence, cases, ref_dir, seed, say):
+def run_original(a, sequence, cases, ref_dir, seed, say, env=None):
     """One run of the original through `cases` into `ref_dir`; False (with
     the reason said) when it did not give every capture."""
     timeout = LONG_SEQUENCES.get(sequence, 2400 if sequence in CAMPAIGN else 900 if a.full else 240)
@@ -3062,7 +3079,7 @@ def run_original(a, sequence, cases, ref_dir, seed, say):
         log_to = os.path.join(ref_dir, "run")
         why = []
         finished, _ = run.run(a.game_dir, original_script(cases), ref_dir, timeout=timeout, log_to=log_to,
-                              seed=seed, stall=STALL_SECONDS, why=why)
+                              seed=seed, stall=STALL_SECONDS, why=why, env=env)
         if not finished:
             took = len([f for f in os.listdir(ref_dir) if f.endswith(".bin")])
             if why == ["stalled"]:
@@ -3200,6 +3217,48 @@ def run_sequence(a, sequence, cases, chr_options=(), seed=()):
     return ok, report
 
 
+def run_sound_sequence(a, sequence, cases):
+    """The original's speaker log through `cases` (from the cache, or one run
+    under the port-logging DOSBox-X), then chr's effects through the same
+    keys, compared (sound.py). (True if they match, the report.)"""
+    report = []
+    say = report.append
+    ref_dir = os.path.join(a.work, "original-" + sequence)
+    portlog = os.path.join(ref_dir, "ports.log")
+    key = a.cache.key(original_script(cases)) if a.cache else None
+    if key and not a.refresh and a.cache.fetch(key, ref_dir):
+        say(f"-- {sequence}: the original's speaker log from the cache")
+    else:
+        shutil.rmtree(ref_dir, ignore_errors=True)
+        start = time.time()
+        if not run_original(a, sequence, cases, ref_dir, (), say, env={"CHR_PORTLOG": os.path.abspath(portlog)}):
+            return False, report
+        took = time.time() - start
+        if key:
+            a.cache.store(key, ref_dir, sequence, took)
+        say(f"-- {sequence}: the original ran ({took / 60:.1f} min)" + ("; cached" if key else ""))
+    if not os.path.exists(portlog):
+        say(f"rig error: no speaker log from the {sequence} run (is {run.DOSBOX} the port-logging DOSBox-X?)")
+        return False, report
+    captured = memory.Memory(os.path.join(ref_dir, cases[-1]["name"] + ".bin"))
+    calibration = captured.word(captured.ds, 0x5006)  # DG:5006
+    saves = os.path.join(a.work, sequence + "-saves")
+    shutil.rmtree(saves, ignore_errors=True)
+    os.makedirs(saves)
+    env = dict(os.environ, SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy")
+    out = subprocess.run([a.chr, "--game-dir", a.game_dir, "--data-dir", a.data_dir, "--save-dir", saves,
+                          "--script", chr_script(cases, len(cases) - 1), "--sound-log"],
+                         check=True, env=env, stdout=subprocess.PIPE, text=True).stdout
+    ours = sound.read_chr_lines(out.splitlines())
+    effects = [line.split()[1] for line in out.splitlines() if line.startswith("sound ")]
+    diffs = sound.compare(sound.read_portlog(portlog), ours, calibration)
+    say(f"== {sequence}: effects {' '.join(effects) or 'none'}, DG:5006 = {calibration}")
+    say(f"  {'ok  ' if not diffs else 'FAIL'} the speaker: {len(diffs)} differences")
+    for d in diffs[:20]:
+        say("    " + d)
+    return not diffs, report
+
+
 # --affected: the sequences that exercise each part of the rebuild, by path
 # (fnmatch, first match wins). Coarse on purpose: a file not listed, or a
 # change outside these folders, runs everything; docs and unit tests run
@@ -3269,8 +3328,21 @@ def main():
     ap.add_argument("--refresh", action="store_true", help="run the original even when cached, and re-cache")
     ap.add_argument("--prune-cache", action="store_true",
                     help="first drop the cache's entries from another rig and the files no entry uses")
+    ap.add_argument("--sound", action="store_true",
+                    help="only the sound effects against the original's speaker (SOUND_SEQUENCES), "
+                         "under the port-logging DOSBox-X")
+    ap.add_argument("--portlog-dosbox", default=os.environ.get("CHR_PORTLOG_DOSBOX"),
+                    help="the port-logging DOSBox-X for --sound (docs/reference.md, \"Sound\"); "
+                         "default: $CHR_PORTLOG_DOSBOX")
     a = ap.parse_args()
     run.stop_on_signals()  # a stopped run leaves no DOSBox-X (or its quit dialog)
+    if a.sound:
+        # Its own DOSBox-X, so its own cache entries (the rig's hash has the
+        # emulator's); every other run keeps the stock one.
+        if not a.portlog_dosbox or not os.path.exists(a.portlog_dosbox):
+            print("skipped: no port-logging DOSBox-X (--portlog-dosbox or $CHR_PORTLOG_DOSBOX)")
+            return SKIP
+        run.DOSBOX = a.portlog_dosbox
 
     names = {sequence for sequence, *_ in SEQUENCES}
     unknown = sorted(set(a.only or []) - names)
@@ -3292,6 +3364,13 @@ def main():
     if a.prune_cache and a.cache:
         dropped, files, freed = a.cache.prune()
         print(f"cache: dropped {dropped} entries from another rig and {files} unused files ({freed >> 20} MB)")
+    if a.sound:
+        ok = True
+        for sequence, cases in SOUND_SEQUENCES:
+            passed, report = run_sound_sequence(a, sequence, cases)
+            print("\n".join(report), flush=True)
+            ok = ok and passed
+        return 0 if ok else 1
 
     # The sequences are separate runs of the original, each in its own
     # copy of the game folder (run.py), so they run side by side, --jobs

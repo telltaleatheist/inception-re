@@ -25,6 +25,7 @@
 // else the folder set when the program was built.
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <deque>
 #include <memory>
@@ -71,6 +72,7 @@ struct Options {
     int event = -1;            // --event N
     int step_hold = 1;         // --step-hold N
     bool list_events = false;
+    bool sound_log = false;    // --sound-log: each effect's steps (docs/sound.md)
     bool walks = false;        // --walks: the walks to the tiles the cache dispatches (Town::walks)
     std::vector<chr::formats::MapPosition> walk_to;  // --walk-to X,Y: the walk toward each (Town::walk_toward)
     bool show_quiz = false;  // show the training center's quiz (no check)
@@ -115,6 +117,8 @@ bool parse(int argc, char** argv, Options& options) {
             options.step_hold = std::max(1, std::atoi(argv[++i]));
         } else if (arg == "--events") {
             options.list_events = true;
+        } else if (arg == "--sound-log") {
+            options.sound_log = true;
         } else if (arg == "--walks") {
             options.walks = true;
         } else if (arg == "--walk-to" && i + 1 < argc) {
@@ -540,6 +544,20 @@ int main(int argc, char** argv) {
                 std::printf("walk-to %04x,%04x %04x,%04x %zu %s\n", target.x, target.y, w.at.x, w.at.y, w.steps.size(),
                             walk_keys(w.steps).c_str());
             }
+            if (options.sound_log) {
+                // Each effect played, in the original's terms, for the rig
+                // (tools/reference/sound.py).
+                for (const auto& e : town->events()) {
+                    if (e.screen || e.segments.empty()) continue;
+                    std::printf("sound %d\n", e.sound);
+                    for (const auto& s : town->sound_steps(e.sound)) {
+                        using Kind = chr::game::SoundStep::Kind;
+                        if (s.kind == Kind::tone) std::printf("sound-step tone %d %d %d\n", s.divisor, s.units, s.times);
+                        else if (s.kind == Kind::rest) std::printf("sound-step rest %d %d\n", s.units, s.times);
+                        else std::printf("sound-step burst %d %d\n", s.flips, s.count);
+                    }
+                }
+            }
             if (options.list_events) {
                 for (const auto& e : town->events()) {
                     if (!e.screen) std::printf("event sound %d\n", e.sound);
@@ -606,11 +624,14 @@ int main(int argc, char** argv) {
                 held += frames;
                 const auto& events = town->events();
                 while (played < events.size()) {
-                    // A sound takes no time. A screen the original showed
-                    // without a wait went by as fast as the machine drew
-                    // the next: the platform holds it `step_hold` frames.
+                    // The game waits while a sound plays (docs/sound.md). A
+                    // screen the original showed without a wait went by as
+                    // fast as the machine drew the next: the platform holds
+                    // it `step_hold` frames.
                     const auto& e = events[played];
-                    const int cost = !e.screen ? 0 : e.frames > 0 ? e.frames : options.step_hold;
+                    const int cost = !e.screen ? int(std::ceil(e.sound_ms() * chr::game::kVgaRefreshHz / 1000.0))
+                                     : e.frames > 0 ? e.frames
+                                                    : options.step_hold;
                     if (held < cost) break;
                     held -= cost;
                     ++played;

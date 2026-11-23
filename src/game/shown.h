@@ -13,6 +13,7 @@
 #include "game/fight.h"
 #include "game/figures.h"
 #include "game/map_view.h"
+#include "game/sound.h"
 #include "game/text.h"
 
 namespace chr::game {
@@ -61,12 +62,19 @@ struct Shown {
     std::optional<PlacePicture> picture;
 };
 
-// One event: a sound started (1000:19bf, its number), or the screen shown
+// One event: a sound played (1000:19bf, its number, and what it sounds like
+// on the chosen machine; the game waits while it plays), or the screen shown
 // and held for `frames` display frames (273d:0006 counts them).
 struct ShownEvent {
     std::optional<Shown> screen;
     int frames = 0;
     int sound = -1;
+    std::vector<SoundSegment> segments;
+    double sound_ms() const {
+        double ms = 0;
+        for (const auto& s : segments) ms += s.ms;
+        return ms;
+    }
 };
 
 }  // namespace chr::game

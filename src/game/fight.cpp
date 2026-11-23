@@ -1345,12 +1345,16 @@ void Town::show_page() {
 }
 
 void Town::hold_screen(int frames) {
-    events_.push_back({Shown{view(), figures(), screen_sprites_, screen_lines_, text_, boxes(), picture_}, frames, -1});
+    events_.push_back({Shown{view(), figures(), screen_sprites_, screen_lines_, text_, boxes(), picture_}, frames, -1, {}});
 }
 
 void Town::play_sound(int n) {
-    events_.push_back({std::nullopt, 0, n});
-    if (sound_.on) play_entries(sound_, tables_.sound_lists, n);  // 27c5:0002
+    ShownEvent e{std::nullopt, 0, n, {}};
+    if (sound_.on) {
+        play_entries(sound_, tables_.sound_lists, n);  // 27c5:0002
+        e.segments = sound_segments(effect_steps(tables_.sound_lists, n), *sound_machine_);
+    }
+    events_.push_back(std::move(e));
 }
 
 Combat Town::combat_rules() {

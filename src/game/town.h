@@ -195,6 +195,9 @@ public:
     // What the screen showed while the logic ran (game/shown.h), and the
     // sprites and line pixels it shows now over the map.
     const std::vector<ShownEvent>& events() const { return events_; }
+    // Effect n's steps in the original's terms, for the rig's comparison
+    // with the original's speaker (docs/sound.md).
+    std::vector<SoundStep> sound_steps(int n) const { return effect_steps(tables_.sound_lists, n); }
     const std::vector<ShownSprite>& sprites() const { return screen_sprites_; }
     const std::vector<ShownLine>& lines() const { return screen_lines_; }
     // The last place the party went into (its entrance number).
@@ -659,6 +662,7 @@ private:
     std::vector<ShownLine> screen_lines_;
     std::vector<ShownEvent> events_;
     SoundState sound_;
+    const SoundMachine* sound_machine_ = &default_sound_machine();
     int message_speed_ = 2;  // DG:015e
     int steps_per_key_ = 1;  // DG:015a
     int investments_shown_ = 0;  // F:e482: special 6's count

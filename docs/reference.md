@@ -124,6 +124,30 @@ started, removes their scratch folders and exits. DOSBox-X answers any other sig
 DOSBox-X" dialog on screen, so never stop the DOSBox-X processes themselves, or the process tree,
 any other way; a dialog must never appear while Owen is streaming.
 
+## Sound
+
+`check.py --sound` compares the sound effects with the original's speaker (docs/sound.md,
+"Comparing with the original"); it runs only the `SOUND_SEQUENCES` and nothing else. It needs a
+DOSBox-X that logs port writes, given with `--portlog-dosbox` or `$CHR_PORTLOG_DOSBOX`, and skips
+(exit 77) without one. That emulator's runs hash to their own cache entries (the rig's hash has
+the emulator's), so the stock rig's cache is untouched. Its runs are as silent and windowless as
+any other: the log is written from inside the emulator and nothing plays.
+
+The build is kept outside the repo (DOSBox-X is GPL; none of it goes in our tree), on the Mac
+Studio under the file home's `keep/inception/dosbox-x-portlog/`. To rebuild it: DOSBox-X at
+commit d93a20f, with a hook in `IO_WriteB` (`src/hardware/iohandler.cpp`) that,
+when the environment variable `CHR_PORTLOG` names a file, appends one line for every byte
+written to ports 0x40-0x43 and 0x61: the emulated time in ms, the port, the value and the
+writer's cs:ip, all but the time in hex. The file is line-buffered, so a run stopped by the rig
+still leaves every line. Two more local changes were needed to build it on macOS: libpng's
+`pngpriv.h` must not take its classic-Mac branch (the one that includes `fp.h`) on macOS, and
+the bundled zlib's `configure` script must be executable. It is built with
+`./build-macos --disable-avcodec` (the ffmpeg it found was too new).
+
+`check.py --sound` sets `CHR_PORTLOG` for the run, keeps the log as `ports.log` with the
+captures (and in the cache), reads DG:5006 from the last capture, and runs chr with
+`--sound-log` through the same keys. Compared so far: `sound_people` (effects 12, 1 and 4).
+
 ## The original's captures, cached
 
 The original is deterministic for a given KEYS.BIN (the `random:` pokes seed its generator), so

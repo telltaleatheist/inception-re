@@ -205,11 +205,12 @@ def save_run_log(work, c, to):
                 f.write(f"{os.path.relpath(path, c)} {os.path.getsize(path)}\n")
 
 
-def run(game_dir, script, out_dir, timeout=120, keep=False, log_to=None, seed=(), stall=None, why=None):
+def run(game_dir, script, out_dir, timeout=120, keep=False, log_to=None, seed=(), stall=None, why=None, env=None):
     """`timeout`: seconds for the whole script. `stall`: seconds with no new
     capture after which the run counts as stuck (None: no such limit). Either
     way DOSBox-X is stopped. `why`, a list, gets "timeout", "stalled" or
-    "exited" appended when the script does not finish."""
+    "exited" appended when the script does not finish. `env`: more
+    environment for DOSBox-X (the speaker log's file, docs/reference.md)."""
     words, names = compile_script(script)
     if len(words) > max_keys():
         raise ValueError(f"run.py: the key script is {len(words)} words; SNAP holds {max_keys()} (snap.asm MAX_KEYS)")
@@ -238,9 +239,9 @@ def run(game_dir, script, out_dir, timeout=120, keep=False, log_to=None, seed=()
         conf = os.path.join(work, "run.conf")
         with open(conf, "w") as f:
             f.write(RUN_CONF)
-        env = dict(os.environ, SDL_AUDIODRIVER="dummy", SDL_VIDEODRIVER="dummy")
+        child_env = dict(os.environ, **(env or {}), SDL_AUDIODRIVER="dummy", SDL_VIDEODRIVER="dummy")
         log = open(os.path.join(work, "dosbox.log"), "w")
-        proc = subprocess.Popen([DOSBOX, "-silent", "-conf", conf], cwd=work, env=env,
+        proc = subprocess.Popen([DOSBOX, "-silent", "-conf", conf], cwd=work, env=child_env,
                                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         with _running_lock:
             _running.add(proc.pid)
