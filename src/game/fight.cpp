@@ -896,10 +896,10 @@ bool Town::weapons_order(Combat& combat, int fig, KeySource& keys) {
             text_.select_window(4);
             clear_window();
             print_id(id);
-            const bool got = read_key(keys).has_value();
+            if (!read_key(keys)) return false;  // 273d:0259 waits with the message up
             text_.clear_window();
             text_.select_window(previous);
-            return got;
+            return true;
         };
         if (items[std::size_t(choice)] & 0x80) {
             if (!message("weapons.choose_other")) return false;

@@ -1025,6 +1025,33 @@ CHAIN_ORDERS_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_orders_round_3", "keys": "enter", "match": SCREEN, "fight": True},
 ]
 
+# Poked: Use Weapons for a 'Mech by the player (1d43:0004), from chain_salvage_poked's fight at
+# the hand-back, with Jason's Chameleon (record 0, figure 0) the current unit: the menu of ten
+# from Begin Fight, Use Weapons six up. Heat poked to 30 (our own test value): shut down, a key,
+# back. Sensor hits poked to 1: the damaged message, a key, then the list (its earlier fight
+# left most weapons destroyed); the first, destroyed, chosen; a key; Done. Sensor hits 2: the
+# destroyed message, a key, straight back. Sensors mended and the Large Laser's ammunition byte
+# poked to 0: chosen, a key, Done, then Begin Fight and the round.
+CHAIN_WEAPONS_POKED_CASES = [dict(case, compare=False) for case in
+                             CHAIN_ORDERS_POKED_CASES[:[c["name"] for c in CHAIN_ORDERS_POKED_CASES].index(
+                                 "chain_salvage_player") + 1]] + [
+    {"name": "chain_weapons_shut", "keys": "heat:0=1e up*6 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_shut_key", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_sensors", "keys": "heat:0=00 mech:0:77=01 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_list", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_destroyed", "keys": "up*9 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_destroyed_key", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_done", "keys": "down*9 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_blind", "keys": "mech:0:77=02 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_blind_key", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_ammo_list", "keys": "mech:0:77=00 mech:0:2a=00 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_no_ammo", "keys": "up*6 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_no_ammo_key", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_ammo_done", "keys": "down*6 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_begin", "keys": "down*6 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_weapons_round", "keys": "enter", "match": SCREEN, "fight": True},
+]
+
 # The unpoked chain on from the ruined town (docs/scripts.md, "After the
 # raid"): branched at chain_raid_key_57 so chain_death and the poked
 # sequences keep their prefix. With no idle there (N = 0 in the sweep of
@@ -2498,7 +2525,7 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
-            "chain_traitor_poked", "chain_garage", "chain_weapon2_poked"}
+            "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2536,6 +2563,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_salvage_poked", [], CHAIN_SALVAGE_POKED_CASES, []),
              ("chain_scrap_poked", [], CHAIN_SCRAP_POKED_CASES, []),
              ("chain_orders_poked", [], CHAIN_ORDERS_POKED_CASES, []),
+             ("chain_weapons_poked", [], CHAIN_WEAPONS_POKED_CASES, []),
              ("chain_town", [], CHAIN_TOWN_CASES, []),
              ("chain_party", [], CHAIN_PARTY_CASES, []),
              ("chain_jail_no", [], CHAIN_JAIL_NO_CASES, []),

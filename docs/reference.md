@@ -433,7 +433,10 @@ door on both programs, so that Hospital has not been seen yet.
 `chain_orders_poked` is that fight up to the hand-back, then Next Unit to Rex and his orders: the
 person menu, Use Weapon (the override question, the target picker from the Wasp, Cancel), Scan
 Unit (Friends: the Chameleon and Rex's details; Enemies: "humans only" and the enemy person),
-Clear Moves, Computer, a two-cell Move, Begin Fight and two rounds. `fourth` (long only) is mission 4 (flag 00
+Clear Moves, Computer, a two-cell Move, Begin Fight and two rounds. `chain_weapons_poked`
+branches from the same hand-back, with Jason's Chameleon the current unit: the player's Use
+Weapons (`1d43:0004`), heat poked to 30 (shut down), sensor hits poked to 1 and 2, a destroyed
+weapon chosen, and an ammunition byte poked to 0 and that weapon chosen. `fourth` (long only) is mission 4 (flag 00
 poked to 4): no computer question (F:0090), the Locust flees at the first orders menu, the walk
 back, the verdict and the town. `raid` (long only) is mission 7 (flag 00 poked to 7), the
 Kurita raid: the computer question (only mission 4 skips it), then Begin Fight round after round
