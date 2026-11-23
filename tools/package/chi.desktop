@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Inception Rebuild
+Comment=The Crescent Hawk's Inception, rebuilt; needs your own copy of the DOS game
+Exec=chi
+Icon=chi
+Categories=Game;RolePlaying;
+Terminal=false

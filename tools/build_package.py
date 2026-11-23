@@ -1,0 +1,457 @@
+"""Build and smoke-test the rebuild's packages, with no file of the original game in them.
+
+    build_package.py --sdl SDL_SOURCE --label LABEL [--game GAME_DIR] [--installer] [--appimage-tools DIR]
+    build_package.py --smoke PACKAGE_DIR [--game GAME_DIR]
+
+One platform per run, this machine's (docs/RELEASING.md):
+  macOS    CHI-Rebuild-<label>-mac.dmg            Inception Rebuild.app, Contents/MacOS/chi
+  Windows  CHI-Rebuild-<label>-win64.zip          chi.exe and SDL3.dll at the top level
+           CHI-Rebuild-<label>-Setup.exe          with --installer (Inno Setup)
+  Linux    CHI-Rebuild-<label>-x86_64.AppImage    usr/bin/chi (--appimage-tools)
+The build's program stays chr, which the tools and the reference rig run; the
+package names it chi. Every file made gets a .sha256 beside it; sums.py writes
+a release's SHA256SUMS over all of them.
+
+The smoke test starts the packaged program: --help must print its usage and
+--status its JSON line. With a game folder (--game, or CHR_GAME_DIR) it also
+sets the game up from it (--setup with CHR_SETUP_PICK) into an empty player
+folder, and a start must import the game's text and draw a frame. Every run is
+hidden: SDL's dummy drivers, a background app on macOS, a made-up home. The
+game folder is only read and never packaged.
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import plistlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import zipfile
+
+STEM = "CHI-Rebuild"
+APP_NAME = "Inception Rebuild"
+PROGRAM = "chi"   # the shipped program; the build's target stays chr
+TARGET = "chr"
+BUNDLE_ID = "io.github.inceptionre.chi"  # its own, so it never shares another game's settings
+TAG = re.compile(r"chi-v(\d+\.\d+\.\d+)")
+README = (
+    "Inception Rebuild\n\n"
+    "A rebuild of BattleTech: The Crescent Hawk's Inception (1988). Your own copy of the DOS\n"
+    "game, version 1.03, is required and is not included: no game files are in this package.\n\n"
+    "The first time it starts without your game, it asks for your copy: its BTECH.EXE, any\n"
+    "file in its folder, or the archive it came in (a .zip, for example). It copies the game\n"
+    "into your own folder and plays from there; your copy is never changed. Your settings\n"
+    "(settings.ini), saves, the text and tables read once from your BTECH.EXE, the copied\n"
+    "game and the log (chi.log) live in your own folder:\n"
+    "  Windows: %APPDATA%\\BattleTech\\Inception Rebuild\n"
+    "  macOS:   ~/Library/Application Support/BattleTech/Inception Rebuild\n"
+    "  Linux:   ~/.local/share/BattleTech/Inception Rebuild\n\n"
+    "From a command line: chi --game-dir <game folder> starts on that folder; chi --setup\n"
+    "sets the game up again; chi --help lists the rest.\n\n"
+    "BattleTech: The Crescent Hawk's Inception was written by Westwood Associates and\n"
+    "published by Infocom. This rebuild is a fan project, not affiliated with any of them;\n"
+    "its source code is under the MIT licence (LICENSE), which covers our code only, never\n"
+    "the game.\n")
+SMOKE_SECONDS = 120
+
+
+def run(*args, **kwargs):
+    return subprocess.run(args, check=True, **kwargs)
+
+
+def platform_name():
+    if os.name == "nt":
+        return "win64"
+    if sys.platform == "darwin":
+        return "mac"
+    return "x86_64"
+
+
+def program_version(label):
+    """The version --status reports: a release tag's X.Y.Z (chi-v1.0.0 -> 1.0.0), else the label."""
+    found = TAG.fullmatch(label)
+    return found.group(1) if found else label
+
+
+def configure_and_build(root, build, sdl, label):
+    # CHR_GAME_DIR empty: a package has no built-in game folder (docs/setup.md).
+    args = ["cmake", "-S", str(root), "-B", str(build), f"-DCHR_SDL_SOURCE_DIR={sdl}", "-DCHR_TRIM_PATHS=ON",
+            f"-DCHR_VERSION={program_version(label)}", "-DCHR_GAME_DIR="]
+    if os.name == "nt":
+        args += ["-A", "x64", "-DCHR_WINDOWS_GUI=ON"]
+    elif sys.platform == "darwin":
+        args += ["-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"]
+    else:
+        args += ["-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_BUILD_RPATH=$ORIGIN", "-DCMAKE_BUILD_RPATH_USE_ORIGIN=ON"]
+    run(*args)
+    run("cmake", "--build", str(build), "--config", "Release", "--target", TARGET, "--parallel", "4")
+    return build / f"Release/{TARGET}.exe" if os.name == "nt" else build / TARGET
+
+
+# libarchive, zlib and liblzma, linked in statically (tools/deps/build_archive.sh and
+# tools/windows/build_deps_archive.cmd put their licences in <prefix>/share/licenses).
+ARCHIVE_LICENCES = {"libarchive-3.7.9/COPYING": "libarchive-COPYING", "zlib-1.3.1/LICENSE": "zlib-LICENSE",
+                    "xz-5.8.1/COPYING": "xz-COPYING", "xz-5.8.1/COPYING.0BSD": "xz-COPYING.0BSD"}
+
+
+def archive_licences(build, notices):
+    """The archive libraries' licences into `notices`. A build without the pinned static libarchive (none,
+    or a system one) is refused: its setup could not read a download, and the licences would be missing."""
+    cache = build / "CMakeCache.txt"
+    lib = ""
+    if cache.is_file():
+        for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("REKIT_LIBARCHIVE_LIB:"):
+                lib = line.split("=", 1)[1].strip()
+    if not lib or lib.endswith("-NOTFOUND") or not lib.endswith((".a", ".lib")):
+        raise RuntimeError("Missing the static libarchive: build it first (tools/deps/build_archive.sh, "
+                           "tools/windows/build_deps_archive.cmd) so the setup reads downloads")
+    licences = Path(lib).parent.parent / "share/licenses"
+    for source, name in ARCHIVE_LICENCES.items():
+        if not (licences / source).is_file():
+            raise RuntimeError(f"Missing licence: {licences / source} ({lib} is not the pinned static build)")
+        shutil.copy2(licences / source, notices / name)
+
+
+def stage_common(root, build, sdl, resources):
+    """Our data, the licence, the read-me and the notices into `resources` (beside the program,
+    or a Mac app's Contents/Resources, where SDL_GetBasePath points)."""
+    interface = root / "data/text/interface.json"
+    if not interface.is_file():
+        raise RuntimeError(f"Missing our data: {interface}")
+    (resources / "data/text").mkdir(parents=True, exist_ok=True)
+    shutil.copy2(interface, resources / "data/text/interface.json")
+    shutil.copy2(root / "LICENSE", resources / "LICENSE")
+    notices = resources / "licenses"
+    notices.mkdir(exist_ok=True)
+    kit = root / "extern/re-setup-kit"
+    for name, source in [("SDL-LICENSE.txt", sdl / "LICENSE.txt"), ("re-setup-kit-LICENSE", kit / "LICENSE"),
+                         ("stb-LICENSE", kit / "third_party/stb/LICENSE"),
+                         ("miniz-LICENSE", kit / "third_party/miniz/LICENSE")]:
+        if not source.is_file():
+            raise RuntimeError(f"Missing licence: {source}")
+        shutil.copy2(source, notices / name)
+    archive_licences(build, notices)
+    (resources / "README.txt").write_text(README, encoding="utf-8", newline="\r\n" if os.name == "nt" else "\n")
+
+
+def check_paths(root, folder, *extra):
+    """No local path or user name in anything shipped (tools/package/check_paths.py), nor the folders
+    the build ran in (`extra`: the tree and SDL's source, which __FILE__ would name)."""
+    run(sys.executable, "-I", str(root / "tools/package/check_paths.py"), str(folder),
+        *[str(Path(p).resolve()) for p in extra])
+
+
+def write_digest(file):
+    digest = hashlib.sha256(file.read_bytes()).hexdigest()
+    (file.parent / (file.name + ".sha256")).write_text(f"{digest}  {file.name}\n", encoding="utf-8", newline="\n")
+
+
+# --- the smoke test ---
+
+def hidden_env(scratch, **more):
+    """A run no player is at: SDL's dummy drivers, CHR_HIDDEN (a background app on macOS), a made-up home."""
+    home = scratch / "home"
+    home.mkdir(exist_ok=True)
+    env = dict(os.environ)
+    for k in [k for k in env if k.startswith(("REKIT_SETUP_", "CHR_"))]:
+        env.pop(k)
+    env.update(CHR_HIDDEN="1", SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy", SDL_RENDER_DRIVER="software",
+               HOME=str(home), APPDATA=str(home), XDG_DATA_HOME=str(home / "share"), **more)
+    return env
+
+
+def started(executable, args, env, what):
+    result = subprocess.run([str(executable)] + args, cwd=executable.parent, env=env, capture_output=True,
+                            text=True, timeout=SMOKE_SECONDS)
+    if result.returncode != 0:
+        raise RuntimeError(f"The packaged program failed {what} ({result.returncode}):\n"
+                           + "\n".join((result.stdout + result.stderr).splitlines()[-10:]))
+    return result
+
+
+def smoke(executable, game=None):
+    with tempfile.TemporaryDirectory(prefix="chi-smoke-") as scratch:
+        scratch = Path(scratch)
+        env = hidden_env(scratch)
+        if f"usage: {PROGRAM}" not in started(executable, ["--help"], env, "--help").stdout:
+            raise RuntimeError("The packaged program's --help has no usage line")
+        status = json.loads(started(executable, ["--status"], env, "--status").stdout.strip().splitlines()[-1])
+        if status.get("game") != "inception":
+            raise RuntimeError(f"--status answered {status}")
+        print("Smoke: --help and --status answer")
+        if not game:
+            return
+        user = scratch / "player"
+        env = hidden_env(scratch, CHR_DATA_DIR=str(user), CHR_SETUP_PICK=str(Path(game).resolve()))
+        started(executable, ["--setup"], env, "--setup from the game folder")
+        if not (user / "install").is_dir() or "game_folder=" not in (user / "settings.ini").read_text():
+            raise RuntimeError("--setup copied no game into the player's folder")
+        env.pop("CHR_SETUP_PICK")
+        shot = scratch / "start.bmp"
+        started(executable, ["--map", "1", "--script", "up", "--screenshot", str(shot)], env, "a start")
+        if not (user / "import.json").is_file() or not shot.is_file():
+            raise RuntimeError("A start from the set-up game imported nothing or drew no frame")
+        print("Smoke: the game set up from the folder given, imported, and a frame drawn")
+
+
+# --- Windows ---
+
+def package_windows(root, build, sdl, output, label, game, installer):
+    name = f"{STEM}-{label}-win64"
+    stage = output / name
+    if stage.exists():
+        shutil.rmtree(stage)
+    stage.mkdir(parents=True)
+    binary = configure_and_build(root, build, sdl, label)
+    shutil.copy2(binary, stage / f"{PROGRAM}.exe")
+    sdl_dll = [p for p in build.rglob("SDL3.dll") if p.is_file()]
+    if not sdl_dll:
+        raise RuntimeError("Missing runtime dependency: SDL3.dll")
+    shutil.copy2(sdl_dll[0], stage / "SDL3.dll")
+    copy_msvc_runtime(stage)
+    stage_common(root, build, sdl, stage)
+    check_paths(root, stage, root, sdl)
+    archive = output / f"{name}.zip"
+    zip_flat(stage, archive)
+    extracted = output / "smoke"
+    if extracted.exists():
+        shutil.rmtree(extracted)
+    with zipfile.ZipFile(archive) as source:
+        source.extractall(extracted)
+    smoke(extracted / f"{PROGRAM}.exe", game)
+    write_digest(archive)
+    print(f"Packaged and smoke-tested {archive}")
+    if installer:
+        windows_installer(root, stage, output, label)
+    return archive
+
+
+def zip_flat(stage, archive):
+    """The staged folder's files at the zip's top level: chi.exe and SDL3.dll first, as a player unpacks them."""
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as target:
+        for file in sorted(stage.rglob("*")):
+            if file.is_file():
+                target.write(file, file.relative_to(stage).as_posix())
+
+
+def copy_msvc_runtime(stage):
+    vswhere = Path(os.environ["ProgramFiles(x86)"]) / "Microsoft Visual Studio/Installer/vswhere.exe"
+    vs = Path(subprocess.check_output([str(vswhere), "-latest", "-products", "*", "-requires",
+                                       "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property",
+                                       "installationPath"], text=True).strip())
+    crt = sorted((vs / "VC/Redist/MSVC").glob("*/x64/Microsoft.VC*.CRT"))
+    if not crt:
+        raise RuntimeError("Cannot locate the redistributable MSVC runtime")
+    for dll in crt[-1].glob("*.dll"):
+        shutil.copy2(dll, stage / dll.name)
+
+
+def find_iscc():
+    found = shutil.which("iscc")
+    if found:
+        return found
+    for base in (os.environ.get("ProgramFiles(x86)"), os.environ.get("ProgramFiles"),
+                 os.path.expandvars(r"%USERPROFILE%\scoop\apps\inno-setup\current")):
+        if base:
+            for candidate in (Path(base) / "Inno Setup 6/ISCC.exe", Path(base) / "ISCC.exe"):
+                if candidate.is_file():
+                    return str(candidate)
+    raise RuntimeError("Inno Setup's ISCC.exe not found (scoop install inno-setup, or jrsoftware.org)")
+
+
+def windows_installer(root, stage, output, label):
+    """CHI-Rebuild-<label>-Setup.exe from the staged folder (tools/package/installer.iss)."""
+    stem = f"{STEM}-{label}"
+    run(find_iscc(), "/Qp", f"/DAppVersion={program_version(label)}", f"/DDist={stage.resolve()}",
+        f"/DStem={stem}", f"/O{output.resolve()}", str(root / "tools/package/installer.iss"))
+    setup = output / f"{stem}-Setup.exe"
+    if not setup.is_file():
+        raise RuntimeError(f"Inno Setup made no {setup.name}")
+    write_digest(setup)
+    print(f"Installer {setup}")
+    return setup
+
+
+# --- Linux ---
+
+def package_linux(root, build, sdl, output, label, game, tools):
+    """CHI-Rebuild-<label>-x86_64.AppImage: usr/bin/chi with data/ beside it (SDL_GetBasePath), the
+    notices in usr/share/doc/chi, the libraries by linuxdeploy. `tools` holds linuxdeploy-x86_64.AppImage
+    and appimagetool-x86_64.AppImage. The desktop entry wants an icon, and the packages have none yet:
+    tools/package/chi.png is used when there is one, else the AppImage is refused (docs/RELEASING.md)."""
+    if not tools:
+        raise RuntimeError("--appimage-tools DIR (linuxdeploy and appimagetool) is needed for the AppImage")
+    icon = root / "tools/package/chi.png"
+    if not icon.is_file():
+        raise RuntimeError("The AppImage needs an icon (tools/package/chi.png), and the packages have none yet")
+    tools = Path(tools).resolve()
+    binary = configure_and_build(root, build, sdl, label)
+    appdir = output / "AppDir"
+    if appdir.exists():
+        shutil.rmtree(appdir)
+    bin_dir, doc = appdir / "usr/bin", appdir / f"usr/share/doc/{PROGRAM}"
+    bin_dir.mkdir(parents=True)
+    doc.mkdir(parents=True)
+    shutil.copy2(binary, bin_dir / PROGRAM)
+    stage_common(root, build, sdl, bin_dir)
+    for name in ("LICENSE", "README.txt", "licenses"):
+        shutil.move(str(bin_dir / name), str(doc / name))
+    libs = [p.parent for p in build.rglob("libSDL3.so*")]
+    if not libs:
+        raise RuntimeError("Missing runtime dependency: libSDL3.so")
+    env = dict(os.environ, APPIMAGE_EXTRACT_AND_RUN="1", ARCH="x86_64",
+               LD_LIBRARY_PATH=os.pathsep.join([str(libs[0].resolve()), os.environ.get("LD_LIBRARY_PATH", "")]))
+    run(str(tools / "linuxdeploy-x86_64.AppImage"), "--appdir", str(appdir), "-e", str(bin_dir / PROGRAM),
+        "-d", str(root / "tools/package/chi.desktop"), "-i", str(icon), env=env)
+    smoke(bin_dir / PROGRAM, game)
+    check_paths(root, appdir, root, sdl)
+    image = output / f"{STEM}-{label}-x86_64.AppImage"
+    run(str(tools / "appimagetool-x86_64.AppImage"), str(appdir), str(image), env=env)
+    smoke(image.resolve(), game)
+    write_digest(image)
+    print(f"AppImage {image}")
+    return image
+
+
+# --- macOS ---
+
+def package_mac(root, build, sdl, output, label, game):
+    """Inception Rebuild.app and CHI-Rebuild-<label>-mac.dmg: the program in Contents/MacOS, data/ and the
+    notices in Contents/Resources (SDL_GetBasePath), SDL in Contents/Frameworks named @rpath, every binary
+    signed ad hoc. This Mac's architecture."""
+    binary = configure_and_build(root, build, sdl, label)
+    app = output / f"{APP_NAME}.app"
+    if app.exists():
+        shutil.rmtree(app)
+    macos, frameworks, resources = (app / "Contents" / d for d in ("MacOS", "Frameworks", "Resources"))
+    for d in (macos, frameworks, resources):
+        d.mkdir(parents=True)
+    exe = macos / PROGRAM
+    shutil.copy2(binary, exe)
+
+    def dependencies(file):
+        lines = subprocess.run(["otool", "-L", str(file)], capture_output=True, text=True,
+                               check=True).stdout.splitlines()
+        return sorted({l.strip().split(" (")[0] for l in lines[1:] if l.startswith(("\t", " "))})
+
+    def system(path):
+        return path.startswith(("/System/", "/usr/lib/"))
+
+    copied, todo = set(), [exe]
+    while todo:
+        file = todo.pop()
+        for dep in dependencies(file):
+            leaf = Path(dep).name
+            if system(dep) or dep in copied or dep.startswith(("@executable_path", "@loader_path")) or leaf == file.name:
+                continue  # a library lists its own install name too
+            if not dep.startswith("@rpath/"):
+                raise RuntimeError(f"{file.name} loads {dep} from outside the build: build its own copy")
+            found = [p for p in build.rglob(leaf) if p.is_file() or p.is_symlink()]
+            if not found:
+                raise RuntimeError(f"{dep}: not in {build}")
+            target = frameworks / leaf
+            if not target.exists():
+                shutil.copy2(found[0].resolve(), target)
+                target.chmod(0o644)
+                run("install_name_tool", "-id", f"@rpath/{leaf}", str(target), stderr=subprocess.DEVNULL)
+                todo.append(target)
+            copied.add(dep)
+    rpaths = subprocess.run(["otool", "-l", str(exe)], capture_output=True, text=True, check=True).stdout.splitlines()
+    for i, line in enumerate(rpaths):
+        if "cmd LC_RPATH" in line:
+            run("install_name_tool", "-delete_rpath", rpaths[i + 2].strip().split(" ")[1], str(exe))
+    run("install_name_tool", "-add_rpath", "@executable_path/../Frameworks", str(exe))
+    left = [d for f in [exe, *frameworks.iterdir()] for d in dependencies(f) if not (system(d) or d.startswith("@"))]
+    if left:
+        raise RuntimeError("still outside the app: " + ", ".join(sorted(set(left))))
+    if not list(frameworks.glob("libSDL3*")):
+        raise RuntimeError("Missing runtime dependency: libSDL3")
+
+    stage_common(root, build, sdl, resources)
+    minos = re.search(r"minos (\S+)", subprocess.run(["otool", "-l", str(exe)], capture_output=True, text=True,
+                                                      check=True).stdout)
+    version = program_version(label)
+    plist = {"CFBundleName": APP_NAME, "CFBundleDisplayName": APP_NAME, "CFBundleIdentifier": BUNDLE_ID,
+             "CFBundleExecutable": PROGRAM, "CFBundlePackageType": "APPL",
+             "CFBundleShortVersionString": version, "CFBundleVersion": version, "CFBundleDevelopmentRegion": "en",
+             "CFBundleInfoDictionaryVersion": "6.0", "LSMinimumSystemVersion": minos.group(1) if minos else "12.0",
+             "LSApplicationCategoryType": "public.app-category.games", "NSHighResolutionCapable": True,
+             "NSHumanReadableCopyright": "A fan rebuild; BattleTech is a trademark of its owners. "
+                                         "Needs your own copy of The Crescent Hawk's Inception (DOS 1.03)."}
+    with open(app / "Contents/Info.plist", "wb") as f:
+        plistlib.dump(plist, f)
+    # Ad hoc (no identity, so no name in the signature): the libraries, the program, then the app.
+    entitlements = str(root / "tools/package/chi.entitlements")
+    for lib in sorted(frameworks.iterdir()):
+        run("codesign", "--force", "--sign", "-", str(lib))
+    run("codesign", "--force", "--sign", "-", "--entitlements", entitlements, str(exe))
+    run("codesign", "--force", "--sign", "-", "--entitlements", entitlements, str(app))
+    run("codesign", "--verify", "--deep", "--strict", str(app))
+    smoke(exe, game)
+
+    dmg = output / f"{STEM}-{label}-mac.dmg"
+    dmg_stage = output / "dmg"
+    for old in (dmg_stage, dmg):
+        if old.is_dir():
+            shutil.rmtree(old)
+        elif old.exists():
+            old.unlink()
+    dmg_stage.mkdir()
+    run("ditto", str(app), str(dmg_stage / app.name))
+    (dmg_stage / "Applications").symlink_to("/Applications")
+    shutil.copy2(resources / "README.txt", dmg_stage / "Read me.txt")
+    check_paths(root, dmg_stage, root, sdl)
+    run("hdiutil", "create", "-volname", APP_NAME, "-srcfolder", str(dmg_stage), "-ov", "-format", "UDZO", str(dmg),
+        stdout=subprocess.DEVNULL)
+    shutil.rmtree(dmg_stage)
+    write_digest(dmg)
+    print(f"App: {app}\nDMG: {dmg}")
+    return dmg
+
+
+def package(root, build, sdl, output, label, game=None, installer=False, tools=None):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", label):
+        raise ValueError("Invalid package label")
+    output.mkdir(parents=True, exist_ok=True)
+    which = platform_name()
+    if which == "mac":
+        return package_mac(root, build, sdl, output, label, game)
+    if which == "win64":
+        return package_windows(root, build, sdl, output, label, game, installer)
+    return package_linux(root, build, sdl, output, label, game, tools)
+
+
+def packaged_program(folder):
+    for name in [f"{PROGRAM}.exe", PROGRAM, f"Contents/MacOS/{PROGRAM}", f"usr/bin/{PROGRAM}",
+                 f"{APP_NAME}.app/Contents/MacOS/{PROGRAM}"]:
+        if (folder / name).is_file():
+            return (folder / name).resolve()
+    return None
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--sdl", type=Path, help="SDL3's source (3.4.12, pinned by commit: docs/RELEASING.md)")
+    parser.add_argument("--label", help="the release tag (chi-vX.Y.Z) or a test name with -test in it")
+    parser.add_argument("--smoke", type=Path, help="a package folder (or an AppImage): run the smoke test only")
+    parser.add_argument("--installer", action="store_true", help="Windows: also Setup.exe (Inno Setup)")
+    parser.add_argument("--appimage-tools", type=Path, help="Linux: the folder with linuxdeploy and appimagetool")
+    parser.add_argument("--game", type=Path, default=os.environ.get("CHR_GAME_DIR") or None,
+                        help="the player's game folder for the smoke test (default CHR_GAME_DIR; never packaged)")
+    options = parser.parse_args()
+    if options.smoke:
+        executable = options.smoke.resolve() if options.smoke.is_file() else packaged_program(options.smoke)
+        if not executable:
+            parser.error(f"no {PROGRAM} program in {options.smoke}")
+        smoke(executable, options.game)
+    else:
+        if not options.sdl or not options.label:
+            parser.error("--sdl and --label are required to package")
+        root = Path(__file__).resolve().parents[1]
+        package(root, root / "build-package", options.sdl.resolve(), root / "dist", options.label, options.game,
+                options.installer, options.appimage_tools)

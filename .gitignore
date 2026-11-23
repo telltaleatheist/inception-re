@@ -16,3 +16,5 @@
 __pycache__/
 # clangd's index
 .cache/
+# Packages (tools/build_package.py)
+/dist/

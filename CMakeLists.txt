@@ -12,6 +12,32 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CHR_GAME_DIR "${CMAKE_SOURCE_DIR}/original/dos-1.03" CACHE PATH
     "The original game's folder (BTECH.EXE, *.CMP, ...) the program and tests read")
 
+# Packages (tools/build_package.py): the build's own folders left out of
+# what the compiler writes into the program (__FILE__ in SDL's assertions), so
+# no local path ships.
+option(CHR_TRIM_PATHS "Map the source and build folders out of the binaries" OFF)
+if(CHR_TRIM_PATHS AND NOT MSVC)
+  add_compile_options("-ffile-prefix-map=${CMAKE_SOURCE_DIR}=." "-ffile-prefix-map=${CMAKE_BINARY_DIR}=build")
+  if(CHR_SDL_SOURCE_DIR)
+    add_compile_options("-ffile-prefix-map=${CHR_SDL_SOURCE_DIR}=SDL")
+  endif()
+elseif(CHR_TRIM_PATHS)
+  add_compile_options(/d1trimfile:${CMAKE_SOURCE_DIR}\\ /d1trimfile:${CMAKE_BINARY_DIR}\\)
+endif()
+
+# SDL3: a package builds its own from source (CHR_SDL_SOURCE_DIR, SDL 3.4.12
+# pinned by commit, docs/RELEASING.md), shared, beside the program; otherwise
+# the system's.
+set(CHR_SDL_SOURCE_DIR "" CACHE PATH "SDL3's source, built here as a shared library (packages)")
+if(CHR_SDL_SOURCE_DIR)
+  set(SDL_SHARED ON CACHE BOOL "" FORCE)
+  set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+  set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+  set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+  set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+  add_subdirectory("${CHR_SDL_SOURCE_DIR}" "${CMAKE_BINARY_DIR}/sdl3" EXCLUDE_FROM_ALL)
+endif()
+
 if(MSVC)
   add_compile_options(/W4 /permissive- /utf-8)
 else()
@@ -139,7 +165,11 @@ target_link_libraries(setup_test PRIVATE chrsetup)
 add_test(NAME setup COMMAND setup_test "${CMAKE_BINARY_DIR}/setup_work" "${CHR_GAME_DIR}")
 
 # The platform layer: SDL3 window, rendering and the asset provider.
-find_package(SDL3 CONFIG QUIET)
+if(TARGET SDL3::SDL3)
+  set(SDL3_FOUND TRUE)
+else()
+  find_package(SDL3 CONFIG QUIET)
+endif()
 if(SDL3_FOUND)
   add_library(chrplatform STATIC
     src/platform/map_layer.cpp
@@ -160,6 +190,11 @@ if(SDL3_FOUND)
 
   add_executable(chr src/main.cpp)
   target_link_libraries(chr PRIVATE chrplatform)
+  # Windows packages: a GUI program, so no console window opens (SDL_main.h's WinMain).
+  option(CHR_WINDOWS_GUI "Link chr as a Windows GUI program" OFF)
+  if(WIN32 AND CHR_WINDOWS_GUI)
+    set_target_properties(chr PROPERTIES WIN32_EXECUTABLE ON)
+  endif()
   # The repo's default interface texts, next to the program (docs/text.md).
   add_custom_command(TARGET chr POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/text/interface.json"

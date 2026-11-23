@@ -42,6 +42,9 @@
 #include <string_view>
 
 #include <SDL3/SDL.h>
+#if defined(_WIN32)
+#include <SDL3/SDL_main.h>  // WinMain for the GUI program a package links (CHR_WINDOWS_GUI)
+#endif
 
 #include "formats/game_files.h"
 #include "formats/import.h"
@@ -74,6 +77,7 @@ struct Options {
     std::filesystem::path data_dir;  // the imported text and font
     std::filesystem::path save_dir;  // the saved games GameN; the data folder by default
     bool import = false;
+    bool help = false;       // --help: the usage on stdout
     bool status = false;     // --status: the launcher contract's answer (platform/sdl_setup.h)
     bool setup = false;      // --setup: the setup screen only
     bool state = false;      // print the game state after the script
@@ -94,6 +98,22 @@ struct Options {
     std::vector<chr::formats::MapPosition> windows;  // --window X,Y: print the cell window built there
 };
 
+// The usage, under the program's own name (an AppImage starts it as AppRun).
+void usage(std::FILE* out, const char* argv0) {
+    std::string program = std::filesystem::path(argv0 ? argv0 : "chr").stem().string();
+    if (program.empty() || program == "AppRun") program = "chi";
+    const char* name = program.c_str();
+    std::fprintf(out, "usage: %s --status | --setup\n"
+                 "       %s [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
+                 "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--demo-to N]\n"
+                 "           [--state] [--show-quiz]\n"
+                 "  --show-quiz: show the training center's quiz (no check: the right part is\n"
+                 "           picked and any answer goes on); by default it is skipped\n"
+                 "  test aids (docs/reference.md): [--set-flag NN=VV] sets a flag (hex) as the town\n"
+                 "           starts; a script's set:NN=VV sets one at that point;\n"
+                 "           [--window X,Y] (hex, repeatable) prints the cell window built there\n", name, name);
+}
+
 bool parse(int argc, char** argv, Options& options) {
     // Without either, the setup finds the game folder (resolve_game).
     if (const char* env = std::getenv("CHR_GAME_DIR"); env && *env)
@@ -112,6 +132,8 @@ bool parse(int argc, char** argv, Options& options) {
             options.data_dir = argv[++i];
         } else if (arg == "--save-dir" && i + 1 < argc) {
             options.save_dir = argv[++i];
+        } else if (arg == "--help" || arg == "-h") {
+            options.help = true;
         } else if (arg == "--status") {
             options.status = true;
         } else if (arg == "--setup") {
@@ -170,15 +192,7 @@ bool parse(int argc, char** argv, Options& options) {
                 return false;
             }
         } else {
-            std::fprintf(stderr, "usage: chr --status | --setup\n"
-                         "       chr [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
-                         "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--demo-to N]\n"
-                         "           [--state] [--show-quiz]\n"
-                         "  --show-quiz: show the training center's quiz (no check: the right part is\n"
-                         "           picked and any answer goes on); by default it is skipped\n"
-                         "  test aids (docs/reference.md): [--set-flag NN=VV] sets a flag (hex) as the town\n"
-                         "           starts; a script's set:NN=VV sets one at that point;\n"
-                         "           [--window X,Y] (hex, repeatable) prints the cell window built there\n");
+            usage(stderr, argv[0]);
             return false;
         }
     }
@@ -345,6 +359,10 @@ int key_code(SDL_Keycode key) {
 int main(int argc, char** argv) {
     Options options;
     if (!parse(argc, argv, options)) return 2;
+    if (options.help) {
+        usage(stdout, argv[0]);
+        return 0;
+    }
 
     // A run no player is at (the rig, the tests, a hidden setup check) is a
     // background app on macOS, before any SDL_Init (the setup screen's too):
@@ -365,6 +383,13 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "chr: no data folder (%s); use --data-dir\n", SDL_GetError());
             return 1;
         }
+    }
+    // Started with nothing on the command line (a shortcut, a double-click,
+    // the launcher): no console, so the log goes beside the saves.
+    if (argc == 1) {
+        const auto log = options.data_dir / "chi.log";
+        if (std::freopen(log.string().c_str(), "w", stdout) && std::freopen(log.string().c_str(), "a", stderr))
+            std::setvbuf(stderr, nullptr, _IONBF, 0);
     }
     if (options.setup || options.game_dir.empty()) {
         std::string folder;
