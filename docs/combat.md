@@ -485,6 +485,9 @@ The party is placed from the saved position each time.
      passes the test. Someone whose cell is outside the window's 24 x 24 cells is dropped:
      record emptied (byte 0 = ff), figure inactive, x = y = ffff. A person placed gets frame
      0x10, a 'Mech frame 0. No draws.
+   Then (`203b:02e9..0305`) window 4, the box above the party box, is selected and cleared
+   (`2656:0281`, `0388`) and the live colour set to white (F:37fe = 15), whatever colour its
+   record held (a fight's round texts leave 13 there; only a direction write resets it).
 2. If any enemy figure is active, `203b:28db` asks whether Jason can reach the first one (the
    lowest active figure of 12-23): the view moves to figure 4 (or to Jason's 'Mech, the figure
    his byte 0x0c names) and the window is built there; then a point walks from there with up

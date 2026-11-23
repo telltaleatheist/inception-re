@@ -2207,10 +2207,10 @@ CHAIN_WEAPON2_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_weapon2_given", "keys": "enter", "match": SCREEN},
     {"name": "chain_weapon2_dropped", "keys": "down enter", "match": SCREEN},
     {"name": "chain_weapon2_capped", "keys": "enter", "match": SCREEN},
-    # The visit's end goes on into a random encounter, whose attackers the original prints in
-    # white and chr in window 4's colour (docs/reference.md, open items): the map and the state.
-    {"name": "chain_weapon2_out", "keys": "enter", "match": {"the map": WHOLE_MAP}},
-    {"name": "chain_weapon2_step", "keys": "down", "match": {"the map": WHOLE_MAP}},
+    # The visit's end goes on into a random encounter: its attackers in white (203b:02fe),
+    # whatever colour window 4 held from chain_party's fight.
+    {"name": "chain_weapon2_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_weapon2_step", "keys": "down", "match": SCREEN},
 ]
 
 # The game settings (1000:3bd0, docs/town_loop.md) from the town start: the

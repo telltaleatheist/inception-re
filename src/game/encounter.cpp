@@ -88,10 +88,11 @@ bool Town::random_encounter(KeySource& keys) {
     }
 
     // 2.3: the opponents (15ab:0d3d); the box above the party box is
-    // cleared for the attackers (2656:0281(4), 0388).
+    // cleared for the attackers (2656:0281(4), 0388), in white (203b:02fe).
     if (!place_encounter()) return false;
     text_.select_window(4);
     clear_window();
+    text_.set_fg(TextRole::Text);  // F:37fe = 15
     bool any = false;
     MapPosition first{};
     for (int f = 12; f < 24 && !any; ++f)

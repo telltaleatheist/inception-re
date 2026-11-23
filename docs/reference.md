@@ -484,15 +484,6 @@ counts, DG:014a and the map marks).
   leaves the column as it is (the direction lines stay, `chain_return_heal_done`), so it skips
   the blackout. The other callers keep it, and their captures match; which of the original's
   code clears the column on those paths is not yet found.
-- **The attackers' colour after WEAPON2** (`chain_weapon2_poked`, cases `_out` and `_step`): the
-  visit's end goes on into a random encounter. Window 4's record (DG:56de, +8) holds colour 13
-  in both programs from `chain_party`'s fight on, since no step since has written the direction
-  (each one asked about a door, F:d55c). chr prints the attackers' line (DG:3402) in that colour; the
-  original prints it in white (15), and its record for window 4 reads 15 at the next capture, so
-  its live colour (F:37fe) became 15 between the encounter's select of window 4 (`2656:0281`)
-  and that print. Not the direction write (`1000:00c5`, F:d55c is set), not `1000:4cac` or the
-  C-Bills (`1e31:1fdf`, which puts back the window it came from), not special 6's (`24d3:040e`).
-  Those two cases compare the map and the state until the write is found.
 
 - **A fleeing enemy person whose target byte is ff** (docs/combat.md 2.10, bug 21): rebuilt
   against figure -1 (docs/sound.md). `chain_entrance` fights the forced 'Mech encounter on the
