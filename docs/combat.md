@@ -1628,6 +1628,12 @@ sequence compares the scene with the original's, over the whole screen and the s
     program has used (its deepest use in the rig's captures is F:ce89). What they hold depends on the
     calls before; the rebuild takes 0, as below the deepest use, and logs it. A difference there shows
     as a state difference after that fight.
+20. `1e31:1df8` (where an undrawn figure falls in the view, for a shot's missile or line) walking
+    up or left across an area edge: no reference case reaches it. Every call in the campaign and
+    full runs had the undrawn figure below and right of the view's centre. It needs a shot
+    with one end off screen above or left of the view, across an area edge.
+21. A duplicate waypoint recognised (203b:1c1f, the order removed): no reference case reaches it.
+    It needs a fight in area rows 0-7 (bug 16 hides it in rows 8-15, `chain_waypoints_edge`).
 
 ## Functions
 

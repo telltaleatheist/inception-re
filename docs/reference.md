@@ -461,6 +461,16 @@ the figure drawer wrote for each (on screen, terrain, tile, the 'Mechs' tile abo
 screen place), the parked facings, where each is in its script (DG:01f6), the heat, the burning
 counts, DG:014a and the map marks).
 
+The Arena's other paths (docs/scripts.md, "The Arena") branch from `chain_arena`'s walk.
+`chain_arena_refused_poked` is the two refusals: flag 27 poked to 1 (the traitor refusal at
+0d2f), then back to 0 with 100 C-Bills poked and the renting's `if_cbills 250`. A step off the
+door and back asks again. `chain_arena_lost_poked` pokes the rented LOCUST's armour and
+structure to 1 once special 33 has made it. The computer loses: the lost text with the deposit
+text, then two steps east to the door and a second rental, which shows the second renting text
+again (flag 21 is 0 after a loss). A plain Arena fight cannot end with the leader fallen. Each
+round's targets are chosen at its start and each weapon fires once a round, so nothing aims at
+Jason once he has ejected, and the round's end test then finds figure 0 down (combat.md 2.8).
+
 ## Open items
 
 - **The new-game question after the game over** (`chain_death`, docs/town_loop.md step 7): the

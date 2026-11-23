@@ -577,6 +577,7 @@ town is refused) and a key.
   its second renting text once (03a0..069e: shown while flag 21 is clear, then flag 21 = 1), but
   the fight's end (combat.md 2.12) also writes flag 21: 1 for a win, 0 for a loss. So the text
   comes again on the next rental after any loss. Only text: the payment is 250 either way.
+  Seen on the original (`chain_arena_lost_poked`).
 - **An own 'Mech leaves the records after the Arena.** `17dc:1b41` copies record 0 back to the
   chosen record and then sets that record's first byte to ff, won or lost; only a destroyed
   'Mech also loses its held letter. Since the chooser lists held letters once flag 18 is set,

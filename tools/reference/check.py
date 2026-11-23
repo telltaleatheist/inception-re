@@ -2461,6 +2461,45 @@ CHAIN_ARENA_CASES = [dict(case, compare=False) for case in
     {"name": "chain_arena_out", "keys": "enter", "match": SCREEN},
 ]
 
+# The Arena's refusals (docs/scripts.md, "The Arena"), from the same garage door as chain_arena.
+# Flag 27 (a traitor in the party) poked to 1 first (our own test value): the refusal at 0d2f, a
+# key, out. Then flag 27 back to 0 and 100 C-Bills (our own test value), a step off the door and
+# back: Yes, Yes to the welcome, the attendant, and the renting's if_cbills 250 refuses. The
+# poked C-Bills are not drawn until the script redraws them.
+CHAIN_ARENA_REFUSED_POKED_CASES = [dict(case, compare=False) for case in
+                                   CHAIN_TOWN_CASES[:[c["name"] for c in CHAIN_TOWN_CASES].index("chain_town_garage_out_2") + 1]] + [
+    {"name": "chain_arena_refused_door", "keys": "flag:27=01 " + ARENA_WALK, "match": SHOP_MAP},
+    {"name": "chain_arena_refused_traitor", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_refused_traitor_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_refused_again", "keys": "flag:27=00 cbills:0064 left right", "match": SCREEN},
+    {"name": "chain_arena_refused_welcome", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_refused_attendant", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_refused_short", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_refused_out", "keys": "enter", "match": SCREEN},
+]
+
+# The Arena lost (docs/scripts.md, "The Arena"; combat.md 2.8, kind 2): chain_arena's fight with
+# the rented LOCUST's armour and structure (record 0, bytes 0x11-0x23) poked to 1 (our own test
+# values) once special 33 has made it. The computer fights and loses: the lost text with the
+# deposit text (flag 22), out. Two steps east to the door and a second rental: the second renting
+# text shows again, because the loss wrote flag 21 = 0 (scripts.md, "The Arena's second text").
+ARENA_WEAK = " ".join("mech:0:%02x=01" % b for b in range(0x11, 0x24))
+CHAIN_ARENA_LOST_POKED_CASES = [dict(case, compare=False) for case in
+                                CHAIN_ARENA_CASES[:[c["name"] for c in CHAIN_ARENA_CASES].index("chain_arena_computer") + 1]] + [
+    {"name": "chain_arena_lost_messages", "keys": ARENA_WEAK + " y", "match": SCREEN},
+    {"name": "chain_arena_lost_graphics", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_lost_verdict", "keys": "n idle:400", "match": SCREEN},
+    {"name": "chain_arena_lost_deposit_text", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_lost_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_lost_step", "keys": "right", "match": SCREEN},
+    {"name": "chain_arena_lost_door", "keys": "right", "match": SCREEN},
+    {"name": "chain_arena_lost_welcome", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_lost_attendant", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_lost_deposit", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_lost_second_text", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_lost_computer", "keys": "enter", "match": SCREEN},
+]
+
 # FROB (docs/scripts.md, "Frob's"): from chain_town's garage door, the walk to Frob's door
 # (map 2, entrance 11), 20000 C-Bills poked there, Jason alone buying the holoviewer (flag 30),
 # then a second visit buying the terrain mapper (flag 31), and three steps after it, which the
@@ -2614,7 +2653,8 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
             "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked",
             "chain_crit_poked", "chain_engine_poked", "chain_crush_poked", "chain_scan_poked",
-            "chain_waypoints_edge"}
+            "chain_waypoints_edge", "chain_arena_refused_poked",
+            "chain_arena_lost_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2677,6 +2717,8 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("shops", [], SHOP_CASES, []),
              ("comstar", [], COMSTAR_CASES, []),
              ("chain_arena", [], CHAIN_ARENA_CASES, []),
+             ("chain_arena_refused_poked", [], CHAIN_ARENA_REFUSED_POKED_CASES, []),
+             ("chain_arena_lost_poked", [], CHAIN_ARENA_LOST_POKED_CASES, []),
              ("chain_frob", [], CHAIN_FROB_CASES, []),
              ("chain_mayor", [], CHAIN_MAYOR_CASES, []),
              ("chain_theater", [], CHAIN_THEATER_CASES, []),
