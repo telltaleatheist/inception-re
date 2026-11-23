@@ -1505,10 +1505,10 @@ bool Town::fight_rounds(int kind, KeySource& keys) {
             }
         }
         if (!over) {
-            position_ = start;
+            walk_position(start);  // 203b:0835: 1000:17bb
             combat_.enemy_people_ran = false;
             combat.plan_side(12);
-            position_ = start;
+            walk_position(start);  // 203b:0859: 1000:17bb
             // A key the round waits for (the Arena's spectator) may find none:
             // the fight stops there, as the original waits.
             round_keys_ = &keys;

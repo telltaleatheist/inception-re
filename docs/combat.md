@@ -547,7 +547,11 @@ Each round, in order:
      (a party person faced a 'Mech, 4.4) and the party has no 'Mech left: one r, and r & 3 not
      0 ends the fight as a flight.
 3. If nobody fled:
-   - F:374c = 0. `203b:1482(12)` plans every active enemy figure 12-23.
+   - The party position is walked back to the round's start (`1000:17bb`, `203b:0835`), so the
+     grids step back over any area edge the orders' views crossed (showing a unit walks the
+     position to it). F:374c = 0. `203b:1482(12)` plans every active enemy figure 12-23, and the
+     position is walked back to the start again (`203b:0859`) and the window built there
+     (`287f:1314`).
    - `22e8:000c(kind > 0)` runs the round (section 3).
    - The double agent (2.9), the exit zone, the end tests (2.8), enemy people running (2.10),
      the raid story (2.11).
@@ -1486,7 +1490,7 @@ mistake; "quirk" means it may be intended.
 | 13 | Planning an enemy person against a 'Mech sets F:3992 = 0, wiping a retreat set by a party person; planning a party person against a 'Mech sets it to 1, which the mission driver reads as fleeing. Probable. | `1e31:03ab`, `17dc:0629` | `fix_retreat_flag` |
 | 14 | Under computer control, an auto-retreat value of 2 is later read as "left the raid area". Probable. | `203b:000a` | `fix_auto_retreat` |
 | 15 | The flee draw is made in kinds 2 and 3, where fleeing is refused. Kept for the draw order. | `203b:000a` | none |
-| 16 | A waypoint in area rows 8-15 is never recognised as a duplicate (sign extension), so it is added again. Harmless. | `203b:1c1f` | `fix_waypoint_compare` |
+| 16 | A waypoint in area rows 8-15 is never recognised as a duplicate (sign extension), so it is added again. Harmless. `chain_waypoints_edge` checks the second copy against the original. | `203b:1c1f` | `fix_waypoint_compare` |
 | 17 | A 13th waypoint is written into the next figure's first order (each Move adds one, so thirteen Moves reach it). Kept: the rebuild holds that order, and the `waypoints` sequence matches the original's write. The fix drops the waypoint and logs it. | `203b:1c1f` | `fix_order_bound` |
 | 18 | The path is written without a bound; more than 12 steps would spill into the next figure's path. | `203b:193b` | `fix_path_bound` |
 | 19 | Scan: for a 'Mech without sensors the "no enemy humans" check is skipped and the list is opened empty. With no enemy person active the original's list then never ends (bug 32), so only the sensors message with a person active is compared (`chain_scan_poked`). | `203b:2591` | `fix_scan_sensors` |
