@@ -1,0 +1,54 @@
+#include "platform/sound_player.h"
+
+#include <SDL3/SDL.h>
+
+namespace chr::platform {
+
+namespace {
+// The speaker's square wave at a quarter of full scale.
+constexpr int kAmplitude = 8192;
+}  // namespace
+
+std::optional<SoundClip> WavSounds::effect(int n) {
+    const auto path = folder_ / (std::to_string(n) + ".wav");
+    SDL_AudioSpec spec{};
+    Uint8* data = nullptr;
+    Uint32 bytes = 0;
+    if (!SDL_LoadWAV(path.string().c_str(), &spec, &data, &bytes)) return std::nullopt;
+    // Into the player's format: 16-bit, one channel, its rate.
+    const SDL_AudioSpec want{SDL_AUDIO_S16, 1, kSoundRate};
+    Uint8* converted = nullptr;
+    int size = 0;
+    const bool ok = SDL_ConvertAudioSamples(&spec, data, int(bytes), &want, &converted, &size);
+    SDL_free(data);
+    if (!ok) return std::nullopt;
+    SoundClip clip;
+    clip.rate = kSoundRate;
+    clip.samples.resize(std::size_t(size) / sizeof(std::int16_t));
+    SDL_memcpy(clip.samples.data(), converted, std::size_t(size));
+    SDL_free(converted);
+    return clip;
+}
+
+SoundPlayer::SoundPlayer(SoundProvider* mods) : mods_(mods) {
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) return;
+    const SDL_AudioSpec spec{SDL_AUDIO_S16, 1, kSoundRate};
+    stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
+    if (stream_) SDL_ResumeAudioStreamDevice(stream_);
+}
+
+SoundPlayer::~SoundPlayer() {
+    if (stream_) SDL_DestroyAudioStream(stream_);
+    if (SDL_WasInit(SDL_INIT_AUDIO)) SDL_QuitSubSystem(SDL_INIT_AUDIO);
+}
+
+void SoundPlayer::play(int n, std::span<const game::SoundSegment> segments) {
+    if (!stream_) return;
+    std::optional<SoundClip> clip;
+    if (mods_) clip = mods_->effect(n);
+    if (!clip) clip = square_wave(segments, kSoundRate, kAmplitude);
+    if (clip->samples.empty()) return;
+    SDL_PutAudioStreamData(stream_, clip->samples.data(), int(clip->samples.size() * sizeof(std::int16_t)));
+}
+
+}  // namespace chr::platform

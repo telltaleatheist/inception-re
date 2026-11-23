@@ -88,8 +88,11 @@ add_executable(chrtests
   tests/test_maps.cpp
   tests/test_text.cpp
   tests/test_walk.cpp
+  # The effects as samples: plain C++, no SDL.
+  src/platform/sound_wave.cpp
 )
 target_link_libraries(chrtests PRIVATE chrgame)
+target_include_directories(chrtests PRIVATE src)
 target_compile_definitions(chrtests PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}"
   CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/test-scratch"
   CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
@@ -106,6 +109,8 @@ if(SDL3_FOUND)
     src/platform/quiz_layer.cpp
     src/platform/stats_layer.cpp
     src/platform/renderer.cpp
+    src/platform/sound_player.cpp
+    src/platform/sound_wave.cpp
     src/platform/text_layer.cpp
   )
   target_include_directories(chrplatform PUBLIC src)
@@ -134,6 +139,17 @@ if(SDL3_FOUND)
       COMMAND chr --map 1 --script "left*10" --screenshot walk_west.bmp)
     set_tests_properties(walk_scrolls_west PROPERTIES ENVIRONMENT "${chr_headless}"
       PASS_REGULAR_EXPRESSION "moved at 0c3b,c019")
+    # A scripted run, as the rig's, never opens an audio device
+    # (docs/sound.md), with or without a screenshot: the player is made only
+    # for a run with neither.
+    add_test(NAME no_audio_when_scripted
+      COMMAND chr --map 1 --script "up*5 y" --screenshot no_audio.bmp --audio-report)
+    set_tests_properties(no_audio_when_scripted PROPERTIES ENVIRONMENT "${chr_headless}"
+      PASS_REGULAR_EXPRESSION "audio opened 0" FAIL_REGULAR_EXPRESSION "audio opened 1")
+    add_test(NAME no_audio_when_scripted_bare
+      COMMAND chr --map 1 --script "up*5 y" --audio-report)
+    set_tests_properties(no_audio_when_scripted_bare PROPERTIES ENVIRONMENT "${chr_headless}"
+      PASS_REGULAR_EXPRESSION "audio opened 0" FAIL_REGULAR_EXPRESSION "audio opened 1")
   endif()
   # The rebuild against the original, pixel for pixel (tools/reference,
   # docs/reference.md): runs the original in DOSBox-X headless. Skips without

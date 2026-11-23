@@ -1,6 +1,7 @@
 #include <vector>
 
 #include "game/sound.h"
+#include "platform/sound_wave.h"
 #include "test.h"
 
 using namespace chr::game;
@@ -111,4 +112,19 @@ TEST(sound_segments_on_the_default_machine) {
     CHECK(s[1].hz == 0 && near(s[1].ms, 2 * 29 / 8000.0));
     const double half = 184 + 3 * (151 + 10 * 100);
     CHECK(near(s[2].hz, 8e6 / (2 * half)) && near(s[2].ms, 5 * half / 8000.0));
+}
+
+TEST(sound_square_wave) {
+    // 1 ms of 1000 Hz at 8000 samples a second: 4 high, 4 low; then 0.5 ms
+    // of silence; then the wave goes on from where it was.
+    const std::vector<SoundSegment> segments = {{1000, 1.0}, {0, 0.5}, {1000, 0.5}};
+    const auto clip = chr::platform::square_wave(segments, 8000, 100);
+    CHECK(clip.rate == 8000);
+    CHECK(clip.samples.size() == 8 + 4 + 4);
+    const std::vector<std::int16_t> want = {100, 100, 100, 100, -100, -100, -100, -100, 0, 0, 0, 0, 100, 100, 100, 100};
+    CHECK(clip.samples == want);
+    // Lengths that are not whole samples carry over: 16 pieces of a 16th
+    // of a sample each make one sample.
+    std::vector<SoundSegment> bits(16, SoundSegment{0, 1000.0 / 8000 / 16});
+    CHECK(chr::platform::square_wave(bits, 8000, 100).samples.size() == 1);
 }

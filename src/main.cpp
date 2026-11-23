@@ -55,6 +55,7 @@
 #include "platform/quiz_layer.h"
 #include "platform/stats_layer.h"
 #include "platform/renderer.h"
+#include "platform/sound_player.h"
 #include "platform/text_layer.h"
 
 namespace {
@@ -73,6 +74,8 @@ struct Options {
     int step_hold = 1;         // --step-hold N
     bool list_events = false;
     bool sound_log = false;    // --sound-log: each effect's steps (docs/sound.md)
+    bool audio_report = false;  // --audio-report: whether an audio device was ever opened
+    std::filesystem::path sound_mod;  // --sound-mod DIR: N.wav for effect N
     bool walks = false;        // --walks: the walks to the tiles the cache dispatches (Town::walks)
     std::vector<chr::formats::MapPosition> walk_to;  // --walk-to X,Y: the walk toward each (Town::walk_toward)
     bool show_quiz = false;  // show the training center's quiz (no check)
@@ -119,6 +122,10 @@ bool parse(int argc, char** argv, Options& options) {
             options.list_events = true;
         } else if (arg == "--sound-log") {
             options.sound_log = true;
+        } else if (arg == "--audio-report") {
+            options.audio_report = true;
+        } else if (arg == "--sound-mod" && i + 1 < argc) {
+            options.sound_mod = argv[++i];
         } else if (arg == "--walks") {
             options.walks = true;
         } else if (arg == "--walk-to" && i + 1 < argc) {
@@ -394,6 +401,7 @@ int main(int argc, char** argv) {
     }
 
     int status = 0;
+    bool audio_opened = false;  // --audio-report
     chr::formats::MtpMap map;
     chr::formats::MapPosition start;
     std::deque<chr::game::ScriptItem> keys;  // every key and idle stretch so far, the script's first
@@ -575,6 +583,16 @@ int main(int argc, char** argv) {
         if (town && options.event >= 0 && std::size_t(options.event) < played) played = std::size_t(options.event);
         int held = 0;
         bool keys_meanwhile = false;
+        // Sound only for a player at the keyboard: a run with a script or a
+        // screenshot (the rig, the tests) never opens an audio device.
+        std::unique_ptr<chr::platform::WavSounds> sound_mods;
+        std::unique_ptr<chr::platform::SoundPlayer> sound_player;
+        if (options.script.empty() && options.screenshot.empty()) {
+            if (!options.sound_mod.empty()) sound_mods = std::make_unique<chr::platform::WavSounds>(options.sound_mod);
+            sound_player = std::make_unique<chr::platform::SoundPlayer>(sound_mods.get());
+        }
+        audio_opened = audio_opened || SDL_WasInit(SDL_INIT_AUDIO) != 0;
+        std::size_t sounded = played;  // the events before it have had their sound started
         const auto playing = [&] { return town && played < town->events().size(); };
         const auto resume = [&] {
             if (keys_meanwhile) {
@@ -629,6 +647,10 @@ int main(int argc, char** argv) {
                     // fast as the machine drew the next: the platform holds
                     // it `step_hold` frames.
                     const auto& e = events[played];
+                    if (played >= sounded) {
+                        if (sound_player && !e.screen && !e.segments.empty()) sound_player->play(e.sound, e.segments);
+                        sounded = played + 1;
+                    }
                     const int cost = !e.screen ? int(std::ceil(e.sound_ms() * chr::game::kVgaRefreshHz / 1000.0))
                                      : e.frames > 0 ? e.frames
                                                     : options.step_hold;
@@ -713,6 +735,8 @@ int main(int argc, char** argv) {
         }
     }
 
+    audio_opened = audio_opened || SDL_WasInit(SDL_INIT_AUDIO) != 0;
+    if (options.audio_report) std::printf("audio opened %d\n", audio_opened ? 1 : 0);
     SDL_DestroyRenderer(sdl_renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

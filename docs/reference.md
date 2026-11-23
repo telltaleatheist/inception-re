@@ -146,7 +146,7 @@ the bundled zlib's `configure` script must be executable. It is built with
 
 `check.py --sound` sets `CHR_PORTLOG` for the run, keeps the log as `ports.log` with the
 captures (and in the cache), reads DG:5006 from the last capture, and runs chr with
-`--sound-log` through the same keys. Compared so far: `sound_people` (effects 12, 1 and 4).
+`--sound-log` through the same keys. The sequences, and what each compares: docs/sound.md, "Comparing with the original".
 
 ## The original's captures, cached
 

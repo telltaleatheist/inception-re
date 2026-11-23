@@ -2739,7 +2739,9 @@ STALL_SECONDS = 600
 # Campaign sequences longer than the campaign's limit (2400 s for the whole
 # script): chain_finale's original runs about 35 minutes alone. The stall
 # limit still stops one that hangs.
-LONG_SEQUENCES = {"chain_finale": 3600}
+LONG_SEQUENCES = {"chain_finale": 3600,
+                  # check.py --sound: the campaign's prefixes (SOUND_SEQUENCES)
+                  "sound_crush": 2400, "sound_arena_theft": 2400, "sound_weapon2": 2400, "sound_cache_open": 3600}
 
 CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_poked", "chain_heal_poked", "chain_repair_poked",
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
@@ -2836,16 +2838,27 @@ PASSES_AFTER_KEY = 2
 # The sound effects against the original's speaker (docs/sound.md,
 # sound.py): only with --sound, under the port-logging DOSBox-X
 # (docs/reference.md, "Sound"), whose runs have their own cache entries.
-# Each plays a sequence's keys and compares every effect played up to its
-# last case; the screens are compared by the sequence itself.
-def _sound_upto(cases, name):
+# Each plays a sequence's keys up to the case that first plays its last new
+# effect, and compares every effect played on the way; the screens are
+# compared by the sequence itself. Effects 9, 11 and 13 (weapon shots) are
+# played by no sequence yet.
+def _sound_upto(sequence, name):
+    cases = next(quick + full for s, quick, full, _ in SEQUENCES if s == sequence)
     return [dict(c, compare=False) for c in cases[:[c["name"] for c in cases].index(name) + 1]]
 
 
 SOUND_SEQUENCES = [
-    # The story picture's effect 12 (two burst sweeps), then the soldiers'
-    # shots: effect 1 (a tone sweep) and effect 4 (a burst sweep).
-    ("sound_people", _sound_upto(PEOPLE_CASES + PEOPLE_FULL_CASES, "people_round_8")),
+    # effect 12 (a story picture), 1 and 4 (the soldiers' shots)
+    ("sound_people", lambda: _sound_upto("people", "people_round_8")),
+    # 2, 3 and 4
+    ("sound_drawn", lambda: _sound_upto("drawn", "drawn_round_6")),
+    # 1, 2, 4 and 8
+    ("sound_raid", lambda: _sound_upto("raid", "raid_18")),
+    # The campaign's (long runs): 18; 7; 5 and 6; 10, 14, 15, 16 and 17.
+    ("sound_crush", lambda: _sound_upto("chain_crush_poked", "chain_crush_crushed")),
+    ("sound_arena_theft", lambda: _sound_upto("chain_arena_theft", "chain_arena_theft_round_2")),
+    ("sound_weapon2", lambda: _sound_upto("chain_weapon2_poked", "chain_weapon2_no")),
+    ("sound_cache_open", lambda: _sound_upto("chain_cache_open", "chain_cache_check_solved")),
 ]
 
 
@@ -3251,9 +3264,11 @@ def run_sound_sequence(a, sequence, cases):
                          check=True, env=env, stdout=subprocess.PIPE, text=True).stdout
     ours = sound.read_chr_lines(out.splitlines())
     effects = [line.split()[1] for line in out.splitlines() if line.startswith("sound ")]
-    diffs = sound.compare(sound.read_portlog(portlog), ours, calibration)
+    diffs, notes = sound.compare(sound.read_portlog(portlog), ours, calibration)
     say(f"== {sequence}: effects {' '.join(effects) or 'none'}, DG:5006 = {calibration}")
     say(f"  {'ok  ' if not diffs else 'FAIL'} the speaker: {len(diffs)} differences")
+    for note in notes:
+        say("  note: " + note)
     for d in diffs[:20]:
         say("    " + d)
     return not diffs, report
@@ -3365,12 +3380,14 @@ def main():
         dropped, files, freed = a.cache.prune()
         print(f"cache: dropped {dropped} entries from another rig and {files} unused files ({freed >> 20} MB)")
     if a.sound:
-        ok = True
-        for sequence, cases in SOUND_SEQUENCES:
-            passed, report = run_sound_sequence(a, sequence, cases)
+        # Side by side, --jobs at a time; --sequence picks some by name.
+        a.full = True  # the longer time limits
+        chosen = [(name, cases) for name, cases in SOUND_SEQUENCES if not a.sequence or name in a.sequence]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, a.jobs)) as pool:
+            results = list(pool.map(lambda job: run_sound_sequence(a, job[0], job[1]()), chosen))
+        for _, report in results:
             print("\n".join(report), flush=True)
-            ok = ok and passed
-        return 0 if ok else 1
+        return 0 if all(passed for passed, _ in results) else 1
 
     # The sequences are separate runs of the original, each in its own
     # copy of the game folder (run.py), so they run side by side, --jobs

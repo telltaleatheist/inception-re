@@ -11,8 +11,8 @@ updates the player's state (`SoundState`, src/game/sound.h). With sound on, it a
 what the effect sounds like in plain terms: square-wave tones in Hz and silences, each with a
 length in ms on a chosen machine (`ShownEvent::segments`). The platform holds the event for that
 length, which stands in for the busy-wait. Nothing in the rebuild models the timer chip, port 61
-or the speaker: the hardware is replaced, not emulated (CLAUDE.md, goal 2). The platform's own
-audio output, and a mod's file in place of any effect, are still to come.
+or the speaker: the hardware is replaced, not emulated (CLAUDE.md, goal 2). The platform plays
+the segments, or a mod's file in place of any effect ("Playing it", below).
 
 ## Sound on and off
 
@@ -21,6 +21,10 @@ DG:015c is 1 in the program image and nothing at start-up changes it. The game s
 writer, and it shows which state the sound is in (DG:08c9 / DG:08cc). It is not in the saved game
 (the save block is F:c614..d557), so every run starts with sound on. Rebuilt: `SoundState::on`,
 flipped by `Town::game_settings`.
+
+With sound off, `1000:19bf` returns before calling the player, so there is no wait either: the
+busy-wait is inside the player's loops. The rebuild's sound event then has no segments and takes
+no time.
 
 ## The lists (DG:5008)
 
@@ -174,34 +178,72 @@ Rebuilt in `sound_calibration` and `sound_segments`: a tone is int16(length x DG
 flips x half-period at clock / (2 x half-period) Hz, the half-period being 184 + DG:5006 x
 (151 + 10 x count) cycles. Segments of the same pitch next to each other are joined.
 
+## Playing it
+
+The platform plays each effect as the event loop reaches it (src/platform/sound_player.cpp), on
+one SDL3 audio stream (16-bit, one channel, 44100 samples a second; SDL converts for the
+device). The segments become a square wave at a quarter of full scale that keeps its phase from
+one segment to the next (`square_wave`, src/platform/sound_wave.cpp, plain C++). The event loop
+then holds the event for the effect's length, which stands in for the player's busy-wait; the
+stream plays on its own meanwhile.
+
+**Mods.** `chr --sound-mod DIR` plays `DIR/N.wav` in place of effect N (any WAV SDL reads,
+converted to the stream's format). The seam is `SoundProvider` (src/platform/sound_wave.h), like
+the pictures' asset provider. The game still waits the original effect's length, so a mod's
+sound can't change how the game plays.
+
+**Never under a script.** The player is made only for a run with neither `--script` nor
+`--screenshot`, so the rig, the tests and any scripted run open no audio device. `chr
+--audio-report` prints whether one was ever opened; ctest's `no_audio_when_scripted` and
+`no_audio_when_scripted_bare` check that it was not.
+
 ## Comparing with the original
 
 The rig compares the effects with the original's speaker (`check.py --sound`,
 `tools/reference/sound.py`; docs/reference.md, "Sound"). A DOSBox-X build of our own logs every
 write to ports 40-43 and 61 with the emulated time and the writer's address. The player's writes
 are found by their offsets in its routines (`287f:0029` to `287f:0092`); the music driver's are
-left out. Against chr's `--sound-log` (the steps, in the units above):
+left out. They are compared with chr's `--sound-log` (the steps, in the units above):
 
-- every tone's divisor and every burst's number of flips must match exactly, in order;
-- the times are compared through one straight line per run, fitted by least squares: tone length
-  against its passes, and the time between flips against DG:5006 x count. Each must lie within
-  5% of the line. The emulator's ms are not a real machine's (its core counts about one cycle
-  per instruction), so only the shape is compared, not the ms.
+- **Exactly:** every tone's divisor and every burst's number of flips, in order. When the last
+  capture is a poll (a computer-fought round asking whether a key is waiting), the original runs
+  on and plays more; events after chr's last are reported, not compared.
+- **The times**, against the passes chr works out. The emulator runs about one cycle per
+  instruction, so the time per instruction is fitted over the run, from the bursts (the delay
+  loop is one LOOP per count); a tone-wait pass is six instructions, and a kind-2 tone's fixed
+  cost was measured from effect 1 (85 instructions). The emulator's ms are not a real machine's,
+  so only the shape is compared.
 
-On the rig the delay fits to within 0.012 ms (1.3%) over counts from 519 to 1703; the points
-further out land where the emulator's timer interrupt falls inside a wait. Compared so far:
-effects 12 (a story picture), 1 and 4 (the soldiers' shots), in `sound_people`.
+The emulator's clock is not even, and the same in every run (a fixed cycle setting gives the
+same log): a single interval can be up to 0.014 ms off, which is 8 delay counts or about one
+tone unit, and a whole burst up to 0.9% short. A wrong step in chr is wrong in every play, so:
+
+| what | judged by | tolerance |
+|---|---|---|
+| a burst, or a run of equal tones | the value at least two of its intervals share | - |
+| one step, over all its plays (three or more) | the median | 1.5 delay counts; half a tone unit |
+| each play alone | its own value | that, or 1% of its length if more |
+| a burst or tone with one interval, and every interval | itself | 0.02 ms |
+
+Fitted over the bursts' medians, the runs so far come within 0.87 counts. Checked with altered
+chr logs: a divisor 1 off, a burst a flip short, a count 2 too high in every play, one burst's
+count 2% too high (4 counts at 220), and every tone of one length 1 unit too long are each
+reported. A count 1 too high, and one lone tone 1 unit off (10 units: 0.01 ms, inside one
+interval's jitter), are not. All seven sequences below match. A note's fixed
+cost is not measured yet (no note has been logged), so notes are judged only against each other.
+
+Compared: `sound_people` (effects 12, 1, 4), `sound_drawn` (2, 3, 4), `sound_raid` (1, 2, 4, 8),
+and the campaign's `sound_crush` (18), `sound_arena_theft` (7), `sound_weapon2` (5, 6) and
+`sound_cache_open` (10, 14, 15, 16, 17): each plays a sequence the rig already has, up to the
+case where its last new effect is first played.
 
 ## Open items
 
-- The other 15 effects against the original: they need cases that play them (the weapons, the
-  cache puzzle and door, a 'Mech that won't start, a wreck, the spectator, a person crushed).
+- Effects 9, 11 and 13 against the original. They are weapon shots (`22e8:152b..`, by weapon:
+  13, 3, 5, 6, 11, 1, 9, 2, 4; combat.md 3), and no sequence the rig has fires those weapons.
 - The title music. A separate driver in segment 284b plays it from the timer interrupt (PIT
   channel 0, seen in the port log at boot). It is to be rebuilt the same way: its events in game
   terms (notes in Hz and ms), with no interrupt model.
-- The platform's audio output (SDL3 audio streams, playing while the logic waits), and a mod's
-  file in place of any effect. chr opens no audio device yet (SDL is started for video only); the
-  output will open none under the rig or ctest, with a test for that.
 
 ## The rebuild
 
