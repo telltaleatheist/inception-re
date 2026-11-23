@@ -42,7 +42,7 @@ for a release.
 
 | Platform | Made on | Files |
 |---|---|---|
-| macOS | a Mac | `CHI-Rebuild-<label>-mac.dmg`: `Inception Rebuild.app`, signed ad hoc, this Mac's architecture |
+| macOS | a Mac | `CHI-Rebuild-<label>-mac.dmg`: `Inception Rebuild.app`, signed ad hoc, universal (arm64 and x86_64) from macOS 12 |
 | Windows x64 | Windows, MSVC | `CHI-Rebuild-<label>-win64.zip` (`chi.exe`, `SDL3.dll` and the MSVC runtime at the top level), and with `--installer` `CHI-Rebuild-<label>-Setup.exe` |
 | Linux x86-64 | Linux or WSL | `CHI-Rebuild-<label>-x86_64.AppImage` |
 
@@ -61,14 +61,19 @@ Once per machine, the dependencies' sources:
 
 Then:
 
-    python3 -I tools/build_package.py --sdl build-deps/SDL --label LABEL [--game GAME] [--installer] [--appimage-tools DIR]
+    python3 -I tools/build_package.py --sdl build-deps/SDL --label LABEL [--game GAME] [--this-arch] [--installer] [--appimage-tools DIR]
 
 The package's build lives in `build-package/` and its files in `dist/`, and
 both are ignored by git. It is configured with `CHR_GAME_DIR` empty, so it
 has no built-in game folder. It also maps the source and build folders out
 of what the compiler writes (`CHR_TRIM_PATHS`).
 
-- **macOS**: SDL goes to `Contents/Frameworks`, named `@rpath`. The library,
+- **macOS**: the release form is universal, arm64 and x86_64, from macOS 12:
+  SDL and the program are built for both (`CMAKE_OSX_ARCHITECTURES`), the
+  static archive libraries are too (`build_archive.sh mac`), and `lipo`
+  checks every binary in the app for both. The x86_64 half is started under
+  Rosetta when the Mac has it. `--this-arch` builds this Mac's architecture
+  alone, for a quicker local test. SDL goes to `Contents/Frameworks`, named `@rpath`. The library,
   the program and the app are signed ad hoc with
   `tools/package/chi.entitlements` and checked with
   `codesign --verify --deep --strict`. The dmg holds the app, a link to

@@ -1,10 +1,11 @@
 """Build and smoke-test the rebuild's packages, with no file of the original game in them.
 
-    build_package.py --sdl SDL_SOURCE --label LABEL [--game GAME_DIR] [--installer] [--appimage-tools DIR]
+    build_package.py --sdl SDL_SOURCE --label LABEL [--game GAME_DIR] [--this-arch] [--installer] [--appimage-tools DIR]
     build_package.py --smoke PACKAGE_DIR [--game GAME_DIR]
 
 One platform per run, this machine's (docs/RELEASING.md):
-  macOS    CHI-Rebuild-<label>-mac.dmg            Inception Rebuild.app, Contents/MacOS/chi
+  macOS    CHI-Rebuild-<label>-mac.dmg            Inception Rebuild.app, Contents/MacOS/chi: universal
+                                                  (arm64, x86_64), or this Mac's alone with --this-arch
   Windows  CHI-Rebuild-<label>-win64.zip          chi.exe and SDL3.dll at the top level
            CHI-Rebuild-<label>-Setup.exe          with --installer (Inno Setup)
   Linux    CHI-Rebuild-<label>-x86_64.AppImage    usr/bin/chi (--appimage-tools)
@@ -57,6 +58,8 @@ README = (
     "its source code is under the MIT licence (LICENSE), which covers our code only, never\n"
     "the game.\n")
 SMOKE_SECONDS = 120
+# The Mac release form: both architectures, from macOS 12 (as mech3-re's).
+MAC_ARCHS = ("arm64", "x86_64")
 
 
 def run(*args, **kwargs):
@@ -77,14 +80,15 @@ def program_version(label):
     return found.group(1) if found else label
 
 
-def configure_and_build(root, build, sdl, label):
+def configure_and_build(root, build, sdl, label, universal=True):
     # CHR_GAME_DIR empty: a package has no built-in game folder (docs/setup.md).
     args = ["cmake", "-S", str(root), "-B", str(build), f"-DCHR_SDL_SOURCE_DIR={sdl}", "-DCHR_TRIM_PATHS=ON",
             f"-DCHR_VERSION={program_version(label)}", "-DCHR_GAME_DIR="]
     if os.name == "nt":
         args += ["-A", "x64", "-DCHR_WINDOWS_GUI=ON"]
     elif sys.platform == "darwin":
-        args += ["-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"]
+        args += ["-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
+                 "-DCMAKE_OSX_ARCHITECTURES=" + (";".join(MAC_ARCHS) if universal else "")]
     else:
         args += ["-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_BUILD_RPATH=$ORIGIN", "-DCMAKE_BUILD_RPATH_USE_ORIGIN=ON"]
     run(*args)
@@ -320,11 +324,37 @@ def package_linux(root, build, sdl, output, label, game, tools):
 
 # --- macOS ---
 
-def package_mac(root, build, sdl, output, label, game):
+def check_archs(files, archs):
+    """Every one of `files` holds each of `archs` (lipo): a universal app has no thin part."""
+    for file in files:
+        got = set(subprocess.run(["lipo", "-archs", str(file)], capture_output=True, text=True,
+                                 check=True).stdout.split())
+        if not set(archs) <= got:
+            raise RuntimeError(f"{file.name} holds {' '.join(sorted(got))}, not {' '.join(archs)}")
+
+
+def smoke_x86_64(exe):
+    """The universal app's other half: its x86_64 program started under Rosetta (--help and --status), when
+    this Mac has Rosetta; otherwise said and skipped."""
+    if subprocess.run(["arch", "-x86_64", "/usr/bin/true"], capture_output=True).returncode != 0:
+        print("Smoke: x86_64 not started (no Rosetta on this Mac)")
+        return
+    with tempfile.TemporaryDirectory(prefix="chi-smoke-") as scratch:
+        env = hidden_env(Path(scratch))
+        for args in (["--help"], ["--status"]):
+            result = subprocess.run(["arch", "-x86_64", str(exe)] + args, env=env, capture_output=True, text=True,
+                                    timeout=SMOKE_SECONDS)
+            if result.returncode != 0:
+                raise RuntimeError(f"The x86_64 program failed {args[0]} ({result.returncode})")
+    print("Smoke: the x86_64 program answers --help and --status (Rosetta)")
+
+
+def package_mac(root, build, sdl, output, label, game, universal=True):
     """Inception Rebuild.app and CHI-Rebuild-<label>-mac.dmg: the program in Contents/MacOS, data/ and the
     notices in Contents/Resources (SDL_GetBasePath), SDL in Contents/Frameworks named @rpath, every binary
-    signed ad hoc. This Mac's architecture."""
-    binary = configure_and_build(root, build, sdl, label)
+    signed ad hoc. Universal (arm64 and x86_64, checked with lipo), or with `universal` off this Mac's
+    architecture alone (a local test)."""
+    binary = configure_and_build(root, build, sdl, label, universal)
     app = output / f"{APP_NAME}.app"
     if app.exists():
         shutil.rmtree(app)
@@ -361,16 +391,19 @@ def package_mac(root, build, sdl, output, label, game):
                 run("install_name_tool", "-id", f"@rpath/{leaf}", str(target), stderr=subprocess.DEVNULL)
                 todo.append(target)
             copied.add(dep)
-    rpaths = subprocess.run(["otool", "-l", str(exe)], capture_output=True, text=True, check=True).stdout.splitlines()
-    for i, line in enumerate(rpaths):
-        if "cmd LC_RPATH" in line:
-            run("install_name_tool", "-delete_rpath", rpaths[i + 2].strip().split(" ")[1], str(exe))
+    # The build's rpaths, each once: a universal program lists them once a slice, and one delete takes all.
+    lines = subprocess.run(["otool", "-l", str(exe)], capture_output=True, text=True, check=True).stdout.splitlines()
+    rpaths = dict.fromkeys(lines[i + 2].strip().split(" ")[1] for i, line in enumerate(lines) if "cmd LC_RPATH" in line)
+    for rpath in rpaths:
+        run("install_name_tool", "-delete_rpath", rpath, str(exe))
     run("install_name_tool", "-add_rpath", "@executable_path/../Frameworks", str(exe))
     left = [d for f in [exe, *frameworks.iterdir()] for d in dependencies(f) if not (system(d) or d.startswith("@"))]
     if left:
         raise RuntimeError("still outside the app: " + ", ".join(sorted(set(left))))
     if not list(frameworks.glob("libSDL3*")):
         raise RuntimeError("Missing runtime dependency: libSDL3")
+    if universal:
+        check_archs([exe, *frameworks.iterdir()], MAC_ARCHS)
 
     stage_common(root, build, sdl, resources)
     minos = re.search(r"minos (\S+)", subprocess.run(["otool", "-l", str(exe)], capture_output=True, text=True,
@@ -393,6 +426,8 @@ def package_mac(root, build, sdl, output, label, game):
     run("codesign", "--force", "--sign", "-", "--entitlements", entitlements, str(app))
     run("codesign", "--verify", "--deep", "--strict", str(app))
     smoke(exe, game)
+    if universal:
+        smoke_x86_64(exe)
 
     dmg = output / f"{STEM}-{label}-mac.dmg"
     dmg_stage = output / "dmg"
@@ -414,13 +449,13 @@ def package_mac(root, build, sdl, output, label, game):
     return dmg
 
 
-def package(root, build, sdl, output, label, game=None, installer=False, tools=None):
+def package(root, build, sdl, output, label, game=None, installer=False, tools=None, universal=True):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", label):
         raise ValueError("Invalid package label")
     output.mkdir(parents=True, exist_ok=True)
     which = platform_name()
     if which == "mac":
-        return package_mac(root, build, sdl, output, label, game)
+        return package_mac(root, build, sdl, output, label, game, universal)
     if which == "win64":
         return package_windows(root, build, sdl, output, label, game, installer)
     return package_linux(root, build, sdl, output, label, game, tools)
@@ -439,6 +474,8 @@ if __name__ == "__main__":
     parser.add_argument("--sdl", type=Path, help="SDL3's source (3.4.12, pinned by commit: docs/RELEASING.md)")
     parser.add_argument("--label", help="the release tag (chi-vX.Y.Z) or a test name with -test in it")
     parser.add_argument("--smoke", type=Path, help="a package folder (or an AppImage): run the smoke test only")
+    parser.add_argument("--this-arch", action="store_true",
+                        help="macOS: this Mac's architecture only, for a local test (a release is universal)")
     parser.add_argument("--installer", action="store_true", help="Windows: also Setup.exe (Inno Setup)")
     parser.add_argument("--appimage-tools", type=Path, help="Linux: the folder with linuxdeploy and appimagetool")
     parser.add_argument("--game", type=Path, default=os.environ.get("CHR_GAME_DIR") or None,
@@ -454,4 +491,4 @@ if __name__ == "__main__":
             parser.error("--sdl and --label are required to package")
         root = Path(__file__).resolve().parents[1]
         package(root, root / "build-package", options.sdl.resolve(), root / "dist", options.label, options.game,
-                options.installer, options.appimage_tools)
+                options.installer, options.appimage_tools, not options.this_arch)
