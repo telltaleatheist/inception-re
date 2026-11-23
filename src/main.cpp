@@ -72,6 +72,7 @@ struct Options {
     int step_hold = 1;         // --step-hold N
     bool list_events = false;
     bool walks = false;        // --walks: the walks to the tiles the cache dispatches (Town::walks)
+    std::vector<chr::formats::MapPosition> walk_to;  // --walk-to X,Y: the walk toward each (Town::walk_toward)
     bool show_quiz = false;  // show the training center's quiz (no check)
     int map = 0;             // 0: the start-up, then map 1
     // A test aid: flags set as the town starts (--set-flag NN=VV, hex).
@@ -116,6 +117,13 @@ bool parse(int argc, char** argv, Options& options) {
             options.list_events = true;
         } else if (arg == "--walks") {
             options.walks = true;
+        } else if (arg == "--walk-to" && i + 1 < argc) {
+            unsigned x = 0, y = 0;
+            if (std::sscanf(argv[++i], "%x,%x", &x, &y) != 2 || x > 0xffff || y > 0xffff) {
+                std::fprintf(stderr, "chr: --walk-to takes X,Y in hex\n");
+                return false;
+            }
+            options.walk_to.push_back({std::uint16_t(x), std::uint16_t(y)});
         } else if (arg == "--fight-state") {
             options.state = options.fight_state = true;
         } else if (arg == "--show-quiz") {
@@ -138,7 +146,7 @@ bool parse(int argc, char** argv, Options& options) {
             }
         } else {
             std::fprintf(stderr, "usage: chr [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
-                         "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--step-hold N]\n"
+                         "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N]\n"
                          "           [--state] [--show-quiz]\n"
                          "  --show-quiz: show the training center's quiz (no check: the right part is\n"
                          "           picked and any answer goes on); by default it is skipped\n"
@@ -509,21 +517,27 @@ int main(int argc, char** argv) {
             if (options.state) print_state(*town);
             if (options.fight_state) print_fight_state(*town);
             for (const auto at : options.windows) print_window(*town, at);
-            if (options.walks) {
-                // In the script's own key names, a run of the same key as KEY*N.
+            // A walk in the script's own key names, a run of the same key as KEY*N.
+            const auto walk_keys = [](const std::vector<chr::game::Step>& steps) {
                 static const char* const kNames[3][3] = {{"home", "up", "pgup"}, {"left", "", "right"}, {"end", "down", "pgdn"}};
-                for (const auto& w : town->walks()) {
-                    std::string keys;
-                    for (std::size_t i = 0; i < w.steps.size();) {
-                        std::size_t j = i;
-                        while (j < w.steps.size() && w.steps[j].dx == w.steps[i].dx && w.steps[j].dy == w.steps[i].dy) ++j;
-                        if (!keys.empty()) keys += ' ';
-                        keys += kNames[w.steps[i].dy + 1][w.steps[i].dx + 1];
-                        if (j - i > 1) keys += "*" + std::to_string(j - i);
-                        i = j;
-                    }
-                    std::printf("walk %02x %04x,%04x %zu %s\n", w.tile, w.at.x, w.at.y, w.steps.size(), keys.c_str());
+                std::string keys;
+                for (std::size_t i = 0; i < steps.size();) {
+                    std::size_t j = i;
+                    while (j < steps.size() && steps[j].dx == steps[i].dx && steps[j].dy == steps[i].dy) ++j;
+                    if (!keys.empty()) keys += ' ';
+                    keys += kNames[steps[i].dy + 1][steps[i].dx + 1];
+                    if (j - i > 1) keys += "*" + std::to_string(j - i);
+                    i = j;
                 }
+                return keys;
+            };
+            if (options.walks)
+                for (const auto& w : town->walks())
+                    std::printf("walk %02x %04x,%04x %zu %s\n", w.tile, w.at.x, w.at.y, w.steps.size(), walk_keys(w.steps).c_str());
+            for (const auto target : options.walk_to) {
+                const auto w = town->walk_toward(target);
+                std::printf("walk-to %04x,%04x %04x,%04x %zu %s\n", target.x, target.y, w.at.x, w.at.y, w.steps.size(),
+                            walk_keys(w.steps).c_str());
             }
             if (options.list_events) {
                 for (const auto& e : town->events()) {

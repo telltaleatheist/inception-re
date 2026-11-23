@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "formats/tables.h"
@@ -223,6 +224,11 @@ public:
         std::vector<Step> steps;
     };
     std::vector<Walk> walks() const;
+    // A test aid (--walk-to): the shortest walk, by the same step check, to
+    // the place nearest `target` (in steps either way, then the shorter
+    // walk): within the party's area, or ending with one step into the next.
+    // `tile` is 0.
+    Walk walk_toward(formats::MapPosition target) const;
     // A test aid (--set-flag): set flag `f` to `v` when the town starts.
     void set_flag_when_town_starts(int f, int v) { pending_flags_.emplace_back(f, v); }
     const std::array<int, formats::kMenuCount>& menu_last() const { return menu_last_; }
@@ -393,6 +399,14 @@ private:
     // The bars as 1000:4cac last drew them (1000:4aa6, its only caller): the
     // original draws them nowhere else, so a record changed in between shows
     // only at the next 4cac.
+    // The search behind walks() and walk_toward(): every place reached
+    // within the area, with the step that reached it, and the event tiles.
+    struct WalkTree {
+        std::unordered_map<std::uint32_t, std::pair<std::uint32_t, Step>> came_from;  // place: (from, step)
+        std::vector<Walk> events;
+        std::vector<Step> steps_to(std::uint32_t place) const;
+    };
+    WalkTree walk_tree() const;
     std::vector<StatBar> drawn_bars_;
     // F:398e: the figure drawing adds the jail's four bays.
     bool bays_drawn_ = false;

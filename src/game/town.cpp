@@ -828,28 +828,31 @@ std::optional<StepResult> Town::step_party(Step step, KeySource& keys) {
     return r;
 }
 
-std::vector<Town::Walk> Town::walks() const {
+namespace {
+std::uint32_t place_key(const formats::MapPosition& p) { return (std::uint32_t(p.x) << 16) | p.y; }
+}  // namespace
+
+std::vector<Step> Town::WalkTree::steps_to(std::uint32_t k) const {
+    std::vector<Step> path;
+    while (came_from.at(k).first != k) {
+        path.push_back(came_from.at(k).second);
+        k = came_from.at(k).first;
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+Town::WalkTree Town::walk_tree() const {
     struct NoQuestion : EntranceQuestion {
         bool ask(int, bool) override { return false; }
     } no;
     Party walking = party();
     for (int i = 0; i < 8; ++i) walking.present[std::size_t(i)] = walking.present[std::size_t(i)] && on_foot(i);
     const MechParty mechs = active_mechs();
-    const auto key_of = [](const formats::MapPosition& p) { return (std::uint32_t(p.x) << 16) | p.y; };
-    std::unordered_map<std::uint32_t, std::pair<std::uint32_t, Step>> came_from;  // place: (from, step)
+    WalkTree tree;
     std::unordered_set<std::uint64_t> events_seen;
-    std::vector<Walk> found;
     std::deque<formats::MapPosition> queue{position_};
-    came_from[key_of(position_)] = {key_of(position_), {}};
-    const auto steps_to = [&](std::uint32_t k) {
-        std::vector<Step> path;
-        while (came_from.at(k).first != k) {
-            path.push_back(came_from.at(k).second);
-            k = came_from.at(k).first;
-        }
-        std::reverse(path.begin(), path.end());
-        return path;
-    };
+    tree.came_from[place_key(position_)] = {place_key(position_), {}};
     while (!queue.empty()) {
         const auto at = queue.front();
         queue.pop_front();
@@ -859,21 +862,66 @@ std::vector<Town::Walk> Town::walks() const {
                 const Step step{dx, dy};
                 const auto r = take_step(map_, map_number_, at, walking, step, no, tables_, terrain_, mechs, at, blocking_);
                 if (r.event_tile) {
-                    const std::uint64_t e = (std::uint64_t(*r.event_tile) << 32) | key_of(r.event_at);
+                    const std::uint64_t e = (std::uint64_t(*r.event_tile) << 32) | place_key(r.event_at);
                     if (!events_seen.insert(e).second) continue;
-                    auto path = steps_to(key_of(at));
+                    auto path = tree.steps_to(place_key(at));
                     path.push_back(step);
-                    found.push_back({*r.event_tile, r.event_at, std::move(path)});
+                    tree.events.push_back({*r.event_tile, r.event_at, std::move(path)});
                     continue;
                 }
                 if (r.outcome != StepOutcome::Moved) continue;
                 // Within the area: a walk that leaves it would move the grids.
                 if (((r.position.x ^ at.x) | (r.position.y ^ at.y)) & 0xff00) continue;
-                if (!came_from.emplace(key_of(r.position), std::pair{key_of(at), step}).second) continue;
+                if (!tree.came_from.emplace(place_key(r.position), std::pair{place_key(at), step}).second) continue;
                 queue.push_back(r.position);
             }
     }
-    return found;
+    return tree;
+}
+
+std::vector<Town::Walk> Town::walks() const { return walk_tree().events; }
+
+Town::Walk Town::walk_toward(formats::MapPosition target) const {
+    struct NoQuestion : EntranceQuestion {
+        bool ask(int, bool) override { return false; }
+    } no;
+    Party walking = party();
+    for (int i = 0; i < 8; ++i) walking.present[std::size_t(i)] = walking.present[std::size_t(i)] && on_foot(i);
+    const MechParty mechs = active_mechs();
+    const auto tree = walk_tree();
+    const auto distance = [&](const formats::MapPosition& p) {
+        return std::max(std::abs(int(target.x) - int(p.x)), std::abs(int(target.y) - int(p.y)));
+    };
+    // Each place reached, and each step from one into the next area (the
+    // step check reads the next area's terrain as the game does from there).
+    struct Candidate {
+        int distance;
+        std::size_t steps;
+        std::uint32_t from;
+        std::optional<Step> across;
+        formats::MapPosition at;
+    };
+    std::optional<Candidate> best;
+    const auto consider = [&](const Candidate& c) {
+        if (!best || c.distance < best->distance || (c.distance == best->distance && c.steps < best->steps)) best = c;
+    };
+    for (const auto& [k, from] : tree.came_from) {
+        const formats::MapPosition p{std::uint16_t(k >> 16), std::uint16_t(k & 0xffff)};
+        const std::size_t length = tree.steps_to(k).size();
+        consider({distance(p), length, k, std::nullopt, p});
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (dx == 0 && dy == 0) continue;
+                const Step step{dx, dy};
+                const auto r = take_step(map_, map_number_, p, walking, step, no, tables_, terrain_, mechs, p, blocking_);
+                if (r.event_tile || r.outcome != StepOutcome::Moved) continue;
+                if (!(((r.position.x ^ p.x) | (r.position.y ^ p.y)) & 0xff00)) continue;
+                consider({distance(r.position), length + 1, k, step, r.position});
+            }
+    }
+    auto steps = tree.steps_to(best->from);
+    if (best->across) steps.push_back(*best->across);
+    return {0, best->at, std::move(steps)};
 }
 
 // BTECH.EXE 287f:1314 (Ghidra FUN_287f_1314)

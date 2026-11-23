@@ -241,6 +241,13 @@ script's own names, the last key being the bump. It uses the step check alone, w
 built at each place, no question answered and no tile's function run. It plans walks; nothing
 in the rig reads it (docs/cache.md, "The way through").
 
+`chr --walk-to X,Y` (hex, repeatable) prints, by the same search, the shortest walk to the
+place nearest X,Y (in steps either way, then the shorter walk): `walk-to X,Y AT STEPS KEYS`.
+The search stays in the party's area, but the walk may end with one step into the next area,
+the step check reading that area's terrain as the game does from the edge. A route across
+the wilderness is planned an area at a time from it, with chr playing each stretch for the
+encounters on the way.
+
 What a poke may not touch: code, and anything that decides the copy-protection path. Flag 14
 (F:d320), which skips the training quiz while nonzero, is refused by run.py and by chr; the
 quiz's result is never in memory to poke. A case that uses a poke says so in its name or

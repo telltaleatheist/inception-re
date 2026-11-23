@@ -2169,6 +2169,20 @@ CHAIN_TRAITOR_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_traitor_box", "keys": "enter", "match": SCREEN},
 ]
 
+# GARAGE with a 'Mech (special 28, docs/scripts.md), from chain_party's crew screen outside the
+# garage: up and east to its second door (entrance 10), Yes, and Yes to leaving the 'Mechs:
+# the Commando's record emptied, Rex on foot, flag 18 set and the party put inside at the rear
+# exit. The step that asked then goes on, and one more step.
+CHAIN_GARAGE_CASES = [dict(case, compare=False) for case in
+                      CHAIN_PARTY_CASES[:[c["name"] for c in CHAIN_PARTY_CASES].index(
+                          "chain_party_crew_done") + 1]] + [
+    {"name": "chain_garage_door", "keys": "up up right*5", "match": SCREEN},
+    {"name": "chain_garage_inside", "keys": "y", "match": SCREEN},
+    {"name": "chain_garage_left", "keys": "y", "match": SCREEN},
+    {"name": "chain_garage_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_garage_step", "keys": "left", "match": SCREEN},
+]
+
 # The game settings (1000:3bd0, docs/town_loop.md) from the town start: the
 # command menu's item 1 and each of its items. The menus remember their last
 # item, so each case's keys count from there. Steps a key is walked at 2 and
@@ -2454,7 +2468,7 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
-            "chain_traitor_poked"}
+            "chain_traitor_poked", "chain_garage"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2501,6 +2515,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_lube_poked", [], CHAIN_LUBE_POKED_CASES, []),
              ("chain_ward_poked", [], CHAIN_WARD_POKED_CASES, []),
              ("chain_traitor_poked", [], CHAIN_TRAITOR_POKED_CASES, []),
+             ("chain_garage", [], CHAIN_GARAGE_CASES, []),
              ("chain_cache_poked", [], CHAIN_CACHE_POKED_CASES, []),
              ("chain_cache_open", [], CHAIN_CACHE_OPEN_CASES, []),
              ("chain_entrance", [], CHAIN_ENTRANCE_CASES, []),
