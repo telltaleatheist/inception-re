@@ -544,7 +544,8 @@ Each round, in order:
      its first order, `203b:2474` on foot) and its path simulated (`203b:193b`).
    - Computer control: `203b:1482(0)` plans figures 0-11 with `1e31:03ab`. If that set F:3992
      (a party person faced a 'Mech, 4.4) and the party has no 'Mech left: one r, and r & 3 not
-     0 ends the fight as a flight.
+     0 ends the fight as a flight. The draw itself is kept as the flight's value ([bp-0x38]), so
+     the fight's end takes the fled ending, and in the raid a 2 reads as the way out (bug 43).
 3. If nobody fled:
    - The party position is walked back to the round's start (`1000:17bb`, `203b:0835`), so the
      grids step back over any area edge the orders' views crossed (showing a unit walks the
@@ -1184,7 +1185,9 @@ off the to-hit number:
    `1000:28a2`) and the destroyed line (DG:2b6d), then the colour goes back to 15.
 
 `1e31:1dcc` pauses after a shot: 12 x DG:015e frames, or until a key when DG:015e is 5 or more.
-The settings' last message speed is 5, so a player can choose the key.
+The settings' last message speed is 5, so a player can choose the key. Its two other callers,
+a party 'Mech's loss (`1d43:0a35`, after the crew's lines) and a crush (`1e31:16ab`, twice for
+a party character), call it only below 5, so at 5 they neither pause nor wait for a key.
 Whatever the level, so a fight with messages None pauses as long.
 
 ### 3.9 The hit location
@@ -1534,6 +1537,7 @@ mistake; "quirk" means it may be intended.
 | 40 | REPAIR's weapon repairs (special 18): one payment of 300 C-Bills clears bit 0x80 on every destroyed weapon of the chosen type, but the type's count goes down by one only. A 'Mech with two or more of a type destroyed sees the type listed again, and paying for it again mends nothing. Kept. The fix: the type's count drops to 0 with the payment. | `19b8:0002` | `fix_repair_type_count` |
 | 41 | REPAIR's weapon repairs (special 18): after a payment, the test for any destroyed weapon left counts types 0x10-0x1f and not 0x20 (the SRM 6), though the list and the counts run to 0x20. With only SRM 6s left the weapons are called all fixed and the stage ends; they stay destroyed (a later visit lists them again). Kept. The fix: type 0x20 counted too. | `19b8:06f9` | `fix_repair_last_type` |
 | 42 | After the leader falls in an Arena fight with the theft, the party is left at y ffff (Jason's killed figure's row), and the step out of the Arena keeps it (docs/movement.md). The window there is block row 15: each block is read at the centre grid's start plus row x 8 (a byte), so rows 14-16 read the grids after the centre one in memory, not the map. Kept. No fix switch: no position or map belongs to y ffff, so there is no correct reading to switch to (`chain_arena_leader_poked`). | `287f:1314`, `287f:13d9` | none |
+| 43 | A computer-planned flight (a party person planned against a 'Mech, no party 'Mech left) keeps its draw r & 3 as the flight's value, which the raid reads as "the way out was reached" when it is 2: the raid's way-out text after a flight that did not reach it. Any other kind just takes the fled ending. No reference case reaches it (open item 21). | `203b:000a` (0b8a, 1792) | `fix_computer_flight` |
 
 The switches are `game/fixes.h`. Each is off by default, except where the original reads or
 writes memory the rebuild does not hold, or never returns: bugs 18, 26 and 32 take the fixed
@@ -1642,10 +1646,21 @@ sequence compares the scene with the original's, over the whole screen and the s
 11. (Answered: `2da8(4, 11)` loads map 11 into grid 4, 2.11.)
 12. (Answered: no.) `2656:0b5e`'s loop ends only on Enter or Space. After it, a key of Esc
     would return the starting item without storing it, but that branch cannot be reached.
-13. ('Mech byte 0x78 answered, 3.12.) F:4586 / F:3986 readers besides those above, DG:015e and DG:0150 (where they
-    are set).
-14. The three character bytes 1-3 (by use: byte 1 sets the hit-point maximum, byte 2 the walking
-    speed on foot); their names.
+13. (Answered.) F:4586 and F:3986 are read only by the round (`22e8:000c`), after the shot's
+    presentation: a lost arm (F:3986) clears the critical flag and shows picture 0x10 (with combat
+    graphics, not for the Arena's figure 13); then a critical on Jason's 'Mech shows picture 5;
+    then the pause. Both are cleared per weapon slot and by a 'Mech's loss (`1d43:0a35`).
+    DG:015e is the message speed, written only by the settings (`1000:3bd0`) and not saved; it is
+    read by the pause (3.8) and by its callers' tests. DG:0150 is the blocking tile: 0x55 for
+    every map but map 14 (0x21), set by `1000:2da8`; the cache sets 0x8b going down and 0x21
+    coming back up (`1b5d:055a`, `1b5d:079c`, docs/cache.md). Its readers are the party's step,
+    the encounter set-up, a figure's step, line of sight and the round.
+14. (Answered as far as the code goes.) The program never prints a name for bytes 1-3: the
+    panel draws them as three unlabelled bars (`1000:4aa6`). Byte 1 is read for the hit-point
+    maximum (10 x it: healing, the condition line `1e31:02e4`, the fight's end, the specials,
+    the set-ups). Byte 2 is read only by a person's movement points (`203b:2474`) and the bars.
+    Byte 3 is read only by the bars, so it has no effect on play. The names would come from the
+    manual; the rebuild keeps B, D, C.
 15. (Answered.) A failed Flee is compared by the `handover` sequence. With no shots, rounds draw
     no random numbers, and idle passes in town draw one only on the 11th in a row (every key is a
     game tick and resets the countdown, docs/town_loop.md); 52 extra passes and six
@@ -1667,16 +1682,22 @@ sequence compares the scene with the original's, over the whole screen and the s
 19. Figure 15's Kick (bug 2) reads 'Mech record 15's bytes 0x24 / 0x25, F:ce9b / ce9c, in stack the
     program has used (its deepest use in the rig's captures is F:ce89). What they hold depends on the
     calls before; the rebuild takes 0, as below the deepest use, and logs it. A difference there shows
-    as a state difference after that fight.
+    as a state difference after that fight. Reading can't settle it: the two bytes are 0x12 above the
+    deepest use, so they hold whatever the last call that deep left, which a run must read.
 20. `1e31:1df8` (where an undrawn figure falls in the view, for a shot's missile or line) walking
     up or left across an area edge: no reference case reaches it. Every call in the campaign and
     full runs had the undrawn figure below and right of the view's centre. It needs a shot
-    with one end off screen above or left of the view, across an area edge.
+    with one end off screen above or left of the view, across an area edge. By reading, the
+    rebuild's walk (`view_place`) is the same in all four directions: unsigned compares, the
+    position & f07f (y) or & 0f7f (x) on a step down past an area's start, + f80 or + 80 on a
+    step up past its end.
 21. F:3992 set from the computer's side: computer control planning a party person against an
     enemy 'Mech (`1e31:03ab`, section 4 step 5, bug 13) fails a mission as fleeing does. No reference
     case reaches it: in the training missions the party is Jason in his 'Mech alone, and no
     test value is poked to make one. It needs a party person on foot in a mission fight with
-    the computer fighting.
+    the computer fighting. By reading (`203b:0b8a`), the draw r & 3 is kept as the flight's
+    value, so the end takes the fled ending (no salvage or loot), as in the rebuild; the raid's
+    reading of a 2 is bug 43.
 22. A duplicate waypoint recognised (203b:1c1f, the order removed): no reference case reaches it.
     It needs a fight in area rows 0-7 (bug 16 hides it in rows 8-15, `chain_waypoints_edge`).
 

@@ -375,9 +375,9 @@ bool Combat::place_taken(int f, bool squash) {
         print({p < 12 ? name_id(c) : "shot.enemy_human"});
         print({"shot.squashed"});
         sound(0x12);  // 1000:19bf
-        if (hooks_.pause) {
-            hooks_.pause();
-            if (c < 8) hooks_.pause();
+        if (hooks_.timed_pause) {  // 1e31:16ab: DG:015e below 5 only
+            hooks_.timed_pause();
+            if (c < 8) hooks_.timed_pause();
         }
         marks_.add(0x7e, figs_.x[std::size_t(p)], figs_.y[std::size_t(p)]);
         animation_.set_frame(p, 0x7e);
@@ -867,7 +867,7 @@ void Combat::destroy_mech(int f) {
             figs_.x[std::size_t(c + 4)] = seat == mech::kPilot ? figs_.x[std::size_t(m)] : plus_one_x(figs_.x[std::size_t(m)]);
             figs_.y[std::size_t(c + 4)] = figs_.y[std::size_t(m)];
         }
-        if (hooks_.pause) hooks_.pause();
+        if (hooks_.timed_pause) hooks_.timed_pause();  // 1d43:0a35: DG:015e below 5 only
     }
     set_fg(TextRole::Text);  // F:37fe
 }

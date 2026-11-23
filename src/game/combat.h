@@ -122,7 +122,8 @@ public:
     // joined into one string and printed into the current window
     // (2656:03f5; pieces the original copies into its buffer DG:0012 come
     // as one call); select_box: window 4 made current; clear_box: and
-    // cleared; set_fg: the current window's colour, as a role (F:37fe); pause: 1e31:1dcc; draw_view:
+    // cleared; set_fg: the current window's colour, as a role (F:37fe); pause: 1e31:1dcc;
+    // timed_pause: 1e31:1dcc where its caller calls it only below message speed 5; draw_view:
     // the view and the figures drawn at the party's place (287f:18ef,
     // 1000:0e4b) with the tiles' next frame (1000:240b), or with `shown`
     // false only the drawer's writes (fix_terrain_without_graphics);
@@ -150,6 +151,7 @@ public:
         // with its last argument 0 (the reach test, the paths) clears it.
         std::function<void()> clear_wander;
         std::function<void()> pause;
+        std::function<void()> timed_pause;
         std::function<void(const std::string&)> log;
         // 24d3:17c6: the message box opened and made current.
         std::function<void()> message_box;

@@ -1403,6 +1403,9 @@ Combat Town::combat_rules() {
         }
         if (!round_keys_ || !read_key(*round_keys_)) throw KeysRanOut{};
     };
+    hooks.timed_pause = [this] {
+        if (message_speed_ < 5) hold_screen(12 * message_speed_);
+    };
     hooks.log = [this](const std::string& line) {
         if (log_.empty() || log_.back() != line) log_.push_back(line);
     };
@@ -1509,13 +1512,17 @@ bool Town::fight_rounds(int kind, KeySource& keys) {
         } else {
             // 203b:1482(0): the computer plans the party.
             combat.plan_side(0);
+            // 203b:0b8a: a party person met a 'Mech; with no party 'Mech left,
+            // r & 3 is the flight ([bp-0x38], bug 43) and ends the fight unless 0.
             if (combat_.person_ran) {
-                // A party person met a 'Mech: with no party 'Mech left, the
-                // party may run (r & 3).
                 bool no_mech = true;
                 for (int m = 0; m < 4; ++m)
                     if (mechs_[std::size_t(m)][0] != 0xff) no_mech = false;
-                if (no_mech && (random_.next() & 3) != 0) over = true;
+                if (no_mech) {
+                    fled_how = int(random_.next() & 3);
+                    if (fixes_.fix_computer_flight && fled_how != 0) fled_how = 1;
+                    over = fled_how != 0;
+                }
             }
         }
         if (!over) {
