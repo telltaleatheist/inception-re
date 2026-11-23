@@ -36,7 +36,12 @@ sdl3`).
     build/chr
 
 `chr` looks for the game in `--game-dir DIR`, then in the `CHR_GAME_DIR`
-environment variable, then in the folder given when it was built. For now it
+environment variable, then where the setup put it (the folder remembered in
+its data folder's `settings.ini`, the folder given when it was built, the data
+folder's `install`). Without any of those, it opens the setup, which finds
+your copy (or lets you pick it, its folder or an archive it came in) and
+copies it into the data folder; `chr --setup` opens it on purpose and
+`chr --status` prints what is found (docs/setup.md). For now it
 shows the title screen, or with `--map N` map N with the side panel (map 1 is
 the town a new game starts in). Walk with the arrow keys, and Home, PgUp, End
 and PgDn for the diagonals. `--script "up*5 y"` plays keys first and prints

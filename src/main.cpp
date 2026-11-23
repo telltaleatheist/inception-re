@@ -3,6 +3,7 @@
 // new game's town, walking with the arrow keys and Home/PgUp/End/PgDn. With
 // --map N it skips the start-up and begins on map N.
 //
+//   chr --status | --setup
 //   chr [--game-dir DIR] [--data-dir DIR] [--import] [--map N] [--script KEYS]
 //       [--text FILE] [--screenshot FILE.bmp] [--state] [--show-quiz]
 //
@@ -22,7 +23,11 @@
 // (game/clock.h).
 //
 // The game folder is --game-dir, else the CHR_GAME_DIR environment variable,
-// else the folder set when the program was built.
+// else the setup's (platform/sdl_setup.h): the one remembered in the data
+// folder's settings.ini, the folder set when the program was built, the
+// player's own install, else the setup screen, which finds or asks for the
+// player's copy and copies it into the data folder. --status prints what is
+// found as one JSON line and writes nothing; --setup only sets the game up.
 
 #include <algorithm>
 #include <cmath>
@@ -55,6 +60,7 @@
 #include "platform/quiz_layer.h"
 #include "platform/stats_layer.h"
 #include "platform/renderer.h"
+#include "platform/sdl_setup.h"
 #include "platform/sound_player.h"
 #include "platform/text_layer.h"
 
@@ -68,6 +74,8 @@ struct Options {
     std::filesystem::path data_dir;  // the imported text and font
     std::filesystem::path save_dir;  // the saved games GameN; the data folder by default
     bool import = false;
+    bool status = false;     // --status: the launcher contract's answer (platform/sdl_setup.h)
+    bool setup = false;      // --setup: the setup screen only
     bool state = false;      // print the game state after the script
     bool fight_state = false;  // with it, the fight's tables
     int event = -1;            // --event N
@@ -87,10 +95,9 @@ struct Options {
 };
 
 bool parse(int argc, char** argv, Options& options) {
+    // Without either, the setup finds the game folder (resolve_game).
     if (const char* env = std::getenv("CHR_GAME_DIR"); env && *env)
         options.game_dir = env;
-    else
-        options.game_dir = CHR_DEFAULT_GAME_DIR;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--game-dir" && i + 1 < argc) {
@@ -105,6 +112,10 @@ bool parse(int argc, char** argv, Options& options) {
             options.data_dir = argv[++i];
         } else if (arg == "--save-dir" && i + 1 < argc) {
             options.save_dir = argv[++i];
+        } else if (arg == "--status") {
+            options.status = true;
+        } else if (arg == "--setup") {
+            options.setup = true;
         } else if (arg == "--import") {
             options.import = true;
         } else if (arg == "--text" && i + 1 < argc) {
@@ -159,7 +170,8 @@ bool parse(int argc, char** argv, Options& options) {
                 return false;
             }
         } else {
-            std::fprintf(stderr, "usage: chr [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
+            std::fprintf(stderr, "usage: chr --status | --setup\n"
+                         "       chr [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
                          "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--demo-to N]\n"
                          "           [--state] [--show-quiz]\n"
                          "  --show-quiz: show the training center's quiz (no check: the right part is\n"
@@ -328,45 +340,39 @@ int key_code(SDL_Keycode key) {
     return 0;
 }
 
-// The user's data folder, "inception-re" in the application-data folder.
-// Its earlier name was "crescent-hawks-rebuild": if that one exists and the
-// new one is empty, the old one is moved to the new name once, so its import
-// and saves carry over; if the move fails, the old folder is used in place.
-std::optional<std::filesystem::path> data_folder() {
-    namespace fs = std::filesystem;
-    char* pref = SDL_GetPrefPath("", "inception-re");  // creates it if missing
-    if (!pref) return std::nullopt;
-    const fs::path folder = fs::path(pref).parent_path();
-    SDL_free(pref);
-    const fs::path old = folder.parent_path() / "crescent-hawks-rebuild";
-    std::error_code ec;
-    if (!fs::is_directory(old, ec) || !fs::is_empty(folder, ec) || ec) return folder;
-    fs::remove(folder, ec);
-    if (!ec) fs::rename(old, folder, ec);
-    if (ec) {
-        std::fprintf(stderr, "chr: couldn't rename %s to %s (%s); using the old folder\n",
-                     old.string().c_str(), folder.string().c_str(), ec.message().c_str());
-        return old;
-    }
-    std::fprintf(stderr, "chr: renamed the data folder %s to %s\n", old.string().c_str(), folder.string().c_str());
-    return folder;
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
     Options options;
     if (!parse(argc, argv, options)) return 2;
 
+    // A run no player is at (the rig, the tests, a hidden setup check) is a
+    // background app on macOS, before any SDL_Init (the setup screen's too):
+    // it never takes the foreground, whatever video driver it gets.
+    const bool scripted = !options.screenshot.empty() || !options.script.empty();
+    if (chr::platform::setup_unattended(scripted)) SDL_SetHint(SDL_HINT_MAC_BACKGROUND_APP, "1");
+    // The launcher contract: --status answers before anything is made or written.
+    if (options.status)
+        return chr::platform::print_setup_status(options.game_dir.string(), CHR_DEFAULT_GAME_DIR,
+                                                 options.data_dir.string());
+
     if (options.data_dir.empty()) {
         if (const char* env = std::getenv("CHR_DATA_DIR"); env && *env) {
             options.data_dir = env;
-        } else if (auto folder = data_folder()) {
-            options.data_dir = *folder;
+        } else if (const auto folder = chr::platform::settled_user_folder(); !folder.empty()) {
+            options.data_dir = folder;
         } else {
             std::fprintf(stderr, "chr: no data folder (%s); use --data-dir\n", SDL_GetError());
             return 1;
         }
+    }
+    if (options.setup || options.game_dir.empty()) {
+        std::string folder;
+        const int ready = chr::platform::resolve_game(options.setup, scripted, CHR_DEFAULT_GAME_DIR,
+                                                      options.data_dir.string(), &folder);
+        if (options.setup) return ready;
+        if (ready != 0) return ready == 1 ? 0 : 1;
+        options.game_dir = folder;
     }
     try {
         if (options.import) {
@@ -390,10 +396,6 @@ int main(int argc, char** argv) {
         SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
     if (headless && !std::getenv("SDL_RENDER_DRIVER"))
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
-    // A run with a script or a screenshot (the rig, the tests) never takes
-    // the foreground on macOS, whatever video driver it gets.
-    if (headless || !options.script.empty())
-        SDL_SetHint(SDL_HINT_MAC_BACKGROUND_APP, "1");
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::fprintf(stderr, "chr: SDL_Init: %s\n", SDL_GetError());
         return 1;
@@ -401,7 +403,7 @@ int main(int argc, char** argv) {
     SDL_Window* window = nullptr;
     SDL_Renderer* sdl_renderer = nullptr;
     const SDL_WindowFlags window_flags = headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_RESIZABLE;
-    if (!SDL_CreateWindowAndRenderer("Inception RE", 960, 600, window_flags,
+    if (!SDL_CreateWindowAndRenderer("Inception Rebuild", 960, 600, window_flags,
                                      &window, &sdl_renderer)) {
         std::fprintf(stderr, "chr: can't open a window: %s\n", SDL_GetError());
         SDL_Quit();

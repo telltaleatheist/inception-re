@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(crescent_hawks_rebuild LANGUAGES CXX)
+project(crescent_hawks_rebuild LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -72,6 +72,37 @@ add_library(chrgame STATIC
 target_include_directories(chrgame PUBLIC src)
 target_link_libraries(chrgame PUBLIC chrformats)
 
+# The shared setup kit (extern/re-setup-kit, a submodule; DESIGN.md there):
+# finding the player's copy in a folder or an archive, and the launcher
+# contract (--status, --setup). It reads archives through libarchive with zlib
+# and liblzma: static in packages (tools/deps/build_archive.sh's prefix), else
+# the system's; without it the setup reads folders only.
+if(APPLE)
+  set(CHR_DEPS_PLATFORM mac)
+else()
+  set(CHR_DEPS_PLATFORM linux)
+endif()
+find_path(CHR_LIBARCHIVE_INCLUDE archive.h
+          HINTS "${CMAKE_SOURCE_DIR}/build-deps/${CHR_DEPS_PLATFORM}/prefix/include" "${CMAKE_SOURCE_DIR}/deps/archive/include"
+                /opt/homebrew/opt/libarchive/include /usr/local/opt/libarchive/include)
+find_library(CHR_LIBARCHIVE_LIB NAMES archive archive_static
+             HINTS "${CMAKE_SOURCE_DIR}/build-deps/${CHR_DEPS_PLATFORM}/prefix/lib" "${CMAKE_SOURCE_DIR}/deps/archive/lib"
+                   /opt/homebrew/opt/libarchive/lib /usr/local/opt/libarchive/lib)
+if(CHR_LIBARCHIVE_INCLUDE AND CHR_LIBARCHIVE_LIB)
+  set(REKIT_LIBARCHIVE_INCLUDE "${CHR_LIBARCHIVE_INCLUDE}" CACHE PATH "" FORCE)
+  set(REKIT_LIBARCHIVE_LIB "${CHR_LIBARCHIVE_LIB}" CACHE FILEPATH "" FORCE)
+endif()
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/extern/re-setup-kit/CMakeLists.txt")
+  message(FATAL_ERROR "extern/re-setup-kit is missing: git submodule update --init")
+endif()
+add_subdirectory(extern/re-setup-kit "${CMAKE_BINARY_DIR}/re-setup-kit")
+set(CHR_VERSION "dev" CACHE STRING "The program's version, as --status reports it (packages set it)")
+
+# The setup recipe (src/setup/setup.h): no SDL.
+add_library(chrsetup STATIC src/setup/setup.cpp)
+target_include_directories(chrsetup PUBLIC src)
+target_link_libraries(chrsetup PUBLIC chrformats rekit)
+
 enable_testing()
 
 add_executable(chrtests
@@ -100,6 +131,13 @@ target_compile_definitions(chrtests PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR
   CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
 add_test(NAME chrtests COMMAND chrtests)
 
+# The setup recipe on made-up folders: the player's folder's move, settings.ini,
+# the verdicts, the install from a folder and an archive, --status's answer
+# writing nothing. Its game parts need the player's files (CHR_GAME_DIR).
+add_executable(setup_test tests/setup_test.cpp)
+target_link_libraries(setup_test PRIVATE chrsetup)
+add_test(NAME setup COMMAND setup_test "${CMAKE_BINARY_DIR}/setup_work" "${CHR_GAME_DIR}")
+
 # The platform layer: SDL3 window, rendering and the asset provider.
 find_package(SDL3 CONFIG QUIET)
 if(SDL3_FOUND)
@@ -111,12 +149,14 @@ if(SDL3_FOUND)
     src/platform/quiz_layer.cpp
     src/platform/stats_layer.cpp
     src/platform/renderer.cpp
+    src/platform/sdl_setup.cpp
     src/platform/sound_player.cpp
     src/platform/sound_wave.cpp
     src/platform/text_layer.cpp
   )
   target_include_directories(chrplatform PUBLIC src)
-  target_link_libraries(chrplatform PUBLIC chrgame SDL3::SDL3)
+  target_link_libraries(chrplatform PUBLIC chrgame chrsetup rekit_sdl SDL3::SDL3)
+  target_compile_definitions(chrplatform PRIVATE CHR_VERSION="${CHR_VERSION}")
 
   add_executable(chr src/main.cpp)
   target_link_libraries(chr PRIVATE chrplatform)
@@ -159,6 +199,13 @@ if(SDL3_FOUND)
   # SDL_VIDEODRIVER SDL1's (DOSBox-X, which run.py also sets): no window.
   find_package(Python3 COMPONENTS Interpreter QUIET)
   if(Python3_FOUND)
+    # The launcher contract on the program (--status, --setup and the setup
+    # screen, hidden on SDL's dummy driver), on made-up folders and a made-up
+    # home; with the game, a copy set up from it.
+    add_test(NAME status_setup
+      COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_SOURCE_DIR}/tests/status_setup_test.py
+        --program $<TARGET_FILE:chr> --work ${CMAKE_BINARY_DIR}/status_setup_work --game ${CHR_GAME_DIR})
+    set_tests_properties(status_setup PROPERTIES TIMEOUT 300)
     add_test(NAME reference_compare
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/reference/check.py
         --chr $<TARGET_FILE:chr> --game-dir ${CHR_GAME_DIR}
