@@ -138,6 +138,7 @@ const std::vector<Flat>& flat_tables() {
         {"overhead_pointer_column", 0x46db, 0x0a8a, Element::S8, [](Tables& t) { return all(t.overhead_pointer_column); }},
         {"overhead_pointer_row", 0x46db, 0x0a92, Element::S8, [](Tables& t) { return all(t.overhead_pointer_row); }},
         {"sound_lists", 0x46db, 0x5008, Element::U16, [](Tables& t) { return all(t.sound_lists); }},
+        {"music_note_hz", 0x284b, 0x0121, Element::U16, [](Tables& t) { return all(t.music_note_hz); }},
     };
     return kFlat;
 }

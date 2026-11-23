@@ -9,8 +9,13 @@ namespace {
 constexpr int kAmplitude = 8192;
 }  // namespace
 
-std::optional<SoundClip> WavSounds::effect(int n) {
-    const auto path = folder_ / (std::to_string(n) + ".wav");
+std::optional<SoundClip> WavSounds::effect(int n) { return load(folder_ / (std::to_string(n) + ".wav")); }
+
+std::optional<SoundClip> WavSounds::music(std::string_view name) {
+    return load(folder_ / (std::string(name) + ".wav"));
+}
+
+std::optional<SoundClip> WavSounds::load(const std::filesystem::path& path) {
     SDL_AudioSpec spec{};
     Uint8* data = nullptr;
     Uint32 bytes = 0;
@@ -35,10 +40,13 @@ SoundPlayer::SoundPlayer(SoundProvider* mods) : mods_(mods) {
     const SDL_AudioSpec spec{SDL_AUDIO_S16, 1, kSoundRate};
     stream_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
     if (stream_) SDL_ResumeAudioStreamDevice(stream_);
+    music_ = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
+    if (music_) SDL_ResumeAudioStreamDevice(music_);
 }
 
 SoundPlayer::~SoundPlayer() {
     if (stream_) SDL_DestroyAudioStream(stream_);
+    if (music_) SDL_DestroyAudioStream(music_);
     if (SDL_WasInit(SDL_INIT_AUDIO)) SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
@@ -49,6 +57,20 @@ void SoundPlayer::play(int n, std::span<const game::SoundSegment> segments) {
     if (!clip) clip = square_wave(segments, kSoundRate, kAmplitude);
     if (clip->samples.empty()) return;
     SDL_PutAudioStreamData(stream_, clip->samples.data(), int(clip->samples.size() * sizeof(std::int16_t)));
+}
+
+void SoundPlayer::play_music(std::span<const game::SoundSegment> segments) {
+    if (!music_) return;
+    SDL_ClearAudioStream(music_);
+    std::optional<SoundClip> clip;
+    if (mods_) clip = mods_->music("title");
+    if (!clip) clip = square_wave(segments, kSoundRate, kAmplitude);
+    if (clip->samples.empty()) return;
+    SDL_PutAudioStreamData(music_, clip->samples.data(), int(clip->samples.size() * sizeof(std::int16_t)));
+}
+
+void SoundPlayer::stop_music() {
+    if (music_) SDL_ClearAudioStream(music_);
 }
 
 }  // namespace chr::platform

@@ -165,6 +165,8 @@ constexpr std::array kDos103 = {
     ExeSpan{ExeSpan::Kind::Table, "tables.overhead_pointer_column", 0x46db, 0x0a8a, 8, "55db8edf1181cf86"},
     ExeSpan{ExeSpan::Kind::Table, "tables.overhead_pointer_row", 0x46db, 0x0a92, 8, "39512a0507aaf0cf"},
     ExeSpan{ExeSpan::Kind::Table, "tables.sound_lists", 0x46db, 0x5008, 628, "547c0c4ed891a257"},
+    // The title music's player (284b:0139, docs/sound.md).
+    ExeSpan{ExeSpan::Kind::Table, "tables.music_note_hz", 0x284b, 0x0121, 24, "80717ec3e186f50f"},
     ExeSpan{ExeSpan::Kind::Table, "rules.quiz_answers", 0x46db, 0x28ec, 20, "3fe5abf0257c084c"},
     // Text the game shows. The names are the text IDs (docs/text.md): a
     // text provider hands them out, and an override file can replace them.

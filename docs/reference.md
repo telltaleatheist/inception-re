@@ -146,7 +146,9 @@ the bundled zlib's `configure` script must be executable. It is built with
 
 `check.py --sound` sets `CHR_PORTLOG` for the run, keeps the log as `ports.log` with the
 captures (and in the cache), reads DG:5006 from the last capture, and runs chr with
-`--sound-log` through the same keys. The sequences, and what each compares: docs/sound.md, "Comparing with the original".
+`--sound-log` through the same keys. The title music's driver is compared too, from the same log
+(`sound_title` holds the title for most of the tune). The sequences, and what each compares:
+docs/sound.md, "Comparing with the original" and "The title music".
 
 ## The original's captures, cached
 

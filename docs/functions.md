@@ -300,10 +300,10 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 |---|---|---|---|---|---|
 | 284b:0048 | 0x284f8 | `FUN_284b_0048` | 73 | Hooks int 8 and sets the timer to ~291 Hz for the music driver | replaced |
 | 284b:0091 | 0x28541 | `FUN_284b_0091` | 44 | Restores int 8 and the timer | replaced |
-| 284b:00bd | 0x2856d | `FUN_284b_00bd` | 551 |  | - |
-| 284b:02e4 | 0x28794 | `FUN_284b_02e4` | 34 |  | - |
-| 284b:0306 | 0x287b6 | `FUN_284b_0306` | 54 |  | - |
-| 284b:033c | 0x287ec | `FUN_284b_033c` | 16 |  | - |
+| 284b:00bd | 0x2856d | `FUN_284b_00bd` | 551 | Speaker on; Ghidra's span also holds the driver's unmarked routines: speaker off (00c6), the note's divisor (0139, 00cf), the Tandy voices (01b8), start and stop (0160, 0179, 020b, 0233), the step routines (024f Tandy, 0298 speaker) (docs/sound.md, "The title music") | replaced; the steps rebuilt |
+| 284b:02e4 | 0x28794 | `FUN_284b_02e4` | 34 | Starts (1) or stops (0) the tune on Tandy graphics: three voices and the speaker, a step every 20 ticks | read |
+| 284b:0306 | 0x287b6 | `FUN_284b_0306` | 54 | Starts (1) or stops (0) the tune on the speaker, a step every 4 ticks | replaced |
+| 284b:033c | 0x287ec | `FUN_284b_033c` | 16 | Whether the tune has ended (the step routine is the idle one again) | replaced |
 
 ## CODE_17: segment 287f, 16,068 bytes (Microsoft C run-time library; entry point here)
 

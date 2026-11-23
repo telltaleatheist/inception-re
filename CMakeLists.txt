@@ -54,6 +54,7 @@ add_library(chrgame STATIC
   src/game/startup.cpp
   src/game/random.cpp
   src/game/sound.cpp
+  src/game/music.cpp
   src/game/save.cpp
   src/game/text.cpp
   src/game/text_provider.cpp

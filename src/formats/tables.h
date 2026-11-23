@@ -174,6 +174,7 @@ struct Tables {
     std::array<int, 13> overhead_blocks_down{};   // DG:0a62
     std::array<int, 13> overhead_cell_bytes{};    // DG:0a70: how many bytes of cells it reads from the file
     std::array<int, 314> sound_lists{};           // DG:5008: the sound effects' entries (27c5:0002)
+    std::array<int, 12> music_note_hz{};          // 284b:0121: the title music's pitches in its top octave, in Hz
     std::array<int, 8> overhead_pointer_column{}; // DG:0a8a: by direction, the pointer's text column
     std::array<int, 8> overhead_pointer_row{};    // DG:0a92: and its row
 

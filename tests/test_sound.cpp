@@ -1,5 +1,6 @@
 #include <vector>
 
+#include "game/music.h"
 #include "game/sound.h"
 #include "platform/sound_wave.h"
 #include "test.h"
@@ -127,4 +128,39 @@ TEST(sound_square_wave) {
     // of a sample each make one sample.
     std::vector<SoundSegment> bits(16, SoundSegment{0, 1000.0 / 8000 / 16});
     CHECK(chr::platform::square_wave(bits, 8000, 100).samples.size() == 1);
+}
+
+namespace {
+// A made-up pitch table: 1000 Hz up by 1 Hz a step.
+constexpr std::array<int, 12> kNoteHz = {1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011};
+}  // namespace
+
+TEST(music_steps_follow_the_bytes) {
+    // A top-octave note, a rest, a lone 0 before an octave-7 note, then the
+    // end mark: the byte after it is never read.
+    const std::vector<std::uint8_t> tune = {8 * 12, 0x80, 0, 7 * 12 + 1, 0, 0, 5};
+    const auto steps = tune_steps(tune, kNoteHz);
+    CHECK(steps.size() == 3);
+    CHECK(!steps[0].rest && steps[0].divisor == 1193182 / 1000);
+    CHECK(steps[1].rest && steps[1].divisor == kMusicRestDivisor);
+    CHECK(!steps[2].rest && steps[2].divisor == (1193182 / 1001) * 2);
+}
+
+TEST(music_ends_with_its_data) {
+    // No end mark: the four 0 bytes 1000:476d adds end it.
+    const std::vector<std::uint8_t> tune = {3 * 12 + 11};
+    const auto steps = tune_steps(tune, kNoteHz);
+    CHECK(steps.size() == 1 && steps[0].divisor == (1193182 / 1011) << 5);
+    // An octave above 8 shifts the count out: 0, which the timer takes as 65536.
+    const std::vector<std::uint8_t> high = {9 * 12, 10 * 12 + 2};
+    const auto shifted = tune_steps(high, kNoteHz);
+    CHECK(shifted.size() == 2 && shifted[0].divisor == 0x10000 && shifted[1].divisor == 0x10000);
+}
+
+TEST(music_steps_are_four_ticks) {
+    CHECK(music_step_ms() > 13.727 && music_step_ms() < 13.729);
+    const std::vector<std::uint8_t> tune = {8 * 12, 8 * 12, 0x90, 0x81, 8 * 12 + 1};
+    const auto segments = music_segments(tune_steps(tune, kNoteHz));
+    CHECK(segments.size() == 3);  // a repeated pitch or rest plays on
+    CHECK(segments[0].ms > 27.45 && segments[0].ms < 27.46 && segments[1].hz == 0);
 }

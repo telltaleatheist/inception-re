@@ -18,6 +18,10 @@ music driver's (284b) are left out. The comparison:
   within 1.5 delay counts or half a tone unit, each play within that or 1%
   (the emulator's clock is not even; see the constants).
 Prints the differences; none means a match.
+
+The title music's driver (284b) is compared on its own (compare_music):
+its steps' divisors in order, as many as the original played before the
+key, a step every few ticks of the timer count it sets.
 """
 import statistics
 import sys
@@ -52,6 +56,15 @@ DELAY_PASS, TONE_PASS = 1, 6
 SWEEP_TONE_OVERHEAD = 85
 # Any single interval must lie within this many ms of its line.
 JITTER = 0.02
+
+
+# Offsets of the OUTs in the title music's driver (segment 284b): the
+# timer's count (284b:0048) and a step's divisor (284b:00b2).
+MUSIC_COUNT_LOW, MUSIC_COUNT_HIGH, MUSIC_LOW, MUSIC_HIGH = 0x89, 0x8D, 0xB5, 0xB9
+TIMER_HZ = 1193182
+# Its steps come on timer ticks (3.43 ms apart), so a wrong rate is off by
+# a tick or more; the log's steps stray up to 0.018 ms from their line.
+MUSIC_JITTER = 0.1
 
 
 def read_portlog(path):
@@ -236,6 +249,71 @@ def compare(writes, steps, calibration):
         if len(ys) >= MEDIAN_PLAYS and abs(y - e) > TONE_TOLERANCE * unit:
             diffs.append(f"tones of {units} units: {y:.4f} ms over {len(ys)} runs, chr's give {e:.4f} "
                          f"({(y - e) / unit:+.1f} units)")
+    return diffs, notes
+
+
+def read_music(path):
+    """The music driver's writes: (ms, offset, value), in order. Its segment
+    is the one that writes port 42 at MUSIC_LOW."""
+    rows = []
+    for line in open(path):
+        parts = line.split()
+        if len(parts) != 4:
+            continue
+        seg, off = (int(x, 16) for x in parts[3].split(":"))
+        rows.append((float(parts[0]), int(parts[1], 16), seg, off, int(parts[2], 16)))
+    segs = {seg for _, port, seg, off, _ in rows if port == 0x42 and off == MUSIC_LOW}
+    return [(t, off, v) for t, _, seg, off, v in rows if seg in segs]
+
+
+def read_chr_music(lines):
+    """chr's tune: (the timer count, ticks a step, [divisors])."""
+    timer, steps = None, []
+    for line in lines:
+        parts = line.split()
+        if parts and parts[0] == "music-timer":
+            timer = (int(parts[1]), int(parts[2]))
+        elif parts and parts[0] == "music-step":
+            steps.append(int(parts[2]))
+    return timer, steps
+
+
+def compare_music(writes, timer, steps):
+    """The original's music steps against chr's: (diffs, notes)."""
+    diffs, notes = [], []
+    count = low = None
+    played = []  # (ms, divisor)
+    for t, off, v in writes:
+        if off == MUSIC_COUNT_LOW:
+            low = v
+        elif off == MUSIC_COUNT_HIGH and low is not None:
+            count = low | v << 8
+            low = None
+        elif off == MUSIC_LOW:
+            low = v
+        elif off == MUSIC_HIGH and low is not None:
+            played.append((t, (low | v << 8) or 0x10000))
+            low = None
+    if not played:
+        notes.append("the original played no music")
+        return diffs, notes
+    if timer is None:
+        diffs.append("chr gave no music-timer line")
+        return diffs, notes
+    if count != timer[0]:
+        diffs.append(f"the timer's count: {count} in the original, {timer[0]} in chr")
+    if len(played) > len(steps):
+        diffs.append(f"music: the original played {len(played)} steps, chr's tune has {len(steps)}")
+    for i, ((_, theirs), mine) in enumerate(zip(played, steps)):
+        if theirs != mine:
+            diffs.append(f"music step {i}: divisor {theirs:#x} in the original, {mine:#x} in chr")
+            break
+    step = 1000.0 * timer[1] * timer[0] / TIMER_HZ
+    for i, (a, b) in enumerate(zip(played, played[1:])):
+        if abs(b[0] - a[0] - step) > MUSIC_JITTER:
+            diffs.append(f"music step {i + 1}: {b[0] - a[0]:.4f} ms after the last, chr's step is {step:.4f}")
+            break
+    notes.append(f"the original played {len(played)} of the tune's {len(steps)} steps before the key")
     return diffs, notes
 
 

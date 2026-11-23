@@ -77,6 +77,6 @@ missing between the new game and the loop. The start-up's own new
 game is the Town's construction: the same values as members' starting values, and the 8 draws
 inside `Random::at_town_start`.
 
-Not rebuilt yet, and not reachable without them:
-- the title's tune (sound is not rebuilt), so the title waits for a key however long;
-- so the demo never plays.
+The title's tune plays while the title waits (docs/sound.md, "The title music"). Not rebuilt
+yet: the demo at the tune's end. After the tune (59.7 s on the speaker) the rebuild's title
+waits silently for a key however long.

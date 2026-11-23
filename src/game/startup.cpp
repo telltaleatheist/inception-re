@@ -2,6 +2,7 @@
 // (docs/startup.md). The hardware questions the original asks first in text
 // mode (the graphics adapter, the disk drives) belong to the platform and
 // are not rebuilt.
+#include "formats/game_files.h"
 #include "game/map_view.h"
 #include "game/money.h"
 #include "game/records.h"
@@ -18,6 +19,18 @@ constexpr int kInfocomFrames = 700;
 }  // namespace
 
 void Town::start_up() { stage_ = Stage::Infocom; }
+
+// BTECH.EXE 1000:476d (Ghidra FUN_1000_476d)
+// Reads WWOODBT.SIF whole, ends it with four 0 bytes, and plays it on the
+// speaker (on Tandy graphics, DG:4fba = 1, its three voices instead: not
+// rebuilt, docs/sound.md) until a key or its end.
+std::vector<MusicStep> Town::title_tune() const {
+    if (!game_dir_) return {};
+    const auto path = formats::find_game_file(*game_dir_, "WWOODBT.SIF");
+    if (!path) return {};
+    const auto bytes = formats::read_file(*path);
+    return tune_steps(bytes, tables_.music_note_hz);
+}
 
 std::optional<AssetId> Town::full_screen() const {
     if (stage_ == Stage::Infocom) return assets::kInfocomLogo;

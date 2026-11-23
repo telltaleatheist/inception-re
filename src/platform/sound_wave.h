@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <vector>
 
 #include "game/sound.h"
@@ -30,6 +31,8 @@ public:
     virtual ~SoundProvider() = default;
     // Effect n's sound, or nothing if this provider doesn't have it.
     virtual std::optional<SoundClip> effect(int n) = 0;
+    // The tune `name` ("title"), or nothing if this provider doesn't have it.
+    virtual std::optional<SoundClip> music(std::string_view name) { (void)name; return std::nullopt; }
 };
 
 }  // namespace chr::platform

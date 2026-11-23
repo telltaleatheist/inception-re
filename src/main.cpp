@@ -553,8 +553,13 @@ int main(int argc, char** argv) {
                             walk_keys(w.steps).c_str());
             }
             if (options.sound_log) {
-                // Each effect played, in the original's terms, for the rig
-                // (tools/reference/sound.py).
+                // The title's tune, then each effect played, in the
+                // original's terms, for the rig (tools/reference/sound.py).
+                std::printf("music-timer %d %d\n", chr::game::kMusicTimerCount, chr::game::kMusicTicksPerStep);
+                for (const auto& m : town->title_tune()) {
+                    if (m.rest) std::printf("music-step rest %d\n", m.divisor);
+                    else std::printf("music-step tone %d\n", m.divisor);
+                }
                 for (const auto& e : town->events()) {
                     if (e.screen || e.segments.empty()) continue;
                     std::printf("sound %d\n", e.sound);
@@ -593,6 +598,7 @@ int main(int argc, char** argv) {
         }
         audio_opened = audio_opened || SDL_WasInit(SDL_INIT_AUDIO) != 0;
         std::size_t sounded = played;  // the events before it have had their sound started
+        bool music_on = false;  // the title's tune has been started
         const auto playing = [&] { return town && played < town->events().size(); };
         const auto resume = [&] {
             if (keys_meanwhile) {
@@ -676,6 +682,14 @@ int main(int argc, char** argv) {
                 for (int i = 0; i < frames; ++i) town->idle_pass();
                 if (!keys.empty() && keys.back().idle > 0) keys.back().idle += frames;
                 else keys.push_back({0, frames});
+            }
+            // The title's tune plays while the title waits for its key
+            // (1000:476d); the key cuts it off.
+            if (sound_player) {
+                const bool tune = town && town->title_tune_playing();
+                if (tune && !music_on) sound_player->play_music(chr::game::music_segments(town->title_tune()));
+                if (!tune && music_on) sound_player->stop_music();
+                music_on = tune;
             }
             renderer.begin_frame();
             bool drawn = true;

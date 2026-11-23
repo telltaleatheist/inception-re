@@ -2980,7 +2980,22 @@ def _sound_upto(sequence, name):
     return [dict(c, compare=False) for c in cases[:[c["name"] for c in cases].index(name) + 1]]
 
 
+TITLE_HOLD = 14
+
+
+def _title_held():
+    """The start-up with the title held while its tune plays: the title's
+    key check (273d:002f) is the feeder's poll, so idle:N lets N go by
+    before the key. The feeder's count is a signed word, so the hold is
+    TITLE_HOLD items of 30000. The whole tune would start the demo."""
+    cases = [dict(c, compare=False) for c in CASES[:3]]
+    cases[1] = dict(cases[1], keys="idle:30000 " * TITLE_HOLD + "enter")
+    return cases
+
+
 SOUND_SEQUENCES = [
+    # the title music (284b), held well past the other sequences' few steps
+    ("sound_title", _title_held),
     # effect 12 (a story picture), 1 and 4 (the soldiers' shots)
     ("sound_people", lambda: _sound_upto("people", "people_round_8")),
     # 2, 3 and 4
@@ -3402,13 +3417,20 @@ def run_sound_sequence(a, sequence, cases):
     ours = sound.read_chr_lines(out.splitlines())
     effects = [line.split()[1] for line in out.splitlines() if line.startswith("sound ")]
     diffs, notes = sound.compare(sound.read_portlog(portlog), ours, calibration)
+    music_diffs, music_notes = sound.compare_music(sound.read_music(portlog),
+                                                   *sound.read_chr_music(out.splitlines()))
     say(f"== {sequence}: effects {' '.join(effects) or 'none'}, DG:5006 = {calibration}")
     say(f"  {'ok  ' if not diffs else 'FAIL'} the speaker: {len(diffs)} differences")
     for note in notes:
         say("  note: " + note)
     for d in diffs[:20]:
         say("    " + d)
-    return not diffs, report
+    say(f"  {'ok  ' if not music_diffs else 'FAIL'} the title music: {len(music_diffs)} differences")
+    for note in music_notes:
+        say("  note: " + note)
+    for d in music_diffs[:20]:
+        say("    " + d)
+    return not diffs and not music_diffs, report
 
 
 # --affected: the sequences that exercise each part of the rebuild, by path

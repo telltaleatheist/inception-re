@@ -28,6 +28,7 @@
 #include "game/flags.h"
 #include "game/map_view.h"
 #include "game/money.h"
+#include "game/music.h"
 #include "game/overhead.h"
 #include "game/movement.h"
 #include "game/random.h"
@@ -198,6 +199,11 @@ public:
     // Effect n's steps in the original's terms, for the rig's comparison
     // with the original's speaker (docs/sound.md).
     std::vector<SoundStep> sound_steps(int n) const { return effect_steps(tables_.sound_lists, n); }
+    // The title's tune, from the player's WWOODBT.SIF (game/music.h); empty
+    // without the game folder or the file.
+    std::vector<MusicStep> title_tune() const;
+    // The tune plays while the title waits for its key (1000:476d).
+    bool title_tune_playing() const { return start_up_open_ && stage_ == Stage::Title; }
     const std::vector<ShownSprite>& sprites() const { return screen_sprites_; }
     const std::vector<ShownLine>& lines() const { return screen_lines_; }
     // The last place the party went into (its entrance number).

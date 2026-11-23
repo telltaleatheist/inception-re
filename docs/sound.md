@@ -1,4 +1,4 @@
-# Sound effects
+# Sound effects and the title music
 
 The game plays its effects through one call, `1000:19bf(n)`. With sound on (DG:015c set) it hands
 the number to the player in segment 27c5 (`27c5:0002`); with sound off it does nothing. The
@@ -237,13 +237,83 @@ and the campaign's `sound_crush` (18), `sound_arena_theft` (7), `sound_weapon2` 
 `sound_cache_open` (10, 14, 15, 16, 17): each plays a sequence the rig already has, up to the
 case where its last new effect is first played.
 
+## The title music
+
+The title plays a tune of its own while it waits for a key (`1000:476d`, docs/startup.md). It
+has its own driver, segment 284b, which runs from the timer interrupt instead of busy-waiting,
+so the title's key check goes on while it plays.
+
+**What `1000:476d` does.** It reads WWOODBT.SIF whole into 2c6c:244b, puts four 0 bytes after
+it, and has `284b:0048` hook int 8 and set the timer's count to 0x0fff, 1193182 / 4095, about
+291.4 ticks a second. Then it starts the tune by the display (DG:4fba):
+
+- **Tandy graphics (1):** `284b:02e4`, with a step every 20 ticks, each reading four bytes: three
+  for the Tandy sound chip's voices (its own pitch table, 284b:019e) and one for the speaker.
+  Not rebuilt.
+- **Otherwise (CGA, EGA):** `284b:0306`, with a step every 4 ticks (13.728 ms), each reading one
+  byte for the speaker.
+
+Both take a number: 0 stops the tune, 1 starts it (the routines in the tables at 284b:0328 and
+284b:0332, each with the step routine it installs). Each turns the speaker on first
+(`284b:00bd`), so a stop turns it on and at once off. The title then waits: it clears F:3938
+and loops until `273d:002f` reports a key (or F:3938) or `284b:033c` says the step routine is
+back to the idle one (the tune's end). Then it stops the tune and `284b:0091` puts int 8 and the
+timer's count back.
+
+**The file.** The bytes are rows of four voices. On the speaker they are played one after
+another, a byte a step, so the four voices come as a fast run of single notes, and a row lasts
+16 ticks instead of the Tandy's 20: the speaker plays the tune about a quarter faster.
+WWOODBT.SIF has 4352 bytes and no 0 byte, so on the speaker it is 4352 steps, 59.7 s.
+
+**A step on the speaker** (`284b:0298`, not a function in Ghidra). Every 4th tick it reads the
+next byte:
+
+- 0: it reads the byte after it instead, and a second 0 is the end: the idle step routine
+  (`284b:0186`) is put back and the speaker turned off (`284b:0179`).
+- 0x80 or more: a rest. It sets divisor 14 (about 85 kHz, far above hearing) and leaves the
+  speaker on.
+- Any other: a note (`284b:0139`). The octave is the byte / 12, the pitch the byte % 12. The
+  divisor is 1193182 over the pitch's frequency in the top octave (a table of 12 words at
+  284b:0121, `284b:00cf`), shifted left by 8 less the octave. The shift's count is a byte, so an
+  octave above 8 shifts everything out and leaves 0 (65536 to the timer). The tune's octaves
+  are 3 to 6.
+
+It writes the divisor to timer channel 2 (`284b:00b2`). The first step comes on the first tick
+after the start.
+
+**The clock.** The handler (`284b:0020`) calls the step routine on every tick, and passes only
+every 17th tick on to the BIOS's own handler. While the tune plays, the DOS clock gets about
+17.1 ticks a second instead of 18.2 and falls behind. Nothing in the game reads it there, and
+the rebuild has no such clock.
+
+**In the rebuild** (src/game/music.cpp). `tune_steps` reads the file's bytes as the step routine
+does, with the pitch table imported from the player's BTECH.EXE (`tables.music_note_hz`), and
+gives each step's divisor or a rest. `music_segments` turns them into tones and silences of
+13.728 ms each. `Town::title_tune()` reads WWOODBT.SIF from the game folder, and
+`Town::title_tune_playing()` is true while the title waits for its key. The platform plays the
+tune on an audio stream of its own while that is true and cuts it off when it ends
+(`SoundPlayer::play_music`, `stop_music`). A mod's `title.wav` replaces it (`--sound-mod`). No
+timer, interrupt or port is modelled. The Tandy path is not rebuilt: the rebuild's machine has
+the speaker.
+
+**Compared.** `sound.py` takes the driver's writes from the port log (the segment writing port
+42 at 284b:00b5) and checks them against chr's `--sound-log` (`music-timer`, `music-step`
+lines). The timer count must match, and every divisor the original played, in order. Each step
+must come the step's length after the last, within 0.1 ms: the log strays up to 0.018 ms, and a
+wrong rate would be off by a tick (3.43 ms). Every sound sequence starts with the title, but the
+first key ends the tune after a few steps. `sound_title` holds the title instead: the title's
+key check is the feeder's poll, so it gives 14 x `idle:30000` (the feeder's count is a signed
+word) before the key. The original then plays 4126 of the 4352 steps, and all match. Altered
+chr logs (one divisor off, the timer count off, 5 ticks a step, a short tune) are each reported.
+The whole tune is not run, since its end starts the demo.
+
 ## Open items
 
 - Effects 9, 11 and 13 against the original. They are weapon shots (`22e8:152b..`, by weapon:
   13, 3, 5, 6, 11, 1, 9, 2, 4; combat.md 3), and no sequence the rig has fires those weapons.
-- The title music. A separate driver in segment 284b plays it from the timer interrupt (PIT
-  channel 0, seen in the port log at boot). It is to be rebuilt the same way: its events in game
-  terms (notes in Hz and ms), with no interrupt model.
+- The title music's end: the run stops short of it, since the demo would follow (see "The
+  title music"). The end mark is read as the code reads, and the tests check it.
+- The title music on Tandy graphics (its three voices), not rebuilt.
 
 ## The rebuild
 
