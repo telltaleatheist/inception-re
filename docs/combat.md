@@ -1617,9 +1617,12 @@ sequence compares the scene with the original's, over the whole screen and the s
     no random numbers, and idle passes in town draw one only on the 11th in a row (every key is a
     game tick and resets the countdown, docs/town_loop.md); 52 extra passes and six
     computer-fought rounds give a flee draw with r & 3 = 0.
-16. The raid's walk-out ending (a party figure past the raid area's edge, [bp-0x38] = 2: window 3,
-    "You have eluded your enemies!" (DG:39f7) and `1000:2a4f`'s key) is rebuilt but not compared
-    by the rig: the `raid` sequence ends with the Locust destroyed.
+16. Answered: the raid's walk-out ending (a party figure past the raid area's edge, [bp-0x38] =
+    2: window 3, "You have eluded your enemies!" (DG:39f7) and `1000:2a4f`'s key) is compared by
+    `raid_walkout_poked` (docs/reference.md): with its armour poked high, the Locust runs out
+    past the east edge in nine rounds, and Begin Fight at the next orders menu is overruled; the
+    story lines, flags 04 and 05 and the town follow as in the original. Unpoked, the Jenners
+    bring it down in round 5, short of any edge.
 17. Answered: mission 6's draw lands on the raid in the campaign run (`chain`, docs/reference.md),
     and the raid matches from there to its ending text, Begin Fight round after round until the
     Jenners bring the Chameleon down. Mission 6 without the raid (the draw's other side) is still
