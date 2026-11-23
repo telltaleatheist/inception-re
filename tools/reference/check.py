@@ -2500,6 +2500,43 @@ CHAIN_ARENA_LOST_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_arena_lost_computer", "keys": "enter", "match": SCREEN},
 ]
 
+# The Arena with the party's own 'Mech (special 34; docs/scripts.md, "The Arena"), unpoked: from
+# chain_garage's step out of the garage, whose special 28 left the Commando's letter held (flag 10
+# = 1, flag 18 set). The route plan's walk to the Arena's door (map 2 entrance 1) crosses the
+# Weapons Shop's door (entrance 5), which asks: No. At the Arena, Yes, Yes, the attendant, then
+# No to renting: the chooser (1c67:0b98) lists the held Commando under its pilot's name, the
+# waivers, and the computer fights (its question's bar is on No in this chain). Then 17dc:1b41's
+# own path: record 0 back to the held state. The walk back to the garage (entrance 0), the fee,
+# and the Commando comes back (special 46): the crew screen opens on Jason's vehicle menu (None),
+# then Done, out, and a step.
+ARENA_OWN_BACK = "home*5 up*13 home*3 left end left*4"
+CHAIN_ARENA_OWN_CASES = [dict(case, compare=False) for case in CHAIN_GARAGE_CASES] + [
+    {"name": "chain_arena_own_shop", "keys": "right pgdn*20 right*3", "match": SCREEN},
+    {"name": "chain_arena_own_walk", "keys": "n right*4 pgup right pgdn*3 down*12 pgdn*6", "match": SCREEN},
+    {"name": "chain_arena_own_door", "keys": "right", "match": SCREEN},
+    {"name": "chain_arena_own_welcome", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_own_attendant", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_own_ask", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_chooser", "keys": "n", "match": SCREEN},
+    {"name": "chain_arena_own_waivers", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_computer", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_messages", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_own_graphics", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_verdict", "keys": "enter idle:400", "match": SCREEN},
+    {"name": "chain_arena_own_prize", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_back_shop", "keys": ARENA_OWN_BACK, "match": SCREEN},
+    {"name": "chain_arena_own_back_walk", "keys": "n left*3 home*20", "match": SCREEN},
+    {"name": "chain_arena_own_garage_door", "keys": "left*4", "match": SCREEN},
+    {"name": "chain_arena_own_garage_fee", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_own_garage_paid", "keys": "y", "match": SCREEN},
+    {"name": "chain_arena_own_garage_note", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_crew", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_crew_bar", "keys": "up", "match": SCREEN},
+    {"name": "chain_arena_own_crew_done", "keys": "enter", "match": SCREEN},
+    {"name": "chain_arena_own_step", "keys": "left", "match": SCREEN},
+]
+
 # FROB (docs/scripts.md, "Frob's"): from chain_town's garage door, the walk to Frob's door
 # (map 2, entrance 11), 20000 C-Bills poked there, Jason alone buying the holoviewer (flag 30),
 # then a second visit buying the terrain mapper (flag 31), and three steps after it, which the
@@ -2654,7 +2691,7 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked",
             "chain_crit_poked", "chain_engine_poked", "chain_crush_poked", "chain_scan_poked",
             "chain_waypoints_edge", "chain_arena_refused_poked",
-            "chain_arena_lost_poked"}
+            "chain_arena_lost_poked", "chain_arena_own"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2719,6 +2756,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_arena", [], CHAIN_ARENA_CASES, []),
              ("chain_arena_refused_poked", [], CHAIN_ARENA_REFUSED_POKED_CASES, []),
              ("chain_arena_lost_poked", [], CHAIN_ARENA_LOST_POKED_CASES, []),
+             ("chain_arena_own", [], CHAIN_ARENA_OWN_CASES, []),
              ("chain_frob", [], CHAIN_FROB_CASES, []),
              ("chain_mayor", [], CHAIN_MAYOR_CASES, []),
              ("chain_theater", [], CHAIN_THEATER_CASES, []),

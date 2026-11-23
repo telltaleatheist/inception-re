@@ -470,6 +470,12 @@ text, then two steps east to the door and a second rental, which shows the secon
 again (flag 21 is 0 after a loss). A plain Arena fight cannot end with the leader fallen. Each
 round's targets are chosen at its start and each weapon fires once a round, so nothing aims at
 Jason once he has ejected, and the round's end test then finds figure 0 down (combat.md 2.8).
+`chain_arena_own` is unpoked, from `chain_garage`, whose special 28 holds the Commando (flag 10
+= 1): the route plan's walk to the Arena crosses the Weapons Shop's door (No), then No to
+renting, the chooser (`1c67:0b98`) with the held Commando under Rex's name, the waivers, and the
+computer wins (its question's bar is on No in this chain). Then the walk back to the garage's
+entrance 0, the fee, the Commando back (special 46), the crew screen (it opens on Jason's
+vehicle menu) and out.
 
 ## Open items
 

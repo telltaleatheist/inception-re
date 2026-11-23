@@ -581,13 +581,18 @@ town is refused) and a key.
 - **An own 'Mech leaves the records after the Arena.** `17dc:1b41` copies record 0 back to the
   chosen record and then sets that record's first byte to ff, won or lost; only a destroyed
   'Mech also loses its held letter. Since the chooser lists held letters once flag 18 is set,
-  the 'Mech is still offered at the Arena and comes back at the Garage (special 46). Not yet
-  seen on the original.
+  the 'Mech is still offered at the Arena and comes back at the Garage (special 46). With
+  record 0 chosen this is no change at all: a held 'Mech's record already has byte 0 = ff, and
+  `chain_arena_own` (the Commando, record 0, won) shows the original leaving it held and giving
+  it back at the Garage for the fee. Open: whether a chosen record other than 0 behaves the
+  same on the original (17dc:1b41 then also copies F:3780 back to record 0).
 - **The 'Mech chooser names pilots by record number.** `1c67:0b98` reads each line's name at
   DG:01ca + 4 x (the pilot's character record number), a table indexed by name number. Jason
   (record 0, name 0) comes out right; a member whose name number differs from his record number
   is shown under another name. Kept; an empty seat (ff) would read past the table, which the
-  rebuild logs and stops at.
+  rebuild logs and stops at. Open: in `chain_arena_own` the pilot is Rex, whose name number
+  equals his record number, so the right name shows either way; the quirk needs a member whose
+  two numbers differ.
 - **ARMOR's four-type list is never shown.** Flag 0a is written only by entering a place (=1)
   and the new game's clear, and read only by ARMOR's script and special 9. Inside the shop it is
   always set, so the script always shows menu 0x0d and special 9 always reads it; menu 0x0e and
