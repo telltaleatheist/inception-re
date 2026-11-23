@@ -386,6 +386,10 @@ int main(int argc, char** argv) {
         SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
     if (headless && !std::getenv("SDL_RENDER_DRIVER"))
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
+    // A run with a script or a screenshot (the rig, the tests) never takes
+    // the foreground on macOS, whatever video driver it gets.
+    if (headless || !options.script.empty())
+        SDL_SetHint(SDL_HINT_MAC_BACKGROUND_APP, "1");
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::fprintf(stderr, "chr: SDL_Init: %s\n", SDL_GetError());
         return 1;
