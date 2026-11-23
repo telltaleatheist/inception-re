@@ -2126,16 +2126,15 @@ CHAIN_LUBE_POKED_CASES = [dict(case, compare=False) for case in
 # poked down and the doctor declined (level 0, the party's own Field Surgery); again with
 # 100 C-Bills (Jason still hurt) and the Neurosurgeon (level 7), more than is left: refused,
 # the 25 given back. The MedKit bought, the field surgery kit refused for money and then
-# bought with 1000, and the MedKit asked for again (already held). The original draws the
-# party box only at 1000:4cac, so until the healing draws it again the poked hit points show
-# in chr's bars alone: those two cases compare the map (and the state).
+# bought with 1000, and the MedKit asked for again (already held). The poked hit points show
+# in the bars only when the healing draws the party box again (1000:4cac).
 CHAIN_WARD_POKED_CASES = [dict(case, compare=False) for case in CHAIN_COURSES_POKED_CASES] + [
     {"name": "chain_ward_fee", "keys": "cbills:2710 up enter", "match": SCREEN},
     {"name": "chain_ward_caliber", "keys": "enter", "match": SCREEN},
     {"name": "chain_ward_treated", "keys": "down*4 enter", "match": SCREEN},
     {"name": "chain_ward_back", "keys": "enter", "match": SCREEN},
-    {"name": "chain_ward_fee_2", "keys": "char:0:0f=05 enter", "match": {"the map": WHOLE_MAP}},
-    {"name": "chain_ward_declined", "keys": "n", "match": {"the map": WHOLE_MAP}},
+    {"name": "chain_ward_fee_2", "keys": "char:0:0f=05 enter", "match": SCREEN},
+    {"name": "chain_ward_declined", "keys": "n", "match": SCREEN},
     {"name": "chain_ward_back_2", "keys": "enter", "match": SCREEN},
     {"name": "chain_ward_fee_3", "keys": "cbills:0064 enter", "match": SCREEN},
     {"name": "chain_ward_caliber_3", "keys": "enter", "match": SCREEN},
@@ -2158,16 +2157,15 @@ CHAIN_WARD_POKED_CASES = [dict(case, compare=False) for case in CHAIN_COURSES_PO
 # JAIL's traitor (specials 36 and 37; docs/scripts.md), from chain_town's walk to the jail's
 # door, with flag 27 (the late game) and flag 25 (the traitor's record, here 0) poked there:
 # the name printed twice, then the game over: Jason's record emptied and DG:014a cleared, and
-# the main loop's game-over box (1000:04a4) with the leader's text. The original draws the
-# party box only at 1000:4cac, so after the record is emptied it still shows Jason's bars
-# while chr's are drawn from the records: that case compares the map (and the state).
+# the main loop's game-over box (1000:04a4) with the leader's text; Jason's bars stay on the
+# panel, drawn only by 1000:4cac.
 CHAIN_TRAITOR_POKED_CASES = [dict(case, compare=False) for case in
                              CHAIN_TOWN_CASES[:[c["name"] for c in CHAIN_TOWN_CASES].index(
                                  "chain_town_to_jail") + 1]] + [
     {"name": "chain_traitor_door", "keys": "flag:27=01 flag:25=00 end", "match": SCREEN},
     {"name": "chain_traitor_named", "keys": "y", "match": SCREEN},
     {"name": "chain_traitor_named_2", "keys": "enter", "match": SCREEN},
-    {"name": "chain_traitor_over", "keys": "enter", "match": {"the map": WHOLE_MAP}},
+    {"name": "chain_traitor_over", "keys": "enter", "match": SCREEN},
     {"name": "chain_traitor_box", "keys": "enter", "match": SCREEN},
 ]
 
@@ -2218,22 +2216,21 @@ SHOP_CASES = [dict(case, compare=False) for case in CASES[:4]] + [
     # ARMOR (entrance 4), from the weapon shop's door. At the door a second
     # character (SALVAGE_POKES) and 2000 C-Bills are poked: the cheapest
     # armour is bought and offered round the party, Jason takes it; then
-    # his points are poked down and topped up. The original draws the party
-    # box only at 1000:4cac, so until leaving it shows no bars for the poked
-    # character while chr's are drawn from the records: those cases compare
-    # the map (and the state); leaving redraws the box, compared whole.
+    # his points are poked down and topped up. The poked character's bars,
+    # and the poked C-Bills, show only when leaving draws the party box again
+    # (1000:4cac).
     {"name": "shop_armour_door", "keys": SHOP_ARMOUR_WALK + " " + SALVAGE_POKES + " cbills:07d0",
-     "match": SHOP_MAP},
-    {"name": "shop_armour_inside", "keys": "y", "match": SHOP_MAP},
-    {"name": "shop_armour_list", "keys": "enter", "match": SHOP_MAP},
-    {"name": "shop_armour_first", "keys": "down enter", "match": SHOP_MAP},
-    {"name": "shop_armour_offer", "keys": "y", "match": SHOP_MAP},
-    {"name": "shop_armour_taken", "keys": "enter", "match": SHOP_MAP},
-    {"name": "shop_armour_again", "keys": "enter", "match": SHOP_MAP},
-    {"name": "shop_armour_who", "keys": "char:0:0e=05 down enter", "match": SHOP_MAP},
-    {"name": "shop_armour_top_up", "keys": "enter", "match": SHOP_MAP},
-    {"name": "shop_armour_topped_up", "keys": "y", "match": SHOP_MAP},
-    {"name": "shop_armour_out", "keys": "enter", "match": SHOP_MAP},
+     "match": SCREEN},
+    {"name": "shop_armour_inside", "keys": "y", "match": SCREEN},
+    {"name": "shop_armour_list", "keys": "enter", "match": SCREEN},
+    {"name": "shop_armour_first", "keys": "down enter", "match": SCREEN},
+    {"name": "shop_armour_offer", "keys": "y", "match": SCREEN},
+    {"name": "shop_armour_taken", "keys": "enter", "match": SCREEN},
+    {"name": "shop_armour_again", "keys": "enter", "match": SCREEN},
+    {"name": "shop_armour_who", "keys": "char:0:0e=05 down enter", "match": SCREEN},
+    {"name": "shop_armour_top_up", "keys": "enter", "match": SCREEN},
+    {"name": "shop_armour_topped_up", "keys": "y", "match": SCREEN},
+    {"name": "shop_armour_out", "keys": "enter", "match": SCREEN},
     {"name": "shop_armour_leave", "keys": "down*2 enter", "match": SCREEN},
 ]
 

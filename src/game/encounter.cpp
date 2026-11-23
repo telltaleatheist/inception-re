@@ -576,7 +576,6 @@ bool Town::heal(int doctor, KeySource& keys) {
         print_id("heal.no_skill");
     }
     print_id("heal.to_assist");
-    held_bars_ = bars();  // the bars are drawn again only by 1000:4cac below
     text_.set_fg(TextRole::Report);  // 1000:28a2
     for (int c = 0; c < 8; ++c) {
         auto& r = characters_[std::size_t(c)];

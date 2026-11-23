@@ -336,14 +336,18 @@ std::vector<Figure> Town::figures() const {
     return all;
 }
 
+// The party box's bars as last drawn, none while the box is cleared.
+std::vector<StatBar> Town::bars() const {
+    if (!party_box_shown_) return {};  // the party box was cleared (a fight's questions)
+    return drawn_bars_;
+}
+
 // BTECH.EXE 1000:4aa6 (Ghidra FUN_1000_4aa6)
 // Beside each of the first four characters' names (row 14, 16, ...): bars at
 // columns 9, 10 and 11. The first bar's top part, its number less a tenth
 // of byte 15 (at least 1), is drawn as a warning.
-std::vector<StatBar> Town::bars() const {
+std::vector<StatBar> Town::party_bars() const {
     std::vector<StatBar> bars;
-    if (!party_box_shown_) return bars;  // the party box was cleared (a fight's questions)
-    if (held_bars_) return *held_bars_;  // the party box was cleared (a fight's questions)
     int line = 0;
     for (int i = 0; i < 8 && line < 4; ++i) {
         if (!party().present[i]) continue;
@@ -363,7 +367,6 @@ std::vector<StatBar> Town::bars() const {
 // `blank_column` blacks out columns 0-12 first, which 4cac itself does not.
 void Town::draw_panel(bool clear, bool blank_column) {
     party_box_shown_ = true;
-    held_bars_.reset();
     if (blank_column) text_.fill(0, 0, 13, kTextRows, TextRole::Background);
     text_.select_window(3);
     text_.frame(3);
@@ -377,6 +380,7 @@ void Town::draw_panel(bool clear, bool blank_column) {
         text_.put_text(lookup(texts_, "character." + std::to_string(i)), 1, 14 + 2 * line, TextRole::Text, TextRole::Background);
         ++line;
     }
+    drawn_bars_ = party_bars();  // 1000:4d27: 1000:4aa6
     draw_cbills();
     text_.select_window(4);
     text_.frame(4);

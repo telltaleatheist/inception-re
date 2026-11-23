@@ -177,6 +177,7 @@ public:
     const Random& random() const { return random_; }
     // The panel's bars, three per character shown.
     std::vector<StatBar> bars() const;
+    std::vector<StatBar> party_bars() const;
     const Money& money() const { return money_; }
     // Game ticks run so far, and the tile animation's frame (DGROUP:5800).
     int ticks() const { return ticks_; }
@@ -389,9 +390,10 @@ private:
     bool jail_break(KeySource& keys);
     bool failed_start();
     bool jail_bays(MissionWalk& w, KeySource& keys);
-    // The bars as the panel last drew them, while the records they came from
-    // are hidden (the jail break: docs/combat.md 1.7).
-    std::optional<std::vector<StatBar>> held_bars_;
+    // The bars as 1000:4cac last drew them (1000:4aa6, its only caller): the
+    // original draws them nowhere else, so a record changed in between shows
+    // only at the next 4cac.
+    std::vector<StatBar> drawn_bars_;
     // F:398e: the figure drawing adds the jail's four bays.
     bool bays_drawn_ = false;
     bool mission_walk(MissionWalk& w, KeySource& keys);

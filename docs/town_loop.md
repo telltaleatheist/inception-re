@@ -305,6 +305,13 @@ the loop already running, without it.
 `1000:4cac` draws the party box (window 3): for each of the first four characters present,
 `1000:4aa6` (row 14, 16, 18, 20), then the C-Bills line, then window 4's frame.
 
+`1000:4aa6` has no other caller, so the bars change on screen only when `4cac` runs (its 13
+callers: the load, the save, inspect, the settings, the overhead map, the crew, a new game,
+the end of a place's visit, a recruit, the healing, the training quiz, a fight's end and the
+specials). A record changed in between (a fight's damage, a special's hit points, a record
+emptied) keeps its old bars until then. The rebuild keeps the bars `4cac` last drew
+(`Town::draw_panel`) and shows those.
+
 `1000:4aa6` prints the name and draws three bars at columns 9, 10, 11 of the name's row, with
 the character's bytes 1, 2 and 3 (its 17-byte record at F:c614; Jason: 8, 9, 7). Over the
 first it draws a red part (colour 4; 2 on CGA), from the bar's top down, the bar's number less a

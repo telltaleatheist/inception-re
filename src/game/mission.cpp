@@ -270,7 +270,6 @@ bool Town::load_town_map(int number, int grid) {
 // 'Mech template 2 (27e8:03ea), in the first empty 'Mech record; if he
 // fell, flag 28 = 1 (docs/combat.md 1.7).
 bool Town::jail_break(KeySource& keys) {
-    held_bars_ = bars();  // the panel is not drawn again until after
     std::array<std::uint8_t, 8> kept{};  // F:3fe9 + p
     for (int p = 1; p < 8; ++p) {
         kept[std::size_t(p)] = characters_[std::size_t(p)][character::kName];
