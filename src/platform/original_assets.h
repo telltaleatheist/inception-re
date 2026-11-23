@@ -26,7 +26,8 @@ public:
     // {"NAME.CMP:8x8", n}, cell n of that picture cut into 8x8 cells, and
     // {"MECHSHAP.CMP:sprite", n}, slot n of the program's sprite table
     // (formats/sprite_sheet.h), colour 0 see-through, and {"O17.ANM", k},
-    // frame k of a place's picture (formats/anm.h).
+    // frame k of a place's picture (formats/anm.h), and {"COLOUR", n}, screen
+    // colour n from `palette`.
     std::optional<Image> image(const AssetId& id) override;
 
 

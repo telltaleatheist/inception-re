@@ -31,6 +31,10 @@ inline const AssetId kQuizPicture{"BTSTATS.CMP", 0};
 inline const AssetId kStatsPicture{"BTSTATS.CMP", 0};
 // The cache's end: special 45 (24d3:15dd).
 inline const AssetId kEndMechPicture{"ENDMECH.CMP", 0};
+// Screen colour n (0-15), as a 1x1 picture: what the renderer paints for
+// text, panel bars, shot lines, the overhead map and the boxes. The default
+// is the original's palette; a mod may give any number another colour.
+inline AssetId colour(int n) { return {"COLOUR", std::uint16_t(n & 0x0f)}; }
 }  // namespace assets
 
 }  // namespace chr

@@ -89,6 +89,14 @@ const formats::CmpPicture* OriginalAssets::picture(const std::string& file) {
 std::optional<Image> OriginalAssets::image(const AssetId& id) {
     last_error_.clear();
     try {
+        if (id.file == "COLOUR") {
+            if (id.index >= palette_.size()) {
+                last_error_ = to_string(id) + ": colours run 0-15";
+                return std::nullopt;
+            }
+            const auto& c = palette_[id.index];
+            return Image{1, 1, 1, 1, {c.r, c.g, c.b, 0xff}, {std::uint8_t(id.index)}};
+        }
         if (id.file == "FONT") {
             const auto* f = font();
             if (!f) return std::nullopt;

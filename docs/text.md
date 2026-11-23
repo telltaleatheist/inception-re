@@ -4,7 +4,8 @@ The program writes all its text and box frames into a 40x25 grid of 8x8-pixel ce
 320x200 screen). Rebuilt in `src/game/text.{h,cpp}`; drawn by `src/platform/text_layer.cpp`.
 The game logic only says which glyph or frame piece goes in a cell, in which colours; the
 renderer looks each one up by asset ID (`{"FONT", c}`, `{"BTBORDER.CMP:8x8", n}`), so a
-makeover can replace the font and the frames.
+makeover can replace the font and the frames. The 16 colour numbers are asset IDs too
+(`{"COLOUR", n}`, a 1x1 picture, below).
 
 ## Colours
 
@@ -20,6 +21,15 @@ A cell's colours are one of two things (`src/game/text_colour.h`):
 - **A data colour**, when the colour comes with imported data: the window table's colours and the
   colour codes inside a text (0x02, 0x06 below). Those are colour numbers in the data; a mod
   changes them there.
+
+Whatever the source, the renderer ends with a colour number 0-15, and paints it with screen
+colour `{"COLOUR", n}` from the asset provider (`assets::colour`,
+`platform::screen_colours`). The default provider answers with the original's palette (the
+import's EGA palette, formats/tables.md), so the screen is as before. A mod provider may give any
+number another colour, and it applies to everything the renderer paints by number: text, the
+panel's bars, shot lines, the overhead map and the orders screen's boxes. The original's
+pictures (.CMP, .ICN, .ANM, the sprites) keep their own colours, as does the stats screen's
+cycling palette (`stats_palette`); a mod replaces those by their own IDs.
 
 The original also picks a second set of colours when DG:4fba, the display, is 0 (CGA). The table
 notes them; the rebuild draws the EGA display.

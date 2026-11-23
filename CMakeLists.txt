@@ -89,6 +89,7 @@ add_executable(chrtests
   tests/test_maps.cpp
   tests/test_text.cpp
   tests/test_walk.cpp
+  tests/test_colours.cpp
   # The effects as samples: plain C++, no SDL.
   src/platform/sound_wave.cpp
 )

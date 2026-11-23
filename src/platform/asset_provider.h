@@ -9,6 +9,7 @@
 #include <optional>
 #include <vector>
 
+#include "formats/palette.h"
 #include "game/asset_id.h"
 
 namespace chr::platform {
@@ -35,5 +36,17 @@ public:
     // The picture for `id`, or nothing if this provider doesn't have it.
     virtual std::optional<Image> image(const AssetId& id) = 0;
 };
+
+// The 16 screen colours, each from the provider's {"COLOUR", n}, or from
+// `fallback` where it has none.
+inline formats::Palette16 screen_colours(AssetProvider& provider, const formats::Palette16& fallback) {
+    formats::Palette16 out = fallback;
+    for (int n = 0; n < 16; ++n) {
+        const auto image = provider.image(assets::colour(n));
+        if (image && image->rgba.size() >= 3)
+            out[std::size_t(n)] = {image->rgba[0], image->rgba[1], image->rgba[2]};
+    }
+    return out;
+}
 
 }  // namespace chr::platform
