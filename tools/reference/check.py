@@ -1052,6 +1052,45 @@ CHAIN_WEAPONS_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_weapons_round", "keys": "enter", "match": SCREEN, "fight": True},
 ]
 
+# Poked, for the critical hits (1e31:11ab, docs/combat.md 3.12), from chain_salvage_poked's fight
+# at the hand-back. Our own test values: both 'Mechs' armour and structure high (so the fight
+# lasts), head armour 0 (every head hit reaches the structure and draws criticals), Jason's
+# destroyed weapons mended, a heat sink in the Wasp's head slot, and the Wasp's left leg with no
+# actuators and its item destroyed. Each round's random state is poked (random:, steered):
+# round 1 lands life support (head d6 1) and the empty leg (no draw), round 2 the head's item
+# (d6 4), round 3, with Jason's heat set back to 0, the cockpit (d6 3): the Wasp destroyed.
+# Then the soldier's round, the end, the salvage question, the wreck refused and the loot.
+CRIT_POKES = " ".join(["mech:%d:%02x=c8" % (m, b) for m in (0, 4) for b in range(0x11, 0x1c)]
+                      + ["mech:%d:%02x=60" % (m, b) for m in (0, 4) for b in range(0x1c, 0x24)]
+                      + ["mech:0:14=00", "mech:4:14=00", "mech:0:33=11", "mech:0:3a=10", "mech:0:3b=10",
+                         "mech:0:48=10", "mech:0:49=10", "mech:0:53=18", "mech:0:54=18"])
+CHAIN_CRIT_POKED_CASES = [dict(case, compare=False) for case in
+                          CHAIN_ORDERS_POKED_CASES[:[c["name"] for c in CHAIN_ORDERS_POKED_CASES].index(
+                              "chain_salvage_player") + 1]] + [
+    {"name": "chain_crit_life_support", "keys": CRIT_POKES + " mech:4:55=22 mech:4:13=00 mech:4:24=f0"
+     " mech:4:4f=9e random:8697bb enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crit_head_item", "keys": "random:c7b317 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crit_cockpit", "keys": "heat:0=00 random:bff291 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crit_over", "keys": "enter", "match": SCREEN},
+    {"name": "chain_crit_question", "keys": "enter", "match": SCREEN},
+    {"name": "chain_crit_salvage", "keys": "enter", "match": SCREEN},
+    {"name": "chain_crit_loot", "keys": "enter", "match": SCREEN},
+    {"name": "chain_crit_back", "keys": "enter", "match": SCREEN},
+]
+
+# The same start with the Wasp's centre torso armour 0 and two engine hits (our own test
+# values): round 1's random state poked (steered) for an engine critical, the third, which
+# destroys the Wasp. Then as above.
+CHAIN_ENGINE_POKED_CASES = CHAIN_CRIT_POKED_CASES[:-8] + [
+    {"name": "chain_engine_kill", "keys": CRIT_POKES + " mech:4:15=00 mech:4:75=02 random:cb1855 enter",
+     "match": SCREEN, "fight": True},
+    {"name": "chain_engine_over", "keys": "enter", "match": SCREEN},
+    {"name": "chain_engine_question", "keys": "enter", "match": SCREEN},
+    {"name": "chain_engine_salvage", "keys": "enter", "match": SCREEN},
+    {"name": "chain_engine_loot", "keys": "enter", "match": SCREEN},
+    {"name": "chain_engine_back", "keys": "enter", "match": SCREEN},
+]
+
 # The unpoked chain on from the ruined town (docs/scripts.md, "After the
 # raid"): branched at chain_raid_key_57 so chain_death and the poked
 # sequences keep their prefix. With no idle there (N = 0 in the sweep of
@@ -2525,7 +2564,8 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
-            "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked"}
+            "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked",
+            "chain_crit_poked", "chain_engine_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2564,6 +2604,8 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_scrap_poked", [], CHAIN_SCRAP_POKED_CASES, []),
              ("chain_orders_poked", [], CHAIN_ORDERS_POKED_CASES, []),
              ("chain_weapons_poked", [], CHAIN_WEAPONS_POKED_CASES, []),
+             ("chain_crit_poked", [], CHAIN_CRIT_POKED_CASES, []),
+             ("chain_engine_poked", [], CHAIN_ENGINE_POKED_CASES, []),
              ("chain_town", [], CHAIN_TOWN_CASES, []),
              ("chain_party", [], CHAIN_PARTY_CASES, []),
              ("chain_jail_no", [], CHAIN_JAIL_NO_CASES, []),

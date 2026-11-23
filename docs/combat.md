@@ -1244,6 +1244,9 @@ Target figure 0-3 or 12-15 ('Mech m = t or t - 8).
    - An item slot pick (`1e31:163e`): if any item in the range is intact, one r: r & 3 is the
      starting slot, and the first intact item from there (wrapping) is destroyed.
 
+There are no ammunition explosions: a critical on an ammunition slot destroys the item like any
+other, and nothing else reads the ammunition bytes (0x27-0x30) when a slot is hit.
+
 ### 3.13 Fires and map marks
 
 On a miss only (`22e8:1e46`): if the target's terrain byte F:32ae is set, the weapon is the
