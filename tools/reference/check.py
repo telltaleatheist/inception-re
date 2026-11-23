@@ -1828,6 +1828,72 @@ CHAIN_AGENT_CASES = [dict(case, compare=False) for case in
     {"name": "chain_hut_page_24", "keys": "enter", "match": SCREEN},
 ]
 
+# The double agent found out with nobody in a 'Mech, its own sequence: on the
+# jail break's crew screen Rick is left on foot, and the Space menu's inspect
+# item (1000:378d: No to the 'Mech question, then Rick from the menu) shows
+# his tell and sets F:374a (docs/town_loop.md). The first random encounter
+# after it (one person, 108 passes out) is fought by the computer; after
+# round 1 he acts on foot (docs/combat.md 2.9: his figure's mark and place
+# ffff). Round 1 and the box's key as in chain_agent. Two more rounds with
+# nobody in reach, then Flee: escaped, and back on the map.
+CHAIN_AGENT_FOOT_CASES = [dict(case, compare=False) for case in
+                          CHAIN_PARTY_CASES[:[c["name"] for c in CHAIN_PARTY_CASES].index(
+                              "chain_party_crew_rex_pick") + 1]] + [
+    {"name": "chain_agent_foot_to_done", "keys": "down*4", "match": SCREEN},
+    {"name": "chain_agent_foot_done", "keys": "enter", "match": SCREEN},
+    {"name": "chain_agent_foot_menu", "keys": "space", "match": SCREEN},
+    {"name": "chain_agent_foot_inspect", "keys": "down*3 enter", "match": SCREEN},
+    {"name": "chain_agent_foot_which", "keys": "n", "match": SCREEN},
+    {"name": "chain_agent_foot_tell", "keys": "down*4 enter", "match": SCREEN},
+    {"name": "chain_agent_foot_tell_key", "keys": "enter", "match": SCREEN},
+    {"name": "chain_agent_foot_encounter", "keys": "idle:108", "match": SCREEN},
+    {"name": "chain_agent_foot_fight", "keys": "y y enter n", "match": {}, "fight": True},
+    {"name": "chain_agent_foot_acted", "keys": "arm:2 enter", "match": {}, "fight": True},
+    {"name": "chain_agent_foot_round_2", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_agent_foot_round_3", "keys": "enter", "match": SCREEN, "fight": True},
+    {"name": "chain_agent_foot_flee", "keys": "up enter", "match": SCREEN, "fight": True},
+    {"name": "chain_agent_foot_eluded", "keys": "enter", "match": SCREEN},
+    {"name": "chain_agent_foot_back", "keys": "enter", "match": SCREEN},
+]
+
+# The double agent as a pilot, three sequences (docs/combat.md 2.9): on the
+# jail break's crew screen Jason takes the STINGER, then Rick the COMMANDO's
+# pilot's seat, which shows his tell (one key) and sets F:374a; then who
+# rides with him. The first encounter after it (one person, 119 passes out)
+# is fought by the computer; after round 1 he acts from the pilot's seat, by
+# the second seat:
+# - chain_agent_controls: Rex rides (No to making him the pilot); he can
+#   pilot, so he takes the controls and the 'Mech stays;
+# - chain_agent_lost: nobody rides; the 'Mech is lost;
+# - chain_agent_bailout: Edward rides; he cannot pilot (Piloting 0), so he
+#   gets out on foot and the 'Mech is lost.
+# Then as chain_agent_foot: the box's key, two rounds, Flee, back.
+def agent_pilot_cases(name, rider_keys):
+    def case(suffix, keys, **kw):
+        return dict({"name": "%s_%s" % (name, suffix), "keys": keys, "match": SCREEN}, **kw)
+    return [dict(c, compare=False) for c in
+            CHAIN_PARTY_CASES[:[c["name"] for c in CHAIN_PARTY_CASES].index("chain_party_crew_jason_stinger") + 1]] + [
+        case("rick", "down*4"),
+        case("vehicle", "enter"),
+        case("commando", "up enter"),
+        case("tell_key", "enter"),
+    ] + [case(suffix, keys) for suffix, keys in rider_keys] + [
+        case("encounter", "idle:119"),
+        case("fight", "y y enter n", match={}, fight=True),
+        case("acted", "arm:2 enter", match={}, fight=True),
+        case("round_2", "enter", fight=True),
+        case("round_3", "enter", fight=True),
+        case("flee", "up enter", fight=True),
+        case("eluded", "enter"),
+        case("back", "enter"),
+    ]
+CHAIN_AGENT_CONTROLS_CASES = agent_pilot_cases("chain_agent_controls", [
+    ("rex", "up*3"), ("rex_vehicle", "enter"), ("rex_question", "enter"), ("rex_rides", "n"),
+    ("done", "down*4 enter")])
+CHAIN_AGENT_LOST_CASES = agent_pilot_cases("chain_agent_lost", [("done", "down enter")])
+CHAIN_AGENT_BAILOUT_CASES = agent_pilot_cases("chain_agent_bailout", [
+    ("edward", "up*2"), ("edward_vehicle", "enter"), ("edward_rides", "enter"), ("done", "down*3 enter")])
+
 
 # The main chain on from the HUT to ENTRANCE: one encounter evaded, then the
 # forced 'Mech encounter (2 'Mechs, 3 people, at 0471,4059) that cannot be
@@ -2805,7 +2871,8 @@ LONG_SEQUENCES = {"chain_finale": 3600,
 
 CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_poked", "chain_heal_poked", "chain_repair_poked",
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
-            "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
+            "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_agent_foot", "chain_agent_controls", "chain_agent_lost",
+            "chain_agent_bailout", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
             "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked",
@@ -2863,6 +2930,10 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_jail_no", [], CHAIN_JAIL_NO_CASES, []),
              ("chain_jail_fight", [], CHAIN_JAIL_FIGHT_CASES, []),
              ("chain_agent", [], CHAIN_AGENT_CASES, []),
+             ("chain_agent_foot", [], CHAIN_AGENT_FOOT_CASES, []),
+             ("chain_agent_controls", [], CHAIN_AGENT_CONTROLS_CASES, []),
+             ("chain_agent_lost", [], CHAIN_AGENT_LOST_CASES, []),
+             ("chain_agent_bailout", [], CHAIN_AGENT_BAILOUT_CASES, []),
              ("chain_courses_poked", [], CHAIN_COURSES_POKED_CASES, []),
              ("chain_lube_poked", [], CHAIN_LUBE_POKED_CASES, []),
              ("chain_ward_poked", [], CHAIN_WARD_POKED_CASES, []),

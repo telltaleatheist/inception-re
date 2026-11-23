@@ -452,6 +452,18 @@ the first two bays won't start, the third does. The escape, then the crew screen
 foot: Jason pilots the STINGER, Rex the COMMANDO. No is kept as its own short sequence,
 chain_jail_no (the shared prefix not compared): the 'Mech given up, the party outside.
 
+The double agent's act after round 1 (docs/combat.md 2.9) is compared in each of its places,
+each its own sequence from that crew screen, the first random encounter after it (one person)
+fought by the computer, then the box's key (`arm:2`), two rounds with nobody in reach, Flee and
+back on the map, flag 24 = 0x7f and flag 27 = 0 as in chr. `chain_agent` seats Rick as the
+COMMANDO's rider (the tell on the crew screen). `chain_agent_foot` leaves him on foot and finds
+him out on the Space menu's inspect screen (`1000:378d`), 108 passes before the encounter: he
+acts on foot. The other three put Jason in the STINGER and Rick in the COMMANDO's pilot's seat
+first (his tell, one key), then by the second seat: `chain_agent_controls` with Rex riding (No
+to making him the pilot): Rex can pilot and takes the controls; `chain_agent_lost` with nobody:
+the 'Mech is lost; `chain_agent_bailout` with Edward, whose Piloting is 0: he gets out on foot
+and the 'Mech is lost. Each encounter is 119 passes out.
+
 Open: a walk from map 3's jail door to its Hospital (entrance 1, 0d11,700b) stopped short of the
 door on both programs, so that Hospital has not been seen yet.
 `chain_orders_poked` is that fight up to the hand-back, then Next Unit to Rex and his orders: the

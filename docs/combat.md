@@ -782,7 +782,9 @@ Window 6 is cleared and framed (`2656:0388`, `2656:0004(0)`), then by where he i
 Then a key (`273d:086a`, `273d:0259`), his record emptied (byte 0 = ff), figure 4 + him
 inactive, flag 27 = 0 and flag 24 = 0x7f. The mark is only added to the mark ring: his figure's
 frame is not set to the body as a killed person's is. Rebuilt (`Town::double_agent_acts`), as is the
-`1000:378d` screen (`Town::inspect`).
+`1000:378d` screen (`Town::inspect`). Every branch above is compared with the original
+(`chain_agent`, `chain_agent_foot`, `chain_agent_controls`, `chain_agent_lost`,
+`chain_agent_bailout`, docs/reference.md).
 
 ### 2.10 Enemy people run (kind 0)
 
