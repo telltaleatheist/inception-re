@@ -346,8 +346,10 @@ bool Town::repair(KeySource& keys) {
     }
     if (skill >= 3) {
         // Weapons 0x10-0x20: one mended per intact one in the wrecks. The
-        // count for 0x20 is not cleared first (bug 23).
-        std::array<int, 0x21> spare{};
+        // count for 0x20 is not cleared first (bug 23): 15ab:0002's [bp-0x14].
+        constexpr std::uint8_t kLeftSrm6Count = 0xe9;
+        std::array<std::uint8_t, 0x21> spare{};
+        if (!fixes_.fix_weapon_count) spare[0x20] = kLeftSrm6Count;
         for (int w = 0; w < 4; ++w)
             if (figs_.destroyed[std::size_t(12 + w)])
                 for (int s = 0x33; s <= 0x55; ++s) {
@@ -362,11 +364,6 @@ bool Town::repair(KeySource& keys) {
                 if ((item & 0x80) == 0) continue;
                 const int code = item & 0x7f;
                 if (code < 0x10 || code > 0x20) continue;
-                if (code == 0x20 && !fixes_.fix_weapon_count) {
-                    log_.push_back("an SRM 6 mended from a count left on the stack: not rebuilt");
-                    fight_unfinished_ = true;
-                    return false;
-                }
                 if (spare[std::size_t(code)] == 0 || slot_location_structure(m, s) == 0) continue;
                 r[std::size_t(s)] = std::uint8_t(item & 0x7f);
                 --spare[std::size_t(code)];

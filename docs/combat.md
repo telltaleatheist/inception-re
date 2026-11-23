@@ -898,8 +898,20 @@ checked. Weapons count only intact items 0x10-0x20 in the wrecks; a party slot w
 bit 0x80 and code 0x10-0x20 is mended (bit cleared) while the count for its code is not 0 and
 its location has structure (`203b:273d`: the location's structure byte, or 1 for model 200; the
 slot ranges are those of docs/formats/mech.md). The amount is printed in light green, and the
-colour stays light green for the rest. Rebuilt (`Town::repair`); with `fix_weapon_count` off a
-destroyed SRM 6 logs and stops, since its count would start from stack data.
+colour stays light green for the rest. Rebuilt (`Town::repair`).
+
+The counts are bytes at [bp-0x34 + item]; the clearing loop zeroes [bp-0x24]..[bp-0x15] (items
+0x10-0x1f), so item 0x20's count is [bp-0x14], never written by 15ab:0002 before the loop. At the
+function's own key wait (`1000:2a4f`) the word there is DGROUP's segment number, left by an
+earlier call from the caller (`203b:116e`) at the same depth (the word below it is 7246, so
+most likely a pushed far pointer to DGROUP:7246; the call is not identified). The count starts
+at that segment's low byte. Under the rig (DOSBox-X with SNAP resident) DGROUP is 47e9 and every
+capture of the repairs' key wait has 0xe9 there: 20 captures, six fights, techs of skill 2-4.
+Another load address gives another byte; any value at least the number of destroyed SRM 6s
+gives the same result, so in practice every destroyed SRM 6 in a location with structure is
+mended. With `fix_weapon_count` off (the default) the rebuild starts the count at 0xe9, and
+`chain_flee` matches the original: 'Mech 0's SRM 6 (slot byte 0x53) is mended in both
+(docs/reference.md). On, the count comes from the wrecks only.
 
 **Salvage** (`15ab:04f9`, FUN_15ab_04f9). Run when a 'Mech figure was destroyed on either side, a
 party character with Piloting above 0 is on foot, a party 'Mech slot is free, and none of the
@@ -1461,7 +1473,7 @@ mistake; "quirk" means it may be intended.
 | 20 | The reachability test before "Engage" changes figure 0's heading. | `203b:28db` | `fix_probe_heading` |
 | 21 | An enemy person whose target byte is ff is measured against figure -1 when the people run (2.10): x F:4002 (always 0), y F:4034 (the last kind-2 sound's fourth word, docs/sound.md). Kept. The fix: a person with no target never counts as fled. Other bytes above 0x7f always take the fixed path, with a log line. | `203b:000a` | `fix_flee_target` |
 | 22 | Repairs with Tech 2+ mend every destroyed heat sink, even when the wrecks had none. Probable. | `15ab:0002` | `fix_heat_sink_count` |
-| 23 | The weapon count for item 0x20 (SRM 6) is never cleared: it starts with leftover stack data. Probable. | `15ab:0002` | `fix_weapon_count` |
+| 23 | The weapon count for item 0x20 (SRM 6) is never cleared: it starts with leftover stack data, the low byte of DGROUP's segment (0xe9 under the rig), so destroyed SRM 6s are mended without a spare (2.15). Confirmed. | `15ab:0002` | `fix_weapon_count` |
 | 24 | Scrap money is multiplied by the best tech's character number, not his skill; with Jason as the best tech there is none. Probable. | `15ab:0002` | `fix_scrap_multiplier` |
 | 25 | A salvaged Jenner or UrbanMech gets sprite base 0x92; the encounter table gives them 0. | `15ab:04f9` | `fix_salvage_sprite` |
 | 26 | The wreck search includes figures 4-11 (killed party people), which index the wrong records, and never ends if no flag is set. | `15ab:04f9` | `fix_wreck_search` |
@@ -1480,8 +1492,9 @@ mistake; "quirk" means it may be intended.
 | 39 | The overhead map reads 512 bytes of cells for maps 12 and 13, which hold one block (64), and moves its block store on by 512 while numbering one block: a map drawn after one of them in the same view shows its blocks 448 bytes early (docs/overhead_map.md). Probable. | `1000:3fae` | `fix_overhead_store` |
 
 The switches are `game/fixes.h`. Each is off by default, except where the original reads or
-writes memory the rebuild does not hold, or never returns: bugs 2, 18, 21, 23, 26 and 32
-take the fixed path by default and log it. Bug 5 is kept, but the first shot of a session (whose
+writes memory the rebuild does not hold, or never returns: bugs 18, 26 and 32 take the fixed
+path by default and log it. Bugs 2, 21 and 23 read such memory too, but what they read is
+known (this table's rows), so they are kept like the others. Bug 5 is kept, but the first shot of a session (whose
 flag the original leaves uninitialised) counts as "missed" and is logged. Bug 17 writes into
 memory the rebuild holds (the next figure's orders), so it is kept like the others; the
 `waypoints` reference sequence checks that write against the original. Bugs 12, 15, 28, 30 and

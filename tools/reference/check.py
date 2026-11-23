@@ -1676,12 +1676,17 @@ CHAIN_ENTRANCE_CASES = [dict(case, compare=False) for case in CHAIN_AGENT_CASES]
 # internal bytes set to 1 (our own test values) before it starts. The 'Mech
 # falls, the enemy people aimed at it get target ff, and the run (combat.md
 # 2.10) measures them from figure -1 (docs/sound.md). Each fight key compared.
-# In KNOWN_OPEN, so in neither tier: the first key already differs (docs/reference.md).
+# Key 1 answers the fled message, whose key read (273d:0259) has no flush after
+# it: the original lets three of the round's polls go by before the fourth
+# gets the next key, so arm:4 gives chr three passes (the feeder's own count).
+# From key 6 the repair mends the SRM 6s from the count left on the stack
+# (bug 23, kept: combat.md 2.15).
 FLEE_POKES = " ".join("mech:1:%02x=01" % b for b in range(0x11, 0x24))
 _FLEE_FROM = [case["name"] for case in CHAIN_ENTRANCE_CASES].index("chain_entrance_fight")
 CHAIN_FLEE_CASES = [dict(case, compare=False) for case in CHAIN_ENTRANCE_CASES[:_FLEE_FROM]] + [
     {"name": "chain_flee_fight", "keys": FLEE_POKES + " y enter arm:2 n", "match": {}, "fight": True},
-] + [{"name": "chain_flee_fight_key_%d" % n, "keys": "enter", "match": SCREEN} for n in range(1, 13)]
+    {"name": "chain_flee_fight_key_1", "keys": "arm:4 enter", "match": SCREEN},
+] + [{"name": "chain_flee_fight_key_%d" % n, "keys": "enter", "match": SCREEN} for n in range(2, 13)]
 
 
 # Poked: from the HUT's door, the generator's state set to 0f1e2d (our own
@@ -2331,13 +2336,13 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
-            "chain_theater", "chain_inspect"}
+            "chain_theater", "chain_inspect", "chain_flee"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
 # name only. Seeded from a campaign chain, one would also pull that whole
 # chain into --full.
-KNOWN_OPEN = {"chain_flee"}
+KNOWN_OPEN = set()
 
 SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], []),
              ("quiz", QUIZ_CASES, [], ["--show-quiz"]), ("mission", MISSION_CASES, MISSION_FULL_CASES, []),

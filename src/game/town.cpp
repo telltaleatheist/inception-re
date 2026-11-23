@@ -718,11 +718,13 @@ void Town::move_townspeople() {
 }
 
 void Town::turn(int k, KeySource& keys) {
-    const auto step = step_for_key(k);
-    if (!step) {
+    // BTECH.EXE 1000:0070: every key but Space goes to 1000:218f; one that is
+    // no direction is a step on the spot.
+    if (k == ' ') {
         log_.push_back("key " + std::to_string(k) + ": nothing");
         return;
     }
+    const auto step = step_for_key(k);
     // BTECH.EXE 1000:0069..00a0: the step DG:015a times, the figures drawn
     // after each (the last by the key half), stopping when a message or
     // question came up (F:d55c).
@@ -730,14 +732,15 @@ void Town::turn(int k, KeySource& keys) {
     bool message = false;
     for (int i = 0; i < steps_per_key_; ++i) {
         if (i > 0) record_party_places();  // 1000:051b
-        r = step_party(*step, keys);
+        r = step_party(step.value_or(Step{}), keys);
         if (!r) return;
         message = r->offered_place || r->outcome == StepOutcome::TooDeep || turn_message_;
         if (message || stopped()) break;
     }
     // The main loop then writes the direction in the upper panel box, unless
-    // a message or question came up this turn.
-    if (!message) {
+    // a message or question came up this turn (DG:0160 lists only the eight
+    // direction keys).
+    if (!message && step) {
         text_.select_window(4);
         text_.set_fg(TextRole::Text);
         text_.print(lookup(texts_, direction_text_id(*step)));

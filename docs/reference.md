@@ -434,19 +434,29 @@ counts, DG:014a and the map marks).
   against figure -1 (docs/sound.md). `chain_entrance` fights the forced 'Mech encounter on the
   walk from the HUT to ENTRANCE (2 'Mechs, 3 people, at 0471,4059) with the computer and matches
   it to the win, but no party figure dies, so no enemy person's first target is ff there.
-  `chain_flee` (not in the campaign) is the same fight with party 'Mech 1's armour and structure
-  bytes poked to 1 (our own test values): 'Mech 1 falls in the first fight key, the people aimed
-  at it get ff, and both programs show the fled message (DG:38bc) at the end
-  of that key. But the key's state already differs: the original's 'Mech 0 has taken about one
-  more SRM 2 volley (three 2-point hits) and its last Medium Laser hit goes through the left arm
-  and left torso into the centre torso (three critical checks), where chr's stops in the arm (one
-  check); the random state differs too. Checked against the original and found the same: the
-  damage loop (linear 0x239c3..0x23b50), the transfer table (`1e31:1122`), F:e484 (set only by
-  the transfer and the cockpit critical, cleared before each shot at linear 0x23c75) and the
-  destroyed 'Mech (`1d43:0a35`, the crew's ejection). The split is likely in who fires at whom
-  after the fall (the planner, 4.x, or the person run's removals); the rig captures only at key
-  ends, so the first differing draw is not yet found. To find it: a draw log from the original
-  (the generator's bytes at each call) or a poke that makes the fall land in a later key.
+  `chain_flee` (in the campaign) is the same fight with party 'Mech 1's armour and structure
+  bytes poked to 1 (our own test values): 'Mech 1 falls in the fight's first key, the people aimed
+  at it get ff, all of them flee, and both programs show the fled message (DG:38bc) at the end
+  of that key, with the same state. Then three things split them, none of them in the fight:
+  - **The feeder's passes after the fled message.** Its key is read by `273d:0259` with no flush
+    after it (`203b:0d7c`), so the original lets three of the round's polls (`203b:1015`) go by
+    before the fourth gets the next key; `chr_script()` gives two passes after a key, which
+    assumes a flush. chr stopped a round early and stayed a key behind from then on (the same
+    random states and damage, one key later). Key 1 is now `arm:4 enter`: three passes for chr,
+    and the feeder's own count for the original.
+  - **Bug 23 in the repairs after the win** (docs/combat.md 2.15). The original's count for item
+    0x20 starts at the low byte of DGROUP's segment (0xe9 under the rig), so it mends the SRM 6
+    that 'Mech 0 lost in the fight. chr with `fix_weapon_count` on did not: 'Mech 0's slot byte
+    0x53 differed from key 6 on, and nothing else. The bug is now kept by default (the switch
+    off), as the others are.
+  - **Enter on the map after the fight** (keys 11 and 12). The fight leaves grids queued for
+    loading (P:09f3); the original's main loop sends every key but Space to `1000:218f`, so
+    Enter is a step on the spot that works off the queue (docs/town_loop.md). chr took a key
+    with no direction as nothing; it now steps on the spot too. `chain_entrance` never showed
+    this: its last compared key is the one back to the map.
+  With the bug kept, chr matches all 13 fight keys: screens, state and window. A poke that makes
+  the fall land in a later key does not exist here: 'Mech 1 is fired on only in the first key (with every armour
+  and structure byte at 2 or more it never falls), so the keys' states were compared directly.
 - **A picture's waits** (`Town::show_picture`, docs/scripts.md, "The picture"): the frames'
   delays, the 0x32 after the first frame and mode 0's 0x3c are retrace counts (`273d:0006`)
   that read no key, so the rig, which captures only where a key is read, cannot see them. They

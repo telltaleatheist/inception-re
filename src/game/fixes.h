@@ -45,10 +45,11 @@ struct Fixes {
     bool fix_overhead_store = false;       // 39: 1000:3fae, maps 12 and 13 move the store on by 512
     bool fix_kick_actuators = false;       // 2: 22e8:000c, an enemy kicker's actuators read from
                                            //    'Mech record s, in the stack
+    bool fix_weapon_count = false;         // 23: 15ab:0002, the SRM 6 count left on the stack
+                                           //    (DGROUP's low byte, combat.md 2.15)
 
     // Fixed by default (on): memory the rebuild does not hold, or a hang.
     bool fix_path_bound = true;       // 18: 203b:193b, a path of more than 12 steps
-    bool fix_weapon_count = true;     // 23: 15ab:0002, a count left from the stack
     bool fix_wreck_search = true;     // 26: 15ab:04f9, wrong records, may never end
     bool fix_scan_list = true;        // 32: 15ab:1467, may never end
 };

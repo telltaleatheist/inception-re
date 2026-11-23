@@ -223,8 +223,14 @@ in the saved game; all three keep their values through a load and a new game. Re
 
 The key half takes the step DG:015a times (`1000:0069..00a0`): each time the step (`1000:218f`,
 skipped for Space) and the figures (`1000:051b`); if F:d55c is then set (a message or question
-came up), it stops. The direction's name is written once, after the last step, when F:d55c is
-0. DG:015a is 1 in the program image; menu item 0 above changes it, and the cache's way down
+came up), it stops. Every key but Space goes to 218f, which reads a direction only from the
+eight direction keys: any other key (Enter, a letter) is a step on the spot, with the step check
+(`1000:1c12`) at the party's own cell, and 218f then works off the map-load queue (P:09f3,
+docs/wilderness.md) and builds the window as after a move. A queue left by a fight's view (the
+fight moves the grids with the steps but works off nothing) is emptied by the first key on the
+map after it (`chain_flee`, docs/reference.md). The direction's name is written once, after the
+last step, when F:d55c is 0, and only for the eight keys DG:0160 lists. DG:015a is 1 in the
+program image; menu item 0 above changes it, and the cache's way down
 (`1b5d:055a`, at linear 0x1bbde) sets it back to 1. Rebuilt in `Town::turn` (`steps_per_key_`).
 A rider ('Mech byte 0x7a) is not on foot, so soldiers can't shoot at him; the repairs still pick the
 best tech among all the party's characters (docs/combat.md 2.15).
