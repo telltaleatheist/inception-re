@@ -16,19 +16,29 @@ where the original last built its own (window.py) must hold the same cells.
 
 The quick cases run in ctest (`reference_compare`); --full adds the long
 ones (thousands of passes of idling, a walk across MAP1), a few minutes.
+--only NAME... runs the named sequences, every case; --affected runs the
+ones the changed files exercise (AFFECTED).
+
+The original's captures are cached (cache.py), keyed by the key script and
+the rig, so DOSBox-X runs only for a script it has not run; --refresh runs
+it anyway. The cache stays on this machine and is never committed.
 
 Exit status: 0 all required rectangles match, 1 a mismatch, 77 skipped
 (no DOSBox-X, nasm or game folder: the check needs all three).
 """
 import argparse
 import concurrent.futures
+import fnmatch
 import os
 import shutil
 import subprocess
 import sys
+import threading
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import cache  # noqa: E402
 import compare  # noqa: E402
 import memory  # noqa: E402
 import run  # noqa: E402
@@ -2607,17 +2617,9 @@ def save_differences(ref, ours):
     return lines
 
 
-def run_sequence(a, sequence, cases, chr_options=(), seed=()):
-    """One run of the original through `cases`, then chr for each case, both
-    with the `seed` files ((source, name) pairs) on their drives from the start.
-    (True if every required rectangle and the state match, the report.)"""
-    report = []
-    say = report.append
-    for source, _ in seed:
-        if not os.path.exists(source):
-            say(f"the {sequence} sequence needs {source}, which its first sequence did not write")
-            return False, report
-    ref_dir = os.path.join(a.work, "original-" + sequence)
+def run_original(a, sequence, cases, ref_dir, seed, say):
+    """One run of the original through `cases` into `ref_dir`; False (with
+    the reason said) when it did not give every capture."""
     timeout = LONG_SEQUENCES.get(sequence, 2400 if sequence in CAMPAIGN else 900 if a.full else 240)
     for attempt in (1, 2):
         log_to = os.path.join(ref_dir, "run")
@@ -2634,12 +2636,12 @@ def run_sequence(a, sequence, cases, chr_options=(), seed=()):
                     f"{len(cases)} captures; DOSBox-X stopped (log in {log_to}-dosbox.log)")
             else:
                 say(f"the original did not reach the end of the {sequence} script")
-            return False, report
+            return False
         stuck = disk_prompt_case(ref_dir, cases)
         if stuck is None:
             for end in ("-dosbox.log", "-files.txt"):
                 os.remove(log_to + end)
-            break
+            return True
         # A file the original could not read on the host (the rig, not the
         # game: docs/reference.md): its captures from there on are the prompt.
         kept = os.path.join(ref_dir, f"rig-error-{attempt}")
@@ -2649,70 +2651,162 @@ def run_sequence(a, sequence, cases, chr_options=(), seed=()):
             f"(DOSBox-X's log and the drive's files in {kept}-*)")
         if attempt == 2:
             say(f"rig error: the same on the second try; re-run the {sequence} sequence")
-            return False, report
+            return False
         say(f"rig error: running the {sequence} script once more")
 
+
+def compare_case(a, cases, i, ref_dir, chr_options, seed, out_dir):
+    """chr through the case at index `i`, compared with the original's
+    capture; its screenshot, diff and saves go in `out_dir`. (True if every
+    required rectangle and the state match, the report's lines.)"""
+    report = []
+    say = report.append
+    case = cases[i]
+    name = case["name"]
+    shot = os.path.join(out_dir, name + ".bmp")
+    # The cell window too, built where the original last built its own.
+    at, ref_window = window.original_window(os.path.join(ref_dir, name + ".bin"))
+    # Each run saves into its own folder, never the data folder's.
+    saves = os.path.join(out_dir, name + "-saves")
+    shutil.rmtree(saves, ignore_errors=True)
+    os.makedirs(saves)
+    for source, file in seed:
+        shutil.copyfile(source, os.path.join(saves, file))
     env = dict(os.environ, SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy")
+    out = subprocess.run([a.chr, "--game-dir", a.game_dir, "--data-dir", a.data_dir,
+                          "--save-dir", saves,
+                          "--script", chr_script(cases, i), "--screenshot", shot,
+                          "--fight-state" if case.get("fight") else "--state",
+                          "--window", "%x,%x" % at, *chr_options],
+                         check=True, env=env, stdout=subprocess.PIPE, text=True).stdout
+    ours_state = [line for line in out.splitlines() if line.startswith(("state ", "window "))]
+    ref_state = state.original_state(os.path.join(ref_dir, name + ".bin"), fight=case.get("fight", False))
+    ref_state += ref_window
+    ref = compare.reference_pixels(os.path.join(ref_dir, name + ".bin"))
+    ours = compare.bmp_pixels(shot)
+    compare.write_diff(os.path.join(out_dir, name + "-diff.png"), ref, ours)
     ok = True
-    for i, case in enumerate(cases):
-        name = case["name"]
-        if not case.get("compare", True):
-            continue  # compared by another sequence
-        shot = os.path.join(a.work, name + ".bmp")
-        # The cell window too, built where the original last built its own.
-        at, ref_window = window.original_window(os.path.join(ref_dir, name + ".bin"))
-        # Each run saves into its own folder, never the data folder's.
-        saves = os.path.join(a.work, name + "-saves")
-        shutil.rmtree(saves, ignore_errors=True)
-        os.makedirs(saves)
-        for source, file in seed:
-            shutil.copyfile(source, os.path.join(saves, file))
-        out = subprocess.run([a.chr, "--game-dir", a.game_dir, "--data-dir", a.data_dir,
-                              "--save-dir", saves,
-                              "--script", chr_script(cases, i), "--screenshot", shot,
-                              "--fight-state" if case.get("fight") else "--state",
-                              "--window", "%x,%x" % at, *chr_options],
-                             check=True, env=env, stdout=subprocess.PIPE, text=True).stdout
-        ours_state = [line for line in out.splitlines() if line.startswith(("state ", "window "))]
-        ref_state = state.original_state(os.path.join(ref_dir, name + ".bin"), fight=case.get("fight", False))
-        ref_state += ref_window
-        ref = compare.reference_pixels(os.path.join(ref_dir, name + ".bin"))
-        ours = compare.bmp_pixels(shot)
-        compare.write_diff(os.path.join(a.work, name + "-diff.png"), ref, ours)
-        say(f"== {name}")
-        for region in ("panel", "play"):
-            n = len(compare.compare(ref, ours, region))
-            say(f"  {region}: {n} pixels differ")
-        for label, rect in case["match"].items():
-            n = len(compare.compare_rect(ref, ours, rect))
-            say(f"  {'ok  ' if n == 0 else 'FAIL'} {label}: {n} pixels differ")
-            ok = ok and n == 0
-        if not case.get("state", True):
-            ref_state = ours_state = []
-        differ = [f"original: {r}\n         chr: {c}" for r, c in zip(ref_state, ours_state) if r != c]
-        if len(ref_state) != len(ours_state):
-            differ.append("different number of state lines")
-        say(f"  {'ok  ' if not differ else 'FAIL'} the game state: {len(differ)} lines differ")
-        for d in differ:
-            say("    " + d)
-        ok = ok and not differ
-        if "saved" in case:
-            # The file the original wrote, byte for byte (docs/formats/save.md).
-            game = "Game%d" % (case["saved"] + 1)
-            ref_file, ours_file = os.path.join(ref_dir, game), os.path.join(saves, game)
-            if not os.path.exists(ref_file) or not os.path.exists(ours_file):
-                say(f"  FAIL the saved game {game}: missing from "
-                    + ("the original" if not os.path.exists(ref_file) else "chr"))
-                ok = False
-            else:
-                bad = save_differences(open(ref_file, "rb").read(), open(ours_file, "rb").read())
-                say(f"  {'ok  ' if not bad else 'FAIL'} the saved game {game}: {len(bad)} parts differ")
-                for d in bad:
-                    say("    " + d)
-                ok = ok and not bad
-        for known in case.get("known", []):
-            say(f"  known: {known}")
+    say(f"== {name}")
+    for region in ("panel", "play"):
+        n = len(compare.compare(ref, ours, region))
+        say(f"  {region}: {n} pixels differ")
+    for label, rect in case["match"].items():
+        n = len(compare.compare_rect(ref, ours, rect))
+        say(f"  {'ok  ' if n == 0 else 'FAIL'} {label}: {n} pixels differ")
+        ok = ok and n == 0
+    if not case.get("state", True):
+        ref_state = ours_state = []
+    differ = [f"original: {r}\n         chr: {c}" for r, c in zip(ref_state, ours_state) if r != c]
+    if len(ref_state) != len(ours_state):
+        differ.append("different number of state lines")
+    say(f"  {'ok  ' if not differ else 'FAIL'} the game state: {len(differ)} lines differ")
+    for d in differ:
+        say("    " + d)
+    ok = ok and not differ
+    if "saved" in case:
+        # The file the original wrote, byte for byte (docs/formats/save.md).
+        game = "Game%d" % (case["saved"] + 1)
+        ref_file, ours_file = os.path.join(ref_dir, game), os.path.join(saves, game)
+        if not os.path.exists(ref_file) or not os.path.exists(ours_file):
+            say(f"  FAIL the saved game {game}: missing from "
+                + ("the original" if not os.path.exists(ref_file) else "chr"))
+            ok = False
+        else:
+            bad = save_differences(open(ref_file, "rb").read(), open(ours_file, "rb").read())
+            say(f"  {'ok  ' if not bad else 'FAIL'} the saved game {game}: {len(bad)} parts differ")
+            for d in bad:
+                say("    " + d)
+            ok = ok and not bad
+    for known in case.get("known", []):
+        say(f"  known: {known}")
     return ok, report
+
+
+def run_sequence(a, sequence, cases, chr_options=(), seed=()):
+    """The original's captures through `cases` (from the cache, or one run
+    of the original), then chr for each case, both with the `seed` files
+    ((source, name) pairs) on their drives from the start.
+    (True if every required rectangle and the state match, the report.)"""
+    report = []
+    say = report.append
+    for source, _ in seed:
+        if not os.path.exists(source):
+            say(f"the {sequence} sequence needs {source}, which its first sequence did not write")
+            return False, report
+    ref_dir = os.path.join(a.work, "original-" + sequence)
+    key = a.cache.key(original_script(cases), seed) if a.cache else None
+    if key and not a.refresh and a.cache.fetch(key, ref_dir):
+        say(f"-- {sequence}: the original's captures from the cache")
+    else:
+        # Never into a folder filled from the cache: its files are the cache's own.
+        shutil.rmtree(ref_dir, ignore_errors=True)
+        start = time.time()
+        with a.dosbox:
+            if not run_original(a, sequence, cases, ref_dir, seed, say):
+                return False, report
+        took = time.time() - start
+        if key:
+            a.cache.store(key, ref_dir, sequence, took)
+        say(f"-- {sequence}: the original ran ({took / 60:.1f} min)" + ("; cached" if key else ""))
+
+    # Each case is its own chr run, so the cases are compared side by side.
+    # A case another sequence also compares, under the same name, writes
+    # into a folder of this sequence's own (main()).
+    compared = [i for i, case in enumerate(cases) if case.get("compare", True)]  # the rest: by another sequence
+    ok = True
+    for passed, lines in a.case_pool.map(
+            lambda i: compare_case(a, cases, i, ref_dir, chr_options, seed,
+                                   a.outputs.get((sequence, cases[i]["name"]), a.work)),
+            compared):
+        report += lines
+        ok = ok and passed
+    return ok, report
+
+
+# --affected: the sequences that exercise each part of the rebuild, by path
+# (fnmatch, first match wins). Coarse on purpose: a file not listed, or a
+# change outside these folders, runs everything; docs and unit tests run
+# nothing. ALL is every sequence of the --full and --campaign tiers.
+ALL = "all"
+_NO_FIGHT = {"town", "quiz", "settings", "shops", "comstar"}
+_FIGHTS = {sequence for sequence, *_ in SEQUENCES} - _NO_FIGHT - KNOWN_OPEN
+AFFECTED = [
+    ("docs/*", set()), ("*.md", set()), ("tests/*", set()), (".gitignore", set()),
+    ("src/game/training_quiz.*", {"quiz"}), ("src/platform/quiz_layer.*", {"quiz"}),
+    ("src/platform/stats_layer.*", {"inspect", "chain_inspect", "detail_poked", "detail_enemy"}),
+    ("src/game/cache.cpp", {"chain_cache_poked", "chain_cache_open", "chain_finale"}),
+    ("src/game/save.*", {"chain_save", "save_startup", "settings"}),
+    ("src/game/fight.*", _FIGHTS), ("src/game/combat.*", _FIGHTS), ("src/game/figures.*", _FIGHTS),
+    ("src/game/movement.*", _FIGHTS), ("src/game/overhead.*", _FIGHTS), ("src/game/terrain.*", _FIGHTS),
+    ("src/platform/overhead_layer.*", _FIGHTS),
+]
+
+
+def changed_files(base):
+    """The repo's files changed since its merge-base with `base`, with the
+    working tree's changes and new files."""
+    root = os.path.dirname(os.path.dirname(HERE))
+
+    def git(*args):
+        return subprocess.run(["git", "-C", root, *args], check=True, stdout=subprocess.PIPE,
+                              text=True).stdout.split("\n")
+
+    since = git("merge-base", "HEAD", base)[0]
+    files = git("diff", "--name-only", since) + git("ls-files", "--others", "--exclude-standard")
+    return sorted({f for f in files if f})
+
+
+def affected_sequences(files):
+    """The sequences the changed `files` need, or ALL."""
+    chosen = set()
+    for path in files:
+        for pattern, sequences in AFFECTED:
+            if fnmatch.fnmatch(path, pattern):
+                chosen |= sequences
+                break
+        else:
+            return ALL
+    return chosen
 
 
 def main():
@@ -2725,10 +2819,26 @@ def main():
     ap.add_argument("--campaign", action="store_true",
                     help="only the campaign sequences (the long unpoked run), all their cases")
     ap.add_argument("--sequence", action="append", help="run only this sequence (may be repeated)")
+    ap.add_argument("--only", nargs="+", metavar="NAME",
+                    help="only these sequences, all their cases (a KNOWN_OPEN one too)")
+    ap.add_argument("--affected", nargs="?", const="main", metavar="BASE",
+                    help="only the sequences the files changed since BASE (default main) exercise, "
+                         "all their cases (AFFECTED)")
     ap.add_argument("--jobs", type=int, default=4,
-                    help="at most this many sequences (DOSBox-X windows) at once (default 4)")
+                    help="at most this many runs of the original (DOSBox-X) at once (default 4)")
+    ap.add_argument("--cache", help="the original's captures kept between runs (cache.py); "
+                                    "default: reference-cache beside --chr")
+    ap.add_argument("--no-cache", action="store_true", help="always run the original, keep nothing")
+    ap.add_argument("--refresh", action="store_true", help="run the original even when cached, and re-cache")
+    ap.add_argument("--prune-cache", action="store_true",
+                    help="first drop the cache's entries from another rig and the files no entry uses")
     a = ap.parse_args()
     run.stop_on_signals()  # a stopped run leaves no DOSBox-X (or its quit dialog)
+
+    names = {sequence for sequence, *_ in SEQUENCES}
+    unknown = sorted(set(a.only or []) - names)
+    if unknown:
+        ap.error("no such sequence: " + ", ".join(unknown))
 
     missing = [what for what, ok in (("DOSBox-X", os.path.exists(run.DOSBOX)),
                                      ("nasm", shutil.which("nasm")),
@@ -2739,21 +2849,60 @@ def main():
         return SKIP
 
     os.makedirs(a.work, exist_ok=True)
+    a.cache = None if a.no_cache else cache.Cache(
+        a.cache or os.path.join(os.path.dirname(os.path.abspath(a.chr)), "reference-cache"), a.game_dir)
+    if a.prune_cache and a.cache:
+        dropped, files, freed = a.cache.prune()
+        print(f"cache: dropped {dropped} entries from another rig and {files} unused files ({freed >> 20} MB)")
+
     # The sequences are separate runs of the original, each in its own
     # copy of the game folder (run.py), so they run side by side, --jobs
     # at a time.
     # The campaign sequences run only with --campaign (or by name): they
     # would make the everyday --full run too long.
-    chosen = {sequence for sequence, *_ in SEQUENCES
-              if (sequence in a.sequence if a.sequence
-                  else sequence not in KNOWN_OPEN and (sequence in CAMPAIGN) == a.campaign)}
+    every = {sequence for sequence in names if sequence not in KNOWN_OPEN}
+    whole = bool(a.only or a.affected)  # every case of the chosen sequences
+    if a.only:
+        chosen = set(a.only)
+    elif a.affected:
+        files = changed_files(a.affected)
+        chosen = affected_sequences(files)
+        chosen = every if chosen == ALL else chosen
+        print(f"affected: {len(files)} files changed since {a.affected}: "
+              + (", ".join(sorted(chosen)) if chosen else "no sequence"), flush=True)
+    elif a.sequence:
+        chosen = set(a.sequence)
+    else:
+        chosen = {sequence for sequence in every if (sequence in CAMPAIGN) == a.campaign}
     chosen |= {SEEDED[s][0] for s in chosen if s in SEEDED}
+    if whole:
+        a.full = True  # their time limits too
     # SEQUENCES lists each seeded sequence after its first, so the first is
     # always submitted (and given a worker) before the one that waits on it.
     jobs = [(sequence, quick + (full if a.full or a.campaign else []), chr_options)
             for sequence, quick, full, chr_options in SEQUENCES if sequence in chosen]
+    if not jobs:
+        return 0
+    # Two sequences may compare a case of the same name (training's first
+    # cases are quiz's too), and they run at once: the first in SEQUENCES
+    # keeps the work folder, a later one writes in work/SEQUENCE.
+    a.outputs, claimed = {}, set()
+    for sequence, cases, _ in jobs:
+        for case in cases:
+            if case.get("compare", True):
+                if case["name"] in claimed:
+                    a.outputs[(sequence, case["name"])] = os.path.join(a.work, sequence)
+                    os.makedirs(os.path.join(a.work, sequence), exist_ok=True)
+                claimed.add(case["name"])
+    # DOSBox-X runs are limited to --jobs; a sequence from the cache needs
+    # none, so the sequences (and their cases, each one chr run) share the
+    # machine's processors.
+    cpus = os.cpu_count() or 4
+    a.dosbox = threading.BoundedSemaphore(max(1, a.jobs))
     ok = True
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(a.jobs, len(jobs)))) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=cpus) as case_pool, \
+            concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(max(a.jobs, cpus), len(jobs)))) as pool:
+        a.case_pool = case_pool
         futures = {}
 
         def seeded(sequence, cases, chr_options):

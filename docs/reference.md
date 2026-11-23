@@ -124,6 +124,49 @@ started, removes their scratch folders and exits. DOSBox-X answers any other sig
 DOSBox-X" dialog on screen, so never stop the DOSBox-X processes themselves, or the process tree,
 any other way; a dialog must never appear while Owen is streaming.
 
+## The original's captures, cached
+
+The original is deterministic for a given KEYS.BIN (the `random:` pokes seed its generator), so
+`check.py` keeps each sequence's captures (`tools/reference/cache.py`) and runs DOSBox-X only for
+a script it has no entry for. An entry's key is a hash of the KEYS.BIN words with the capture
+names, the files seeded onto the drive (`SEEDED`), and the rig: SNAP.COM as nasm builds it,
+DOSBox-X's configuration (`run.RUN_CONF`) and program, every file of the game folder, and
+`cache.CAPTURE_FORMAT` (raised when what `run.py` keeps from a run changes). A change to any of
+them, or to a sequence's keys or case names, is a new entry; nothing has to be cleared by hand.
+Only a run that gave every capture, with no disk prompt, is stored.
+
+The cache holds the original's screens and memory, so it stays on this machine and is never
+committed: `reference-cache` beside `--chr` (in `build/`, so it survives a reboot), or
+`--cache DIR`. Each file is stored once by its SHA-256 (`objects/`), read-only, and an entry
+(`runs/KEY.json`) lists its files by name; the chain sequences share their prefixes' captures.
+A cached sequence's `original-SEQUENCE` folder is filled with hard links to them, and is emptied
+before the original runs into it again. `--refresh` runs the original anyway and stores the
+result; `--no-cache` neither reads nor stores; `--prune-cache` first drops the entries made with
+another rig and the files no entry lists. The report says for each sequence whether its captures
+came from the cache or the original ran.
+
+Two runs of the same script differ in one place only: the low word of the BIOS tick count
+(0040:006c), the host's time of day, in every capture (`town`, 25 captures, two runs). Nothing
+the check compares reads it.
+
+With the captures cached, a sequence costs only its chr runs (about a second each at the end of
+`chain_finale`), so the cases run side by side on all the processors, and DOSBox-X runs stay
+limited to `--jobs`. `town` takes 110 seconds with the original and 3 from the cache; ctest's
+`reference_compare` 83 and 17, `reference_compare_full` 232 and 62. Every sequence starts at
+once, so a case that two sequences compare under the same name (training's first five, which
+quiz compares too) writes its screenshot, diff and saves in `work/SEQUENCE` for all but the
+first sequence in `SEQUENCES`.
+
+**Choosing sequences.** `--only NAME...` runs the named sequences with all their cases (a
+`KNOWN_OPEN` one too). `--affected [BASE]` runs the sequences that the files changed since the
+merge-base with BASE (default `main`, plus the working tree and new files) exercise, by the
+coarse table `AFFECTED`: docs and unit tests run nothing, a file the table does not list runs
+every sequence of the `--full` and `--campaign` tiers.
+
+The routine: per commit, ctest and `--affected`; then the full campaign from the cache. A
+`--refresh` campaign only when the rig, the keys or the game copy change (those are new entries
+anyway), or one night a week.
+
 ## Saved games
 
 A case with `"saved": N` compares the saved game `GameN+1` byte for byte. The original writes

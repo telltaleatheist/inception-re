@@ -69,6 +69,28 @@ def poke_words(token):
             raise ValueError(f"refused poke {token!r}: it would write {why}")
     return [POKE_MARK, POKE_SEGMENTS[seg], offset, len(values)] + list(values)
 
+
+# DOSBox-X's configuration for a run. No window at all (SDL's dummy video
+# driver: the captures come from SNAP inside the game, not from the window).
+# And never the host's mouse or focus: no mouse lock on a click, no
+# middle-button unlock or clipboard button, no menu bar, no waiting on an
+# error, normal priority; no quit dialog; no DOS mouse driver (BTECH.EXE
+# makes no INT 33h call). The drive is mounted relative to the working
+# folder, so captures don't show a temp path.
+RUN_CONF = ("[sdl]\noutput=surface\nvideodriver=dummy\n"
+            "autolock=false\nmiddle_unlock=none\nclip_mouse_button=none\n"
+            "mouse_emulation=locked\nshowmenu=false\nwaitonerror=false\npriority=normal,normal\n"
+            "[dosbox]\nquit warning=false\n"
+            "[dos]\nint33=false\n"
+            "[mixer]\nnosound=true\n"
+            "[speaker]\npcspeaker=false\ntandy=off\n"
+            "[autoexec]\n"
+            "mount c c\n"
+            "c:\n"
+            "SNAP 0 K\n"
+            "BTECH\n")
+
+
 # BIOS key words: scan code << 8 | character.
 NAMED = {
     "up": 0x4800, "down": 0x5000, "left": 0x4B00, "right": 0x4D00,
@@ -215,24 +237,7 @@ def run(game_dir, script, out_dir, timeout=120, keep=False, log_to=None, seed=()
             f.write(struct.pack(f"<H{len(words)}H", len(words), *words))
         conf = os.path.join(work, "run.conf")
         with open(conf, "w") as f:
-            # No window at all (SDL's dummy video driver: the captures come
-            # from SNAP inside the game, not from the window). And never the
-            # host's mouse or focus: no mouse lock on a click, no
-            # middle-button unlock or clipboard button, no menu bar, no
-            # waiting on an error, normal priority; no quit dialog; no DOS
-            # mouse driver (BTECH.EXE makes no INT 33h call).
-            f.write("[sdl]\noutput=surface\nvideodriver=dummy\n"
-                    "autolock=false\nmiddle_unlock=none\nclip_mouse_button=none\n"
-                    "mouse_emulation=locked\nshowmenu=false\nwaitonerror=false\npriority=normal,normal\n"
-                    "[dosbox]\nquit warning=false\n"
-                    "[dos]\nint33=false\n"
-                    "[mixer]\nnosound=true\n"
-                    "[speaker]\npcspeaker=false\ntandy=off\n"
-                    "[autoexec]\n"
-                    "mount c c\n"  # relative to the working folder, so captures don't show a temp path
-                    "c:\n"
-                    "SNAP 0 K\n"
-                    "BTECH\n")
+            f.write(RUN_CONF)
         env = dict(os.environ, SDL_AUDIODRIVER="dummy", SDL_VIDEODRIVER="dummy")
         log = open(os.path.join(work, "dosbox.log"), "w")
         proc = subprocess.Popen([DOSBOX, "-silent", "-conf", conf], cwd=work, env=env,
