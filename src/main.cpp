@@ -72,6 +72,7 @@ struct Options {
     bool fight_state = false;  // with it, the fight's tables
     int event = -1;            // --event N
     int step_hold = 1;         // --step-hold N
+    std::optional<std::size_t> demo_to;  // --demo-to N: the demo stops at byte N (DemoKeys::stop_at)
     bool list_events = false;
     bool sound_log = false;    // --sound-log: each effect's steps (docs/sound.md)
     bool audio_report = false;  // --audio-report: whether an audio device was ever opened
@@ -116,6 +117,8 @@ bool parse(int argc, char** argv, Options& options) {
             options.state = true;
         } else if (arg == "--event" && i + 1 < argc) {
             options.event = std::atoi(argv[++i]);
+        } else if (arg == "--demo-to" && i + 1 < argc) {
+            options.demo_to = std::size_t(std::strtoul(argv[++i], nullptr, 10));
         } else if (arg == "--step-hold" && i + 1 < argc) {
             options.step_hold = std::max(1, std::atoi(argv[++i]));
         } else if (arg == "--events") {
@@ -157,7 +160,7 @@ bool parse(int argc, char** argv, Options& options) {
             }
         } else {
             std::fprintf(stderr, "usage: chr [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
-                         "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N]\n"
+                         "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--demo-to N]\n"
                          "           [--state] [--show-quiz]\n"
                          "  --show-quiz: show the training center's quiz (no check: the right part is\n"
                          "           picked and any answer goes on); by default it is skipped\n"
@@ -198,6 +201,7 @@ void print_state(const chr::game::Town& town) {
     const auto& r = town.random().state();
     std::printf("state random %02x %02x %02x\n", r[0], r[1], r[2]);
     std::printf("state cbills %d\n", int(town.money().cbills));
+    if (const auto pos = town.demo_position()) std::printf("state demo %zu\n", *pos);
     std::printf("state counters %d %d\n", town.town_ticks(), town.mission_ticks());
     std::printf("state wander %d %d\n", town.townspeople().wander_count(), town.townspeople().wander_pattern());
     int i = 0;
@@ -501,6 +505,7 @@ int main(int argc, char** argv) {
                 town->set_save_dir(options.save_dir.empty() ? options.data_dir : options.save_dir);
                 if (rules) town->set_rules(&*rules);
                 town->set_show_quiz(options.show_quiz);
+                if (options.demo_to) town->set_demo_stop(*options.demo_to);
                 if (start_up) town->start_up();
                 else town->draw_panel();
                 for (const auto& [f, v] : options.set_flags) town->set_flag_when_town_starts(f, v);

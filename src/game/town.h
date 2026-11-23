@@ -129,6 +129,9 @@ public:
     bool ended() const { return ended_; }
     // Bytes read so far (F:39f8 less 10000).
     std::size_t position() const { return pos_; }
+    // A test aid (chr --demo-to): the demo's reads stop, as if the
+    // script's time ran out, once `n` bytes have been read.
+    void stop_at(std::size_t n) { stop_at_ = n; }
 
 private:
     // The frames the next read waits: its pauses and one.
@@ -140,6 +143,7 @@ private:
     int frames_ = 0;  // frames given and not yet waited
     bool player_key_ = false;
     bool ended_ = false;
+    std::optional<std::size_t> stop_at_;
 };
 
 // Parses a key script: names separated by spaces or commas, each with an
@@ -198,6 +202,12 @@ public:
     bool start_up_open() const { return start_up_open_; }
     // The demo is playing (F:3938): the keys ran out during it.
     bool demo_playing() const { return start_up_open_ && stage_ == Stage::Demo; }
+    // A test aid: the demo stops at byte `n` of DEMOFILE (DemoKeys::stop_at).
+    void set_demo_stop(std::size_t n) { demo_stop_ = n; }
+    // The bytes of DEMOFILE read so far, while the demo plays.
+    std::optional<std::size_t> demo_position() const {
+        return demo_ ? std::optional<std::size_t>(demo_->position()) : std::nullopt;
+    }
 
     // BTECH.EXE 1000:4cac (Ghidra FUN_1000_4cac)
     // The left panel: the party box (window 3) with the characters and
@@ -639,6 +649,7 @@ private:
     int infocom_frames_ = 0;  // frames the Infocom screen has been up
     bool start_up_open_ = false;
     std::optional<DemoKeys> demo_;  // set while the demo plays (F:3938)
+    std::optional<std::size_t> demo_stop_;  // set_demo_stop
     bool demo_ran_ = false;         // a demo has played since the start
     // The menu table (385b:0092, imported: tables.json, menus): the items
     // count changes at run time (talk sets menu 20's), and each menu

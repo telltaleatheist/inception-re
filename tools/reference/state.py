@@ -28,6 +28,18 @@ def original_state(path, fight=False):
              "state counters %d %d" % (m.word(m.ds, 0x57fe), m.word(m.ds, 0x5802)),
              # 1e31:0006's wander pattern: its step count and its flip (docs/townspeople.md)
              "state wander %d %d" % (m.word(m.ds, 0x315a), m.byte(m.ds, 0x315c))]
+    # While the demo plays (F:3938), the bytes of DEMOFILE whose keys have
+    # been acted on (docs/startup.md "The demo"): those read (F:39f8 less
+    # 10000), less the key and its pauses when the capture is inside the
+    # key read, which has read them and not yet returned the key.
+    if m.word(m.word(m.ds, 0x5384), 0x3938):
+        n = m.word(m.word(m.ds, 0x56f4), 0x39f8) - 10000
+        if m.in_demo_read():
+            buffer = m.word(m.ds, 0x56f6)  # the bytes from F:00a0 + 10000
+            n -= 1
+            while n > 0 and m.byte(buffer, 0xa0 + 10000 + n - 1) == 0x48:
+                n -= 1
+        lines.insert(2, "state demo %d" % n)
     for i in range(8):
         rec = 0xd390 + 0x1a * i
         heading = struct.unpack("b", m.read(heads, 0x3920 + 0x10 + i, 1))[0]

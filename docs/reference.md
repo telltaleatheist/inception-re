@@ -186,14 +186,42 @@ quiz compares too) writes its screenshot, diff and saves in `work/SEQUENCE` for 
 first sequence in `SEQUENCES`.
 
 **Choosing sequences.** `--only NAME...` runs the named sequences with all their cases (a
-`KNOWN_OPEN` one too). `--affected [BASE]` runs the sequences that the files changed since the
-merge-base with BASE (default `main`, plus the working tree and new files) exercise, by the
-coarse table `AFFECTED`: docs and unit tests run nothing, a file the table does not list runs
-every sequence of the `--full` and `--campaign` tiers.
+`KNOWN_OPEN` or `WAITING` one too). `--affected [BASE]` runs the sequences that the files
+changed since the merge-base with BASE (default `main`, plus the working tree and new files)
+exercise, by the coarse table `AFFECTED`: docs and unit tests run nothing, a file the table
+does not list runs every sequence of the `--full` and `--campaign` tiers.
 
 The routine: per commit, ctest and `--affected`; then the full campaign from the cache. A
 `--refresh` campaign only when the rig, the keys or the game copy change (those are new entries
 anyway), or one night a week.
+
+**Waiting.** `WAITING` holds sequences that are written, and checked on chr's side, but whose
+original runs wait until the rig's DOSBox-X is trusted again. Like `KNOWN_OPEN` they are in
+neither tier and run only by `--only`:
+
+- `rumour` talks to a person outdoors. The town runs as far as `walk_east`, then walks to the
+  Weapons Shop's door and waits 400 passes, by which the fourth townsperson is inside. Flag 04
+  is poked on the step onto the door. The talk item then shows one of the eight rumours at
+  DGROUP:4e5e (docs/scripts.md). chr's last capture changes when the rumours are blanked
+  with `--text`.
+- `speed5` sets message speed 5 (the speed menu starts on its first item, so `down*5`) and
+  fights training mission 2 with messages, the computer in control. The first shot comes in
+  round 6. From there each shot's pause (`1e31:1dcc`) waits for a key, and the sequence
+  captures five of them.
+- `demo` holds the title past its tune, then captures every 60 polls while DEMOFILE plays
+  (docs/startup.md). The original holds with idle passes. chr holds with its script item
+  `tune-end`, which goes to chr only as `chr:tune-end`. A `chr:KEY` is the reverse of
+  `orig:KEY`. The demo's passes and chr's frames don't line up, so a case marked `demo_to`
+  passes `--demo-to N` to chr. N is the number of DEMOFILE bytes whose keys the original had
+  acted on at its capture (`state demo`).
+
+  Under the demo the original asks DOS whether a key is waiting twice a pass: at the main
+  loop's poll (`273d:002f`) and inside the key read (`273d:0259`), after the read has taken the
+  key byte but before it returns. A capture can fall at either, and the game's stack tells
+  them apart (`Memory.in_demo_read`: the far return address 273d:02e6 of the read's question,
+  287f:3bdc). Inside the read, the key and the pause bytes before it are not yet acted on, so
+  `state.py` leaves them out. Five captures from an earlier exploratory run, four at the poll
+  and one in the read, match chr's whole state this way.
 
 ## Saved games
 

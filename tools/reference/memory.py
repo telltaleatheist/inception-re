@@ -49,6 +49,14 @@ class Memory:
         mark = struct.pack("<HH", 0x29DE, (self.ds - 0x36DB) & 0xFFFF)
         return mark in self.read(self.ds, 0, 0x10000)
 
+    def in_demo_read(self):
+        """Whether the capture is inside the demo's key read (BTECH.EXE
+        273d:0259): the far return address of its question to DOS
+        (287f:3bdc), 273d:02e6, is on the game's stack. The demo's other
+        captures are at the main loop's poll (273d:002f, return 273d:003b)."""
+        mark = struct.pack("<HH", 0x02E6, (self.ds - 0x36DB + 0x173D) & 0xFFFF)
+        return mark in self.read(self.ds, 0, 0x10000)
+
 
 def main():
     m = Memory(sys.argv[1])

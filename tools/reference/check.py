@@ -2881,11 +2881,60 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_arena_lost_poked", "chain_arena_own",
             "chain_arena_theft", "chain_arena_leader_poked"}
 
+# Talk outdoors (docs/scripts.md, the talk item's step 5): with flag 04 set
+# (the raid sets it; poked here), a person in a place tells one of the eight
+# rumours at DGROUP:4e5e, chosen by a random number, and the game waits for a
+# key. The town as far as walk_east; a walk to the Weapons Shop's door and
+# 400 passes, by which the fourth townsperson (walker 3) is inside; the poke
+# on the step onto the door; then in, the talk item and the person.
+_TOWN = CASES + FULL_CASES
+RUMOUR_CASES = [dict(case, compare=False) for case in _TOWN[:[c["name"] for c in _TOWN].index("walk_east") + 1]] + [
+    {"name": "rumour_walk", "keys": "right pgdn*7 down*5 end*5", "match": SCREEN},
+    {"name": "rumour_wait", "keys": "idle:400", "match": SCREEN},
+    {"name": "rumour_door", "keys": "left flag:04=01 left", "match": SCREEN},
+    {"name": "rumour_inside", "keys": "y", "match": SCREEN},
+    {"name": "rumour_people", "keys": "down enter", "match": SCREEN},
+    {"name": "rumour_told", "keys": "enter", "match": SCREEN},
+]
+
+# Message speed 5 (docs/combat.md, 1e31:1dcc): the settings' speed menu
+# starts on its first item, so down*5 is the last speed. Then training
+# mission 2 with combat messages, fought by the computer as in "mission".
+# The first shot comes in round 6; from there each shot's pause waits for a
+# key instead of 12 frames a step of the speed: the round's first pause and
+# four more.
+SPEED5_CASES = [dict(case, compare=False) for case in TRAINING_CASES[:4]] + [
+    {"name": "speed5_menu", "keys": "space down enter down enter", "match": SCREEN},
+    {"name": "speed5_set", "keys": "down*5 enter", "match": SCREEN},
+] + [dict(case, compare=False) for case in TRAINING_CASES[4:9]] + [
+    dict(VERBOSE_CASES[9], name="speed5_messages"), dict(VERBOSE_CASES[10], name="speed5_graphics"),
+    {"name": "speed5_round_1", "keys": "arm:1 n", "match": SCREEN, "fight": True},
+] + [{"name": "speed5_round_%d" % k, "keys": "idle:1", "match": SCREEN, "fight": True} for k in range(2, 6)] + [
+    {"name": "speed5_pause_1", "keys": "idle:1", "match": SCREEN, "fight": True},
+] + [{"name": "speed5_pause_%d" % k, "keys": "enter", "match": SCREEN, "fight": True} for k in range(2, 6)]
+
+# The demo (docs/startup.md, "The demo"): the title held past its tune with
+# no key, then a capture every 60 polls while DEMOFILE plays. The original's
+# hold is idle passes (as sound_title's, docs/reference.md); chr's is the
+# script item tune-end (chr: keys are chr's alone). The demo's passes and
+# chr's frames don't line up, so chr stops where the original's capture is
+# in DEMOFILE ("demo_to": chr --demo-to, the keys acted on, state.py).
+DEMO_CASES = [dict(CASES[0], name="demo_infocom", compare=False),
+              {"name": "demo_held", "compare": False, "match": {},
+               "keys": "chr:enter " + "orig:idle:30000 " * 14 + "orig:idle:20000 " + "orig:idle:300 " * 4
+                       + "chr:tune-end chr:idle:9999999"}] + [
+    {"name": "demo_%02d" % k, "keys": "orig:idle:60", "demo_to": True, "match": SCREEN} for k in range(1, 20)]
+
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
 # name only. Seeded from a campaign chain, one would also pull that whole
 # chain into --full.
 KNOWN_OPEN = set()
+
+# Sequences written and checked on chr's side whose original runs wait for
+# the rig's DOSBox-X to be trusted again (docs/reference.md, "Waiting"):
+# like KNOWN_OPEN, in neither tier and run by name only.
+WAITING = {"rumour", "speed5", "demo"}
 
 SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], []),
              ("quiz", QUIZ_CASES, [], ["--show-quiz"]), ("mission", MISSION_CASES, MISSION_FULL_CASES, []),
@@ -2958,7 +3007,10 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_theater", [], CHAIN_THEATER_CASES, []),
              ("inspect", [], INSPECT_CASES, []),
              ("chain_inspect", [], CHAIN_INSPECT_CASES, []),
-             ("handover", [], HANDOVER_CASES, [])]
+             ("handover", [], HANDOVER_CASES, []),
+             ("rumour", [], RUMOUR_CASES, []),
+             ("speed5", [], SPEED5_CASES, []),
+             ("demo", [], DEMO_CASES, [])]
 
 # The feeder (tools/capture/snap.asm, docs/reference.md) hands over a key at
 # every 4th poll of the keyboard. The main loop polls once a pass, and after
@@ -3125,7 +3177,10 @@ def pos_poke(token):
 def original_token(k):
     """A case's key as the original's script has it: flag: is a poke, and
     orig: marks input that only the original asks for (the training quiz,
-    which the rebuild does not show: docs/combat.md)."""
+    which the rebuild does not show: docs/combat.md); chr: marks chr's alone
+    (none here)."""
+    if k.startswith("chr:"):
+        return ""
     if k.startswith("flag:"):
         return flag_poke(k)
     if k.startswith("mech:"):
@@ -3164,6 +3219,9 @@ def chr_script(cases, upto):
         for k in expand(case["keys"]):
             if k.startswith("orig:"):
                 continue  # input only the original asks for (docs/reference.md)
+            if k.startswith("chr:"):
+                items.append(k[len("chr:"):])  # chr's alone, with no passes after it
+                continue
             if k.startswith("arm:"):
                 passes_after = int(k[len("arm:"):]) - 1  # for the next key only
                 continue
@@ -3190,7 +3248,7 @@ def original_script(cases):
     tokens = [START]
     for case in cases:
         if case.get("keys"):
-            tokens.append(" ".join(original_token(k) for k in case["keys"].replace(",", " ").split()))
+            tokens.append(" ".join(t for t in (original_token(k) for k in case["keys"].replace(",", " ").split()) if t))
         tokens.append("@snap:" + case["name"])
     return " ".join(tokens)
 
@@ -3287,6 +3345,15 @@ def compare_case(a, cases, i, ref_dir, chr_options, seed, out_dir):
     os.makedirs(saves)
     for source, file in seed:
         shutil.copyfile(source, os.path.join(saves, file))
+    ref_state = state.original_state(os.path.join(ref_dir, name + ".bin"), fight=case.get("fight", False))
+    if case.get("demo_to"):
+        # chr stops at the original's place in DEMOFILE (DEMO_CASES).
+        demo = [line.split()[2] for line in ref_state if line.startswith("state demo ")]
+        if not demo:
+            say(f"== {name}")
+            say("  FAIL the demo: not playing in the original's capture")
+            return False, report
+        chr_options = [*chr_options, "--demo-to", demo[0]]
     env = dict(os.environ, SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy")
     out = subprocess.run([a.chr, "--game-dir", a.game_dir, "--data-dir", a.data_dir,
                           "--save-dir", saves,
@@ -3298,7 +3365,6 @@ def compare_case(a, cases, i, ref_dir, chr_options, seed, out_dir):
     # says why); the rest of the state is still compared.
     kept = ("state ", "window ") if case.get("window", True) else ("state ",)
     ours_state = [line for line in out.splitlines() if line.startswith(kept)]
-    ref_state = state.original_state(os.path.join(ref_dir, name + ".bin"), fight=case.get("fight", False))
     if case.get("window", True):
         ref_state += ref_window
     ref = compare.reference_pixels(os.path.join(ref_dir, name + ".bin"))
@@ -3439,7 +3505,7 @@ def run_sound_sequence(a, sequence, cases):
 # nothing. ALL is every sequence of the --full and --campaign tiers.
 ALL = "all"
 _NO_FIGHT = {"town", "quiz", "settings", "shops", "comstar"}
-_FIGHTS = {sequence for sequence, *_ in SEQUENCES} - _NO_FIGHT - KNOWN_OPEN
+_FIGHTS = {sequence for sequence, *_ in SEQUENCES} - _NO_FIGHT - KNOWN_OPEN - WAITING
 AFFECTED = [
     ("docs/*", set()), ("*.md", set()), ("tests/*", set()), (".gitignore", set()),
     ("src/game/training_quiz.*", {"quiz"}), ("src/platform/quiz_layer.*", {"quiz"}),
@@ -3490,7 +3556,7 @@ def main():
                     help="only the campaign sequences (the long unpoked run), all their cases")
     ap.add_argument("--sequence", action="append", help="run only this sequence (may be repeated)")
     ap.add_argument("--only", nargs="+", metavar="NAME",
-                    help="only these sequences, all their cases (a KNOWN_OPEN one too)")
+                    help="only these sequences, all their cases (a KNOWN_OPEN or WAITING one too)")
     ap.add_argument("--affected", nargs="?", const="main", metavar="BASE",
                     help="only the sequences the files changed since BASE (default main) exercise, "
                          "all their cases (AFFECTED)")
@@ -3553,7 +3619,7 @@ def main():
     # at a time.
     # The campaign sequences run only with --campaign (or by name): they
     # would make the everyday --full run too long.
-    every = {sequence for sequence in names if sequence not in KNOWN_OPEN}
+    every = {sequence for sequence in names if sequence not in KNOWN_OPEN | WAITING}
     whole = bool(a.only or a.affected)  # every case of the chosen sequences
     if a.only:
         chosen = set(a.only)

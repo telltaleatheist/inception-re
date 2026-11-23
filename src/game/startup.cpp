@@ -36,6 +36,7 @@ std::optional<int> DemoKeys::next() {
     // The pauses (273d:0006(30) each), then 287f:0b8a: a key the player
     // pressed is read and dropped, and ends the demo (DG:0152); then
     // 273d:0006(1).
+    if (stop_at_ && pos_ >= *stop_at_) return std::nullopt;
     if (!wait(frames_to_next())) return std::nullopt;
     if (player_key_) ended_ = true;
     player_key_ = false;
@@ -86,6 +87,7 @@ void Town::start_demo(ScriptKeys& input) {
     if (bytes.empty()) log_.push_back("demo: no DEMOFILE, so only the end mark");
     random_ = Random({0x25, 0x13, 0x90});  // 1000:522c
     demo_.emplace(std::move(bytes), input);
+    if (demo_stop_) demo_->stop_at(*demo_stop_);
     demo_ran_ = true;
     new_game();
     // 1000:0024: the main loop's 1000:48b7(0x0f, 0) draws first.
