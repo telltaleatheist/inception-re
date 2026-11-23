@@ -23,6 +23,9 @@ if(CHR_TRIM_PATHS AND NOT MSVC)
   endif()
 elseif(CHR_TRIM_PATHS)
   add_compile_options(/d1trimfile:${CMAKE_SOURCE_DIR}\\ /d1trimfile:${CMAKE_BINARY_DIR}\\)
+  if(CHR_SDL_SOURCE_DIR)
+    add_compile_options(/d1trimfile:${CHR_SDL_SOURCE_DIR}\\)
+  endif()
 endif()
 
 # SDL3: a package builds its own from source (CHR_SDL_SOURCE_DIR, SDL 3.4.12

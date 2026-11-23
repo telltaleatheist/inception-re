@@ -125,6 +125,21 @@ The packaging's unit tests (no build, no game files):
 
     python3 -I -m unittest discover -s tools -p 'test_build_package.py' -v
 
+## The package check workflow
+
+`.github/workflows/package-check.yml` ("package check") runs the packaging on
+GitHub's runners, one job per platform: Linux (Ubuntu 24.04, the tarball),
+Windows (Windows Server 2022, MSVC: the zip and Setup.exe) and macOS (the
+universal dmg). It runs by hand (workflow_dispatch), and on pushes to main
+that touch `src/`, `tools/`, `CMakeLists.txt`, `extern/` or the workflow.
+Each job runs the unit tests, builds the static archive libraries from their
+pinned sources, then packages and smoke-tests with SDL at its pinned commit.
+The jobs have no game folder, so their smoke test is `--help` and
+`--status`. They upload their files as workflow artifacts
+(`package-check-linux`, `-windows`, `-mac`) and nothing else: no tag, no
+release, no secret beyond the default read-only token. Their label is the
+run's number with `-test`.
+
 ## Before calling a package validated
 
 The smoke test only shows that the package loads, sets the game up, imports

@@ -1,0 +1,129 @@
+name: package check
+# Builds and smoke-tests the packages (tools/build_package.py,
+# docs/RELEASING.md) on each platform, with no game files: --help and
+# --status from the packaged program. Uploads the results as workflow
+# artifacts only, to look at. Nothing here tags, releases or publishes.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tools/**'
+      - 'CMakeLists.txt'
+      - 'extern/**'
+      - '.github/workflows/package-check.yml'
+permissions:
+  contents: read
+concurrency:
+  group: package-check-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  # SDL 3.4.12, as docs/RELEASING.md pins it.
+  SDL_COMMIT: f87239e71e42da91ca317a12eefb82cfbf3393eb
+  LABEL: ${{ github.run_number }}-test
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: ${{ env.SDL_COMMIT }}
+          path: build-deps/SDL
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Desktop and audio development libraries (for SDL)
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential ninja-build pkg-config libasound2-dev libpulse-dev libx11-dev \
+            libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev \
+            libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libudev-dev \
+            libwayland-dev wayland-protocols libdecor-0-dev libpipewire-0.3-dev
+      - name: The packaging's unit tests
+        run: python -I -m unittest discover -s tools -p test_build_package.py -v
+      - name: The static archive libraries, from pinned sources
+        run: tools/deps/build_archive.sh linux
+      - name: Package and smoke-test (the tarball; the AppImage waits for an icon)
+        run: python -I tools/build_package.py --sdl build-deps/SDL --label "$LABEL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-check-linux
+          if-no-files-found: error
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: ${{ env.SDL_COMMIT }}
+          path: build-deps/SDL
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: The packaging's unit tests
+        run: python -I -m unittest discover -s tools -p test_build_package.py -v
+      - name: The static archive libraries, from pinned sources (clang-cl)
+        shell: cmd
+        run: tools\windows\build_deps_archive.cmd
+      - name: Package, the installer, and smoke-test
+        shell: bash
+        run: python -I tools/build_package.py --sdl build-deps/SDL --label "$LABEL" --installer
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-check-windows
+          if-no-files-found: error
+          path: |
+            dist/*.zip
+            dist/*.exe
+            dist/*.sha256
+
+  mac:
+    runs-on: macos-14
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: ${{ env.SDL_COMMIT }}
+          path: build-deps/SDL
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: The packaging's unit tests
+        run: python -I -m unittest discover -s tools -p test_build_package.py -v
+      - name: The static archive libraries, universal, from pinned sources
+        run: tools/deps/build_archive.sh mac
+      - name: Package (universal) and smoke-test
+        run: python -I tools/build_package.py --sdl build-deps/SDL --label "$LABEL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-check-mac
+          if-no-files-found: error
+          path: |
+            dist/*.dmg
+            dist/*.sha256
