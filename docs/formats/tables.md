@@ -44,6 +44,10 @@ word); anything else is refused, and the game asks for a new import.
 | `party_water` | DG:0332 | 8 x 4 words | the k-th figure's water quarter bits by half-cell parity (1000:051b) |
 | `place_pictures` | DG:141a | 26 bytes | by script number, the O<n>.ANM picture a place opens with, or 0 |
 | `picture_chance` | DG:0ac4 | 3 words | by flag 4f, the mask a random number must clear for a place's picture |
+| `treatment_cost` | DG:4f6e | 8 signed words | HOSPITAL's treatment by flag 1a (1-7), in C-Bills (special 24; 0 unused) |
+| `upgrade_price` | DG:1d8c | 9 signed words | the 'Mech upgrade by case (flag 11, 0-8; special 19 sets F:0076 from it) |
+| `upgrade_armour` | DG:1e24 | 11 bytes | upgrade case 3's armour bytes 0x11-0x1b, full and current (DG:1e13 + byte) |
+| `ammo_price` | DG:2060 | 7 signed bytes | a shot of ammunition for slot codes 0x1a-0x20 (special 44 reads DG:2046 + w; code 0x18 is 2 in the code) |
 | `direction_of` | P:0240 | 16 bytes | 287f:0971's four tests (north 8, south 4, east 2, west 1) to a direction |
 | `step_x`, `step_y` | DG:311a/312a | 8 words each | one half-cell in each direction (the townspeople) |
 | `turns` | DG:310a | 16 bytes | the turns 1e31:0006 tries, read from the end, two mirrored patterns |

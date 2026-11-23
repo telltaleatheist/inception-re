@@ -36,8 +36,13 @@ std::optional<ScriptItem> ScriptKeys::next_item() {
 }
 
 std::optional<int> ScriptKeys::next() {
-    apply_pokes();
-    while (!items_.empty() && items_.front().idle > 0) items_.pop_front();
+    // Pokes and idle passes in any order before the key (a cbills: poke has
+    // idle passes of its own after it).
+    for (;;) {
+        apply_pokes();
+        if (items_.empty() || items_.front().idle == 0) break;
+        items_.pop_front();
+    }
     const auto item = next_item();
     if (!item) return std::nullopt;
     if (item->is_set()) throw std::invalid_argument("a set: item where the game waits for a key");

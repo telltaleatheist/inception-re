@@ -981,6 +981,53 @@ bool Town::special(int n, KeySource& keys) {
         return true;
     case 30:
         return alley_fight(keys);  // game/fight.cpp
+    case 25:
+    case 26:
+        // 24d3:0dc2 and 0dcf: HOSPITAL's MedKit (F:d450) and field surgery
+        // kit (F:d451), bought.
+        kits_[std::size_t(n - 25)] = 1;
+        return true;
+    case 28:
+        // 24d3:0ddc: GARAGE keeps the party's 'Mechs. Each of records 0-3
+        // leaves its name's letter in F:d452 + m and is emptied; characters
+        // m and m + 4 are put on foot.
+        for (int m = 0; m < 4; ++m) {
+            auto& mech = mechs_[std::size_t(m)];
+            held_mechs_[std::size_t(m)] = mech[0];
+            mech[0] = 0xff;
+            characters_[std::size_t(m)][character::kMech] = character::kOnFoot;
+            characters_[std::size_t(m + 4)][character::kMech] = character::kOnFoot;
+        }
+        return true;
+    case 18:
+        return repair_shop(keys);
+    case 44:
+        return ammo_shop(keys);
+    case 19:
+        return upgrade_offer(keys);
+    case 20:
+        return upgrade_buy(keys);
+    case 24:
+        return hospital_treatment(keys);
+    case 41:
+        return weapon_trade(keys);
+    case 36: {
+        // 24d3:13b2: the name of the character in record F:d331, through
+        // special 38's tail (13ce).
+        const int who = flags_[0x25];
+        if (who >= int(characters_.size())) {
+            log_.push_back("special 36: a record past the characters: not rebuilt");
+            return true;
+        }
+        print_id("character." + std::to_string(characters_[std::size_t(who)][character::kName]));
+        return true;
+    }
+    case 37:
+        // 24d3:139a: the game is over: DG:014a = 0 and Jason's record
+        // emptied. The main loop's next pass shows it (1000:04a4).
+        combat_.fight_on = false;
+        characters_[0][character::kName] = character::kEmpty;
+        return true;
     case 38:
         // 24d3:13c6: the name the next recruit will get (F:d456).
         print_id("character." + std::to_string(next_name_));
@@ -1414,6 +1461,479 @@ bool Town::buy(int n, KeySource& keys) {
     draw_cbills();  // 1e31:1fdf
     if (armour) return offer_armour(choice, std::int8_t(rules_->combat.personal_armour[std::size_t(choice)]), keys);
     return offer_weapon(choice + 1, keys);
+}
+
+// BTECH.EXE 19b8:0002 (no Ghidra function), special 18
+// REPAIR's repair shop for one 'Mech (docs/scripts.md, "The repair shop"):
+// armour at 4 C-Bills a point, internal structure at 9, heat sinks at 800,
+// weapons at 300 a type from a menu, the hip actuators at 200; each offered
+// with its price and bought while the money lasts.
+bool Town::repair_shop(KeySource& keys) {
+    const auto quit = [this] {
+        place_open_ = true;
+        return false;
+    };
+    const auto number = [this](int n) { text_.print(std::to_string(n)); };  // 173d:0053
+    const auto can_pay = [this](std::uint32_t price) { return std::uint32_t(money_.cbills) >= price; };
+    const auto pay = [this](std::uint32_t price) {
+        money_.cbills = std::int32_t(std::uint32_t(money_.cbills) - price);
+        draw_cbills();  // 1e31:1fdf
+    };
+    const auto ask = [&](const char* question) -> std::optional<bool> {
+        special(10, keys);  // the money
+        print_id(question);
+        return yes_no(true, keys);  // 1000:1a13(1)
+    };
+    const auto note = [&](const char* id, bool clear) {
+        if (clear) clear_window();
+        print_id(id);
+        return read_key(keys).has_value();  // 273d:0259
+    };
+
+    clear_window();  // 2656:0388
+    print_id("repair.which");
+    const auto chosen = choose_mech(keys);  // 1c67:0b98, into DG:0068
+    if (!chosen) return quit();
+    arena_choice_ = *chosen;
+    auto& r = mechs_[std::size_t(*chosen)];
+    constexpr int kFull = 0x45;  // each armour and structure byte's full value is 0x45 bytes on
+    const auto missing = [&](int b) { return int(r[std::size_t(b + kFull)]) - int(r[std::size_t(b)]); };
+
+    // What needs mending.
+    int armour = 0, structure = 0, sinks = 0, actuators = 0, weapons = 0;
+    std::array<int, 0x11> broken{};  // destroyed weapons by slot code 0x10-0x20
+    for (int b = 0x11; b <= 0x1b; ++b) armour += missing(b);
+    for (int b = 0x1c; b <= 0x23; ++b) structure += missing(b);
+    for (int b = 0x33; b <= 0x55; ++b) {
+        const int v = r[std::size_t(b)];
+        if (!(v & 0x80)) continue;
+        if ((v & 0x7f) == 0x22) ++sinks;
+        if ((v & 0x7f) >= 0x10 && (v & 0x7f) <= 0x20) {
+            ++broken[std::size_t((v & 0x7f) - 0x10)];
+            weapons = 1;
+        }
+    }
+    if (r[0x24] != r[0x69]) actuators = 1;
+    if (r[0x25] != r[0x6a]) actuators |= 2;
+
+    if (std::int16_t(weapons + structure + armour + sinks + actuators) == 0) {
+        // Only the first damaged system (bytes 0x75-0x77) is named.
+        for (int b = 0x75; b <= 0x77; ++b) {
+            if (r[std::size_t(b)] == 0) continue;
+            print_id("repair.systems");
+            print_id("repair.system." + std::to_string(b - 0x75));  // DG:1b3e's pointers
+            return read_key(keys) ? true : quit();
+        }
+        print_id("repair.nothing");
+        return read_key(keys) ? true : quit();
+    }
+    if (money_.cbills == 0) {
+        print_id("repair.no_money");
+        print_id("course.no_money_end");  // 24d3:1809
+        return read_key(keys) ? true : quit();
+    }
+
+    // A point at a time over bytes first..last while the money lasts; a
+    // byte it cannot pay for is left, and the next byte is tried.
+    const auto mend_points = [&](int first, int last, std::uint32_t price, int& left) {
+        for (int b = first; b <= last; ++b)
+            for (auto n = std::int16_t(missing(b)); n != 0; n = std::int16_t(n - 1)) {
+                if (!can_pay(price)) break;
+                --left;
+                ++r[std::size_t(b)];
+                pay(price);
+            }
+    };
+    if (armour != 0) {
+        clear_window();
+        print_id("repair.armour");
+        number(armour);
+        print_id("repair.armour_cost");
+        number(4 * armour);
+        print_id("repair.armour_cbills");
+        const auto yes = ask("repair.armour_question");
+        if (!yes) return quit();
+        if (*yes) {
+            mend_points(0x11, 0x1b, 4, armour);
+            if (armour != 0 && !note("repair.armour_short", true)) return quit();
+        }
+    }
+    if (structure != 0) {
+        clear_window();
+        print_id("repair.structure");
+        print_id("repair.structure_2");
+        print_id("repair.structure_cost");
+        number(9 * structure);
+        print_id("repair.structure_cbills");
+        const auto yes = ask("repair.structure_question");
+        if (!yes) return quit();
+        if (*yes) {
+            mend_points(0x1c, 0x23, 9, structure);
+            if (structure != 0 && !note("repair.structure_short", true)) return quit();
+        }
+    }
+    if (sinks != 0) {
+        clear_window();
+        print_id("repair.sinks");
+        number(sinks);
+        print_id("repair.sinks_word");
+        if (sinks > 1) print_id("repair.sinks_plural");
+        print_id("repair.sinks_cost");
+        const auto yes = ask("repair.sinks_question");
+        if (!yes) return quit();
+        if (*yes) {
+            for (int b = 0x33; b <= 0x55 && sinks != 0; ++b) {
+                if (r[std::size_t(b)] != 0xa2 || !can_pay(800)) continue;
+                --sinks;
+                r[std::size_t(b)] = 0x22;
+                pay(800);
+            }
+            if (sinks != 0 && !note("repair.sinks_short", true)) return quit();
+        }
+    }
+    // The weapons: a menu of the destroyed types until Done, the money runs
+    // short, or none is left. One payment mends every destroyed weapon of
+    // the type, but its count goes down by one only, so a type with two
+    // destroyed stays listed, and paying for it again mends nothing.
+    while (weapons != 0) {
+        clear_window();
+        print_id("repair.weapons");
+        std::vector<int> listed;
+        for (int i = 0; i <= 0x10; ++i) {
+            if (broken[std::size_t(i)] == 0) continue;
+            print_id("talk.line_end");  // 24d3:181e
+            number(broken[std::size_t(i)]);
+            text_.set_cursor(text_.window().col + 1, text_.window().row);  // F:3748 + 1
+            print_id(formats::weapon_text_id(0x10 + i - 1));  // slot code t names weapon t - 1
+            listed.push_back(i);
+        }
+        auto& rec = menus_[0x17];
+        rec.first_row = 2;
+        rec.items = text_.window().row;  // F:374e: the listed types and Done
+        menu_last_[0x17] = 0;
+        print_id("repair.weapons_done");
+        text_.set_cursor(0, 0x16);
+        print_id("repair.weapons_cbills");
+        special(10, keys);
+        const auto k = menu(0x17, keys);  // 1656:0b5e(0x17)
+        if (!k) return quit();
+        if (*k == rec.items - 1) break;  // Done
+        if (!can_pay(300)) {
+            if (!note("repair.weapons_short", false)) return quit();
+            break;
+        }
+        pay(300);
+        const int i = listed.at(std::size_t(*k));
+        broken[std::size_t(i)] = fixes_.fix_repair_type_count ? 0 : broken[std::size_t(i)] - 1;
+        for (int b = 0x33; b <= 0x55; ++b)
+            if (r[std::size_t(b)] == 0x90 + i) r[std::size_t(b)] &= 0x7f;
+        // Any left: types 0x10-0x1f only, not 0x20 (bug 41).
+        const auto checked = broken.begin() + (fixes_.fix_repair_last_type ? std::ptrdiff_t(broken.size()) : 0x10);
+        weapons = std::any_of(broken.begin(), checked, [](int c) { return c != 0; }) ? 1 : 0;
+        if (weapons == 0) {
+            text_.set_cursor(0, 0x12);
+            if (!note("repair.weapons_all", false)) return quit();
+        }
+    }
+    if (actuators != 0) {
+        clear_window();
+        print_id("repair.actuators");
+        if (!can_pay(200)) return note("repair.actuators_short", false) ? true : quit();
+        print_id("repair.actuators_cost");
+        print_id("repair.actuators_question");
+        const auto yes = yes_no(true, keys);  // 1000:1a13(1)
+        if (!yes) return quit();
+        if (*yes) {
+            print_id("repair.actuators_done");
+            if (!read_key(keys)) return quit();
+            r[0x25] = r[0x6a];
+            r[0x24] = r[0x69];
+            pay(200);
+        }
+    }
+    return true;
+}
+
+// BTECH.EXE 19b8:1762 (Ghidra FUN_19b8_1762), special 44
+// REPAIR's ammunition for one 'Mech: for each of its first ten weapons that
+// takes ammunition, the shots missing and their price, then a number typed
+// and that many shots (at most the missing ones) bought one at a time while
+// the money lasts (docs/scripts.md, "The repair shop").
+bool Town::ammo_shop(KeySource& keys) {
+    const auto quit = [this] {
+        place_open_ = true;
+        return false;
+    };
+    clear_window();  // 2656:0388
+    print_id("ammo.which");
+    const auto chosen = choose_mech(keys);  // 1c67:0b98, into DG:0068
+    if (!chosen) return quit();
+    arena_choice_ = *chosen;
+    auto& r = mechs_[std::size_t(*chosen)];
+
+    // The weapon items in slot order, as stored (bit 0x80: destroyed).
+    std::array<std::uint8_t, 10> w{};
+    for (int b = 0x33, i = 0; b <= 0x55 && i < 10; ++b)
+        if ((r[std::size_t(b)] & 0x7f) >= 0x10 && (r[std::size_t(b)] & 0x7f) <= 0x20) w[std::size_t(i++)] = r[std::size_t(b)];
+    // Signed compares: a destroyed weapon never takes ammunition here.
+    const auto takes_ammo = [](std::uint8_t v) { return v == 0x18 || std::int8_t(v) >= 0x1a; };
+    const bool any = std::any_of(w.begin(), w.end(), takes_ammo);
+    const bool destroyed = std::any_of(w.begin(), w.end(), [](std::uint8_t v) { return (v & 0x80) != 0; });
+
+    if (!any) {
+        print_id("ammo.none");  // 24d3:17ea
+        if (!destroyed && !read_key(keys)) return quit();
+    }
+    for (int i = 0; any && i < 10; ++i) {
+        const auto v = w[std::size_t(i)];
+        if (!takes_ammo(v)) continue;
+        clear_window();
+        print_id("ammo.weapon");
+        print_id(formats::weapon_text_id(v - 1));  // slot code t names weapon t - 1
+        auto& shots = r[std::size_t(0x27 + i)];
+        const auto full = r[std::size_t(0x6b + i)];
+        if (shots == full) {
+            print_id("ammo.full");  // 24d3:17ea
+            if (!read_key(keys)) return quit();
+            continue;
+        }
+        print_id("ammo.missing");
+        int want = int(full) - int(shots);
+        text_.set_fg(TextRole::Amount);  // 1000:28a2
+        text_.print(std::to_string(want));
+        print_id("ammo.price");
+        text_.set_fg(TextRole::Amount);  // 1000:28a2
+        const int price = v == 0x18 ? 2 : tables_.ammo_price[std::size_t(v - 0x1a)];
+        text_.print(std::to_string(price));
+        print_id("ammo.how_many");
+        const auto typed = number_field(keys);  // 1d43:0cde
+        if (!typed) return quit();
+        if (*typed == 0) continue;
+        // Compared as 32-bit signed numbers.
+        if (std::int64_t(want) < std::int64_t(std::int32_t(*typed))) {
+            print_id("ammo.too_many");  // 24d3:17ea
+            if (!read_key(keys)) return quit();
+        } else {
+            want = int(*typed);
+        }
+        const auto cost = std::uint32_t(std::int32_t(std::int16_t(price)));
+        for (; want != 0; want = std::int16_t(want - 1)) {
+            if (std::uint32_t(money_.cbills) < cost) break;
+            ++shots;
+            money_.cbills = std::int32_t(std::uint32_t(money_.cbills) - cost);
+            draw_cbills();  // 1e31:1fdf
+        }
+        if (want != 0) {
+            print_id("ammo.short");  // 24d3:17ea
+            if (!read_key(keys)) return quit();
+        }
+        draw_cbills();
+    }
+    if (destroyed) {
+        print_id("ammo.destroyed");  // 24d3:17ea
+        if (!read_key(keys)) return quit();
+    }
+    return true;
+}
+
+// BTECH.EXE 19b8:080a (Ghidra FUN_19b8_080a), special 19
+// REPAIR's speed shop: a 'Mech chosen; with no upgrade left (byte 0x7c is
+// 3) flag 12 = 0. Otherwise flag 12 = 1, the money shown, and flag 11 = the
+// upgrade's case: the model (byte 0x7b, 0-3; any other is 8, none), + 4 for
+// the second upgrade (byte 0x7c is 1). Its price is kept for special 20
+// (F:0076, tables.upgrade_price). The script describes the case itself.
+bool Town::upgrade_offer(KeySource& keys) {
+    clear_window();  // 2656:0388
+    print_id("upgrade.which");
+    const auto chosen = choose_mech(keys);  // 1c67:0b98, into DG:0068
+    if (!chosen) {
+        place_open_ = true;
+        return false;
+    }
+    arena_choice_ = *chosen;
+    const auto& r = mechs_[std::size_t(*chosen)];
+    if (r[0x7c] == 3) {
+        clear_window();
+        print_id("upgrade.none_left");
+        flags_[0x12] = 0;
+        return true;
+    }
+    flags_[0x12] = 1;
+    clear_window();
+    text_.set_cursor(0, 0x16);  // F:3748, F:374e
+    print_id("upgrade.cbills");
+    special(10, keys);  // the money
+    text_.set_cursor(0, 0);
+    int which = r[0x7b];
+    if (which > 3) {
+        which = 8;
+    } else if (r[0x7c] == 1) {
+        which += 4;
+    }
+    if (which > 7) which = 8;
+    flags_[0x11] = std::uint8_t(which);
+    upgrade_price_ = std::int16_t(tables_.upgrade_price[std::size_t(which)]);
+    return true;
+}
+
+// BTECH.EXE 19b8:0925 (Ghidra FUN_19b8_0925), special 20
+// The upgrade bought: its price asked and paid, then the case in flag 11
+// writes its fixed item slots, ammunition bytes (ff: none) and, for some,
+// armour; byte 0x7c becomes 1 after a first upgrade and gains 2 after a
+// second (docs/combat.md 2.6).
+bool Town::upgrade_buy(KeySource& keys) {
+    const auto quit = [this] {
+        place_open_ = true;
+        return false;
+    };
+    print_id("upgrade.price");
+    text_.print(std::to_string(upgrade_price_));  // 173d:0053
+    print_id("upgrade.question");
+    const auto yes = yes_no(true, keys);  // 1000:1a13(1)
+    if (!yes) return quit();
+    if (!*yes) return true;
+    const auto price = std::uint32_t(std::int32_t(upgrade_price_));
+    if (price > std::uint32_t(money_.cbills)) {
+        print_id("talk.line_end");        // 24d3:181e
+        print_id("talk.line_end");        // 24d3:181e
+        print_id("course.no_money_end");  // 24d3:1809
+        return read_key(keys) ? true : quit();
+    }
+    money_.cbills = std::int32_t(std::uint32_t(money_.cbills) - price);
+    draw_cbills();  // 1e31:1fdf
+    auto& r = mechs_[std::size_t(arena_choice_)];  // DG:0068
+    const auto set = [&](std::initializer_list<int> bytes, std::uint8_t v) {
+        for (const int b : bytes) r[std::size_t(b)] = v;
+    };
+    const auto no_ammo = [&](int first, int count) {  // weapons first.. take none
+        for (int k = 0; k < count; ++k) r[std::size_t(0x6b + first + k)] = r[std::size_t(0x27 + first + k)] = 0xff;
+    };
+    const auto& locust = rules_ ? rules_->mechs[0].record : formats::MechRecord{};  // 37e8:02f0
+    switch (flags_[0x11]) {
+    case 0:
+        set({0x41, 0x33}, 0x11);
+        no_ammo(0, 2);
+        r[0x7c] = 1;
+        break;
+    case 1:
+        r[0x4f] = 0x11;
+        no_ammo(1, 1);
+        for (int b = 0x11; b <= 0x1b; ++b) {
+            r[std::size_t(b)] = locust[std::size_t(b)];
+            r[std::size_t(b + 0x45)] = locust[std::size_t(b + 0x45)];
+        }
+        r[0x7c] = 1;
+        break;
+    case 2:
+        set({0x43, 0x42, 0x34, 0x33}, 0x10);
+        no_ammo(0, 5);
+        r[0x7c] = 1;
+        break;
+    case 3:
+        set({0x4a, 0x41}, 0x11);
+        r[0x2a] = r[0x29];
+        r[0x6e] = r[0x6d];
+        no_ammo(1, 2);
+        for (int b = 0x11; b <= 0x1b; ++b)
+            r[std::size_t(b + 0x45)] = r[std::size_t(b)] = std::uint8_t(tables_.upgrade_armour[std::size_t(b - 0x11)]);
+        r[0x7c] = 1;
+        break;
+    case 4:
+        r[0x31] = 7;
+        r[0x75] = 0;
+        set({0x49, 0x3b}, 0x10);
+        no_ammo(3, 2);
+        r[0x7c] |= 2;
+        break;
+    case 5:
+        r[0x32] = 0;
+        set({0x53, 0x33, 0x55}, 0x11);
+        no_ammo(2, 3);
+        r[0x7c] |= 2;
+        break;
+    case 6:
+        r[0x32] = 0;
+        for (int b = 0x11; b <= 0x1b; ++b) r[std::size_t(b + 0x45)] = r[std::size_t(b)] = locust[std::size_t(b)];
+        set({0x54, 0x53}, 0x11);
+        no_ammo(5, 2);
+        r[0x7c] |= 2;
+        break;
+    case 7:
+        for (int b = 0x4f; b < 0x55; ++b) r[std::size_t(b)] = 0x10;
+        r[0x55] = 0x11;
+        no_ammo(0, 10);
+        r[0x7c] |= 2;
+        break;
+    default:
+        break;  // no case: paid for, nothing applied (the script never gets here)
+    }
+    print_id("upgrade.done");
+    return read_key(keys) ? true : quit();
+}
+
+// BTECH.EXE 24d3:0d44, special 24 (part of Ghidra FUN_24d3_0004)
+// HOSPITAL's treatment: flag 1a is the care bought (1-7), priced by
+// tables.treatment_cost; then the healing with that doctor's level. With no
+// care chosen, the healing as after a fight.
+bool Town::hospital_treatment(KeySource& keys) {
+    const int level = flags_[0x1a];
+    if (level == 0) return heal(0, keys);  // 1c31:000a(0)
+    const auto& costs = tables_.treatment_cost;
+    if (level >= int(costs.size())) {
+        log_.push_back("special 24: a treatment past the table: not rebuilt");
+        return true;
+    }
+    // The price sign-extended, compared unsigned with the C-Bills.
+    const auto cost = std::uint32_t(std::int32_t(std::int16_t(costs[std::size_t(level)])));
+    if (std::uint32_t(money_.cbills) >= cost) {
+        money_.cbills = std::int32_t(std::uint32_t(money_.cbills) - cost);
+        if (!heal(level, keys)) return false;  // 1c31:000a(level)
+        draw_cbills();                         // 24d3:0961: 1e31:1fdf
+        return true;
+    }
+    print_id("talk.line_end");        // 24d3:181e
+    print_id("course.no_money_end");  // 24d3:1809
+    if (!read_key(keys)) {            // 273d:086a, 273d:0259
+        place_open_ = true;
+        return false;
+    }
+    money_.cbills += 25;
+    draw_cbills();
+    return true;
+}
+
+// BTECH.EXE 24d3:140d, special 41 (part of Ghidra FUN_24d3_0004)
+// WEAPON2: with members besides Jason (flag 0e), weapon 13 offered once
+// and, for each member, weapon 13 or 12 by a random bit; alone, Jason is
+// asked to trade his own weapon for weapon 13. Then every character in
+// use has his hit points capped at B x (6 or 7), a random bit each.
+bool Town::weapon_trade(KeySource& keys) {
+    const int members = flags_[flag::kMembers];
+    if (members != 0) {
+        for (int i = 0; i <= members; ++i) {
+            int weapon = 13;
+            if (i != 0) weapon -= int(random_.next() & 1);
+            if (!offer_weapon(weapon, keys)) return false;  // 17dc:15e6
+        }
+    } else {
+        clear_window();  // 2656:0388
+        print_id("weapon2.trade");
+        print_id(formats::weapon_text_id(std::int8_t(characters_[0][character::kWeapon])));
+        print_id("weapon2.trade_end");
+        const auto yes = yes_no(true, keys);  // 1000:1a13(1)
+        if (!yes) {
+            place_open_ = true;
+            return false;
+        }
+        if (*yes) characters_[0][character::kWeapon] = 13;
+    }
+    for (int i = 0; i < 8; ++i) {
+        auto& c = characters_[std::size_t(i)];
+        if (c[character::kName] == character::kEmpty) continue;
+        const int cap = std::int8_t(c[character::kB]) * (6 + int(random_.next() & 1));
+        if (std::int8_t(c[character::kHitPoints]) > cap) c[character::kHitPoints] = std::uint8_t(cap);
+    }
+    return true;
 }
 
 // BTECH.EXE 24d3:0ef3, special 32 (part of Ghidra FUN_24d3_0004)

@@ -43,6 +43,8 @@ struct Fixes {
     bool fix_terrain_noise = false;        // 37: 287f:0df8, a right side's noise unscaled
     bool fix_talk_let_out = false;         // 38: 17dc:17b9, the last one waiting's place, not this one
     bool fix_overhead_store = false;       // 39: 1000:3fae, maps 12 and 13 move the store on by 512
+    bool fix_repair_type_count = false;    // 40: 19b8:0002, a mended weapon type's count down by one only
+    bool fix_repair_last_type = false;     // 41: 19b8:06f9, "any left" skips weapon type 0x20
     bool fix_kick_actuators = false;       // 2: 22e8:000c, an enemy kicker's actuators read from
                                            //    'Mech record s, in the stack
     bool fix_weapon_count = false;         // 23: 15ab:0002, the SRM 6 count left on the stack

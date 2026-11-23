@@ -65,6 +65,10 @@ struct Tables {
     std::array<std::array<int, 4>, 8> party_water{};  // DG:0332: water quarter bits by figure k and parity
     std::array<int, 26> place_pictures{};           // DG:141a: by script number, O<n>.ANM or 0
     std::array<int, 3> picture_chance{};            // DG:0ac4: by flag 4f, the mask a random number ANDs
+    std::array<int, 8> treatment_cost{};            // DG:4f6e: HOSPITAL's treatment by flag 1a (1-7), C-Bills
+    std::array<int, 7> ammo_price{};                // DG:2046 + w: a shot for slot codes w 0x1a-0x20, C-Bills
+    std::array<int, 9> upgrade_price{};             // DG:1d8c: the 'Mech upgrade by case (flag 11, 0-8), C-Bills
+    std::array<int, 11> upgrade_armour{};           // DG:1e13 + 0x11..0x1b: case 3's armour, full and current
     // The townspeople.
     std::array<int, 16> direction_of{};             // 2c6c:0240: 287f:0971's four tests to a direction
     std::array<int, 8> step_x{};                    // DG:311a: one half-cell in each direction

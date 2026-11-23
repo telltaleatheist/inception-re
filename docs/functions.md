@@ -114,15 +114,16 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 
 | Address | Linear | Ghidra name | Span | Label | Status |
 |---|---|---|---|---|---|
-| 19b8:080a | 0x1a38a | `FUN_19b8_080a` | 283 | The 'Mech upgrade offer: the upgrade from bytes 0x7b and 0x7c (docs/combat.md 2.6, Kick) | read in part |
-| 19b8:0925 | 0x1a4a5 | `FUN_19b8_0925` | 1075 | Pays for and applies a 'Mech upgrade: eight cases by model and stage (docs/combat.md 2.6, Kick) | read in part |
+| 19b8:0002 | 0x19b82 | `FUN_19b8_0002` | 2056 | REPAIR's repair shop, special 18: armour, structure, heat sinks, weapons by type (bug 40), actuators (docs/scripts.md, "The repair shop") | rebuilt |
+| 19b8:080a | 0x1a38a | `FUN_19b8_080a` | 283 | The 'Mech upgrade offer, special 19: the upgrade from bytes 0x7b and 0x7c (docs/combat.md 2.6, Kick) | rebuilt |
+| 19b8:0925 | 0x1a4a5 | `FUN_19b8_0925` | 1075 | Pays for and applies a 'Mech upgrade, special 20: eight cases by model and stage (docs/combat.md 2.6, Kick) | rebuilt |
 | 19b8:0d58 | 0x1a8d8 | `FUN_19b8_0d58` | 758 | A new party member joins (script E9) | read |
 | 19b8:104e | 0x1abce | `FUN_19b8_104e` | 817 |  | - |
 | 19b8:137f | 0x1aeff | `FUN_19b8_137f` | 194 | One of three wall patches in the Arena, by chance (DG:0010) | rebuilt |
 | 19b8:1441 | 0x1afc1 | `FUN_19b8_1441` | 238 | The Arena's patch made floor again, one draw a middle cell | rebuilt |
 | 19b8:152f | 0x1b0af | `FUN_19b8_152f` | 387 |  | - |
 | 19b8:16b2 | 0x1b232 | `FUN_19b8_16b2` | 176 |  | - |
-| 19b8:1762 | 0x1b2e2 | `FUN_19b8_1762` | 754 |  | - |
+| 19b8:1762 | 0x1b2e2 | `FUN_19b8_1762` | 754 | REPAIR's ammunition, special 44 (docs/scripts.md, "The repair shop") | rebuilt |
 
 ## CODE_5: segment 1b5d, 3,397 bytes
 

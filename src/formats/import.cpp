@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <fstream>
+#include <random>
 
 #include "formats/bld.h"
 #include "formats/cmp.h"  // FormatError
@@ -24,9 +25,14 @@ namespace {
 
 fs::path manifest_path(const fs::path& data_dir) { return data_dir / "import.json"; }
 
+// Each writer has its own temporary name, so runs importing into the same
+// folder at once (the reference check's parallel cases) each rename a whole
+// file into place.
 void write_file(const fs::path& path, const std::string& contents) {
     fs::create_directories(path.parent_path());
-    const fs::path temp = path.string() + ".part";
+    char tag[24];
+    std::snprintf(tag, sizeof tag, ".%08x.part", static_cast<unsigned>(std::random_device{}()));
+    const fs::path temp = path.string() + tag;
     {
         std::ofstream out(temp, std::ios::binary);
         out << contents;

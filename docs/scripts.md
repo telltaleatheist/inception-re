@@ -195,6 +195,15 @@ each one.
 | 22 | 24d3:0c46 | HOSPITAL | flag 0f = byte 0x10 bit 1 of the character in flag 0e (the seminar taken) |
 | 14 | 24d3:0af2 | ten places, and after every visit | flag 0e = how many of the party records 1–7 are in use |
 | 23 | 24d3:0cf8 | healing (`1c31:000a`) | flag 19 = 1 if any party member's hit points differ from 10 x B, else 0 |
+| 18 | 24d3:0cd8 | REPAIR | the repair shop (`19b8:0002`): "The repair shop", below |
+| 19 | 24d3:0ce8 | REPAIR | the speed shop's offer (`19b8:080a`): a 'Mech chosen; none left (byte 0x7c = 3): a message and flag 12 = 0. Else flag 12 = 1, the money on row 0x16, flag 11 = the case (byte 0x7b if 0-3, else 8; + 4 when byte 0x7c is 1; above 7 is 8) and its price (`tables.upgrade_price`) kept in F:0076. The script describes each case 0-7 itself and leaves on any other |
+| 20 | 24d3:0cf0 | REPAIR | the upgrade bought (`19b8:0925`): the price, yes/no; short: a message and a key; else paid and case flag 11 applied (combat.md 2.6), a message and a key |
+| 24 | 24d3:0d44 | HOSPITAL | the treatment in flag 1a (1-7): with its price (`tables.treatment_cost`) paid, the healing `1c31:000a(flag 1a)` and the money redrawn; short of it, a message, a key and 25 C-Bills added. Flag 1a = 0: `1c31:000a(0)` |
+| 25 | 24d3:0dc2 | HOSPITAL | the MedKit bought: F:d450 = 1 |
+| 26 | 24d3:0dcf | HOSPITAL | the field surgery kit bought: F:d451 = 1 |
+| 28 | 24d3:0ddc | GARAGE | the 'Mechs left at the garage: for records 0-3, the name's letter into F:d452 + m and the record emptied; characters m and m + 4 on foot |
+| 41 | 24d3:140d | WEAPON2 | with members (flag 0e): weapon 13 offered once, then 13 or 12 (a random bit) once per member (`17dc:15e6`); alone: Jason asked to trade his own weapon (its name in the question) for weapon 13. Then each character in use: hit points capped at B x (6 + a random bit) |
+| 44 | 24d3:0ce0 | REPAIR | ammunition (`19b8:1762`): "The repair shop", below |
 | 31 | 24d3:0eda | ARMOR | flag 1f = the armour type (byte 0x0d) of the character in flag 0e |
 | 32 | 24d3:0ef3 | ARMOR | tops up that character's armour, point by point: "The shops", below |
 | 27 | 24d3:0e54 | ARENA | special 46 without its first step: each of 'Mech records 0-3 gets sprite set 0 (F:d55e + m) if its name starts with L, else 0x92; then the crew screen with argument 0 |
@@ -203,7 +212,7 @@ each one.
 | 35 | 24d3:1062 | ARENA | the Arena fight (mission mode 8) and what follows it: "The Arena", below |
 | 30 | 19b8:104e | PARTY | the first companion joins and the alley fight (kind -1, combat.md 1.6) |
 | 36 | 24d3:13b2 | JAIL | prints the double agent's name: character F:d331's name (the `character.*` table) |
-| 37 | 24d3:139a | JAIL | the game is over: DG:014a = 0 and character record 0 emptied (byte 0 = ff); not rebuilt |
+| 37 | 24d3:139a | JAIL | the game is over: DG:014a = 0 and character record 0 emptied (byte 0 = ff); the main loop's next pass shows it (`1000:04a4`) |
 | 38 | 24d3:13c6 | JAIL | prints the name the next recruit will get: name number F:d456 (scripts.md, "A new member") |
 | 39 | 24d3:13e6 | JAIL | the crew screen with argument 1: everyone on foot, every seat empty first (below) |
 | 40 | 24d3:13ec | JAIL | Jason alone on foot for the impounded 'Mech (`19b8:152f`, mode 9, combat.md); then flag 28 = 1 if he fell (DG:014a = 0, the leader down: combat.md) |
@@ -214,10 +223,33 @@ each one.
 | 43 | 24d3:157e | TRAINING | after mission 5 is won (+1672, with flag 2d = 1): townsperson 0 is put at the Lounge's entrance (MAP entrance 7; record +0/+2 and figure 16), inside (+9 = ff), its route 0x70 (last the Lounge, next entrance 0) and its target entrance 0, the Training Center. Talk to others in the Lounge lets it out (below) |
 | others | see the table above | the other places | read with those places |
 
-Specials 18–20, 24–26, 28, 41 and 44 belong to the other places and are read with them. The rebuild logs an
-unrebuilt special and goes on.
+The rebuild logs an unrebuilt special and goes on.
 
 Special 05's texts are imported from BTECH.EXE as `course.*` (docs/import.md).
+
+### The repair shop (BTECH.EXE 19b8:0002, special 18; 19b8:1762, special 44)
+
+Both start with a 'Mech chosen (`1c67:0b98`, into DG:0068).
+
+**Repairs.** Armour (bytes 0x11-0x1b) and internal structure (0x1c-0x23) are measured against
+their full values 0x45 bytes on; destroyed items (bit 0x80) among slots 0x33-0x55 are counted as
+heat sinks (0x22) or weapons by slot code (0x10-0x20); the hip actuators (0x24, 0x25) against
+0x69, 0x6a. With nothing to mend, the first damaged system among bytes 0x75-0x77 is named (by
+DG:1b3e's pointers), or a message; with no money at all, a message. Then in turn, each only when
+needed: armour at 4 C-Bills a point and structure at 9 (the count and price, the money, yes/no;
+a point at a time over the bytes while the money lasts, a byte that cannot be paid for left and
+the next tried; a message if any is left), heat sinks at 800 each the same way, the weapons from
+menu 0x17 at 300 a type (one line per destroyed type: its count and name; Done last), and the
+actuators at 200 (both bytes copied back). The weapon payment mends every destroyed weapon of the
+type but takes one off its count only (bug 40, docs/combat.md), and the test for any left after
+it skips type 0x20, the SRM 6 (bug 41).
+
+**Ammunition.** The 'Mech's first ten weapon items in slot order; those that take ammunition
+(slot code 0x18, or 0x1a and above, not destroyed: the compares are signed) each get a screen:
+full, or the shots missing (byte 0x6b + i against 0x27 + i), the price a shot (2 for 0x18, else
+`tables.ammo_price`) and a number typed (`1d43:0cde`). More than missing: a message, and the
+missing ones are bought. A shot at a time while the money lasts; a message if short. A 'Mech with
+none: a message. Any destroyed weapon: a message at the end.
 
 ### Talk to others (BTECH.EXE 17dc:17b9)
 

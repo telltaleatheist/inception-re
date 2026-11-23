@@ -2061,6 +2061,116 @@ CHAIN_COURSES_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_courses_seminar_short_back", "keys": "enter", "match": SCREEN},
 ]
 
+# REPAIR's shops (specials 18, 19, 20 and 44; docs/scripts.md, "The repair shop"), from
+# chain_courses_poked's walk to map 3's REPAIR. At the door the Commando is damaged by
+# pokes: armour and structure points, a heat sink, both weapons of slot code 0x1f (its own
+# and one written into an empty slot: bug 40) and its SRM 6 (0x20: bug 41), a hip actuator,
+# and shots of the two 0x1f weapons (the poked one given 10 at most); 5000 C-Bills. Every
+# repair is bought; bug 40's second payment mends nothing, and bug 41 calls the weapons all
+# fixed with the SRM 6 still destroyed. Then 10 C-Bills with armour and a heat sink damaged
+# again: two points bought, the heat sink and the SRM 6 refused for money. Ammunition with
+# 10000: 25 typed for the first (20 missing), 5 for the second, the destroyed SRM 6 named.
+# The speed shop's case 3 short of money, then bought with 20000; then its second upgrade
+# (case 7) offered and declined.
+LUBE_POKES = " ".join(["cbills:1388", "mech:0:11=02", "mech:0:12=00", "mech:0:1c=02", "mech:0:3a=a2",
+                       "mech:0:41=9f", "mech:0:52=a0", "mech:0:53=9f", "mech:0:24=00", "mech:0:28=05",
+                       "mech:0:2a=02", "mech:0:6e=0a"])
+CHAIN_LUBE_POKED_CASES = [dict(case, compare=False) for case in
+                          CHAIN_COURSES_POKED_CASES[:[c["name"] for c in CHAIN_COURSES_POKED_CASES].index(
+                              "chain_courses_walk") + 1]] + [
+    {"name": "chain_lube_door", "keys": LUBE_POKES + " enter", "match": SCREEN},
+    {"name": "chain_lube_repair_which", "keys": "down down down enter", "match": SCREEN},
+    {"name": "chain_lube_armour", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_structure", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_sinks", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_weapons", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_weapon_paid", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_weapon_again", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_actuators", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_actuators_done", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_repaired", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_short_which", "keys": "cbills:000a mech:0:13=00 mech:0:3a=a2 enter", "match": SCREEN},
+    {"name": "chain_lube_short_armour", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_short_bought", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_short_sinks", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_short_refused", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_short_weapons", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_short_weapon", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_short_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_ammo_which", "keys": "cbills:2710 down enter", "match": SCREEN},
+    {"name": "chain_lube_ammo_first", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_ammo_too_many", "keys": "2 5 enter", "match": SCREEN},
+    {"name": "chain_lube_ammo_bought", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_ammo_second", "keys": "5 enter", "match": SCREEN},
+    {"name": "chain_lube_ammo_out", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_speed_which", "keys": "up up enter", "match": SCREEN},
+    {"name": "chain_lube_speed_offer", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_speed_price", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_speed_short", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_speed_back", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_buy_which", "keys": "cbills:4e20 enter", "match": SCREEN},
+    {"name": "chain_lube_buy_offer", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_buy_price", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_bought", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_buy_back", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_second_which", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_second_offer", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_second_price", "keys": "enter", "match": SCREEN},
+    {"name": "chain_lube_second_no", "keys": "n", "match": SCREEN},
+    {"name": "chain_lube_leave", "keys": "up up enter", "match": SCREEN},
+]
+
+# HOSPITAL's treatment and kits (specials 24, 25 and 26; docs/scripts.md), from the end of
+# chain_courses_poked inside map 3's Hospital, whose seminar left a member able to use both
+# kits (menu 0x1c). 10000 C-Bills: the fee, a Full surgeon (level 5); Jason's hit points
+# poked down and the doctor declined (level 0, the party's own Field Surgery); again with
+# 100 C-Bills (Jason still hurt) and the Neurosurgeon (level 7), more than is left: refused,
+# the 25 given back. The MedKit bought, the field surgery kit refused for money and then
+# bought with 1000, and the MedKit asked for again (already held). The original draws the
+# party box only at 1000:4cac, so until the healing draws it again the poked hit points show
+# in chr's bars alone: those two cases compare the map (and the state).
+CHAIN_WARD_POKED_CASES = [dict(case, compare=False) for case in CHAIN_COURSES_POKED_CASES] + [
+    {"name": "chain_ward_fee", "keys": "cbills:2710 up enter", "match": SCREEN},
+    {"name": "chain_ward_caliber", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_treated", "keys": "down*4 enter", "match": SCREEN},
+    {"name": "chain_ward_back", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_fee_2", "keys": "char:0:0f=05 enter", "match": {"the map": WHOLE_MAP}},
+    {"name": "chain_ward_declined", "keys": "n", "match": {"the map": WHOLE_MAP}},
+    {"name": "chain_ward_back_2", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_fee_3", "keys": "cbills:0064 enter", "match": SCREEN},
+    {"name": "chain_ward_caliber_3", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_short", "keys": "down*2 enter", "match": SCREEN},
+    {"name": "chain_ward_back_3", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_medkit", "keys": "down*4 enter", "match": SCREEN},
+    {"name": "chain_ward_medkit_bought", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_back_4", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_kit", "keys": "down enter", "match": SCREEN},
+    {"name": "chain_ward_kit_short", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_back_5", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_kit_2", "keys": "cbills:03e8 enter", "match": SCREEN},
+    {"name": "chain_ward_kit_bought", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_back_6", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_medkit_held", "keys": "up enter", "match": SCREEN},
+    {"name": "chain_ward_back_7", "keys": "enter", "match": SCREEN},
+    {"name": "chain_ward_leave", "keys": "down down enter", "match": SCREEN},
+]
+
+# JAIL's traitor (specials 36 and 37; docs/scripts.md), from chain_town's walk to the jail's
+# door, with flag 27 (the late game) and flag 25 (the traitor's record, here 0) poked there:
+# the name printed twice, then the game over: Jason's record emptied and DG:014a cleared, and
+# the main loop's game-over box (1000:04a4) with the leader's text. The original draws the
+# party box only at 1000:4cac, so after the record is emptied it still shows Jason's bars
+# while chr's are drawn from the records: that case compares the map (and the state).
+CHAIN_TRAITOR_POKED_CASES = [dict(case, compare=False) for case in
+                             CHAIN_TOWN_CASES[:[c["name"] for c in CHAIN_TOWN_CASES].index(
+                                 "chain_town_to_jail") + 1]] + [
+    {"name": "chain_traitor_door", "keys": "flag:27=01 flag:25=00 end", "match": SCREEN},
+    {"name": "chain_traitor_named", "keys": "y", "match": SCREEN},
+    {"name": "chain_traitor_named_2", "keys": "enter", "match": SCREEN},
+    {"name": "chain_traitor_over", "keys": "enter", "match": {"the map": WHOLE_MAP}},
+    {"name": "chain_traitor_box", "keys": "enter", "match": SCREEN},
+]
+
 # The game settings (1000:3bd0, docs/town_loop.md) from the town start: the
 # command menu's item 1 and each of its items. The menus remember their last
 # item, so each case's keys count from there. Steps a key is walked at 2 and
@@ -2346,7 +2456,8 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_salvage_poked", "chain_scrap_poked", "chain_orders_poked", "chain_town", "chain_party",
             "chain_jail_no", "chain_jail_fight", "chain_agent", "chain_courses_poked", "chain_cache_poked",
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
-            "chain_theater", "chain_inspect", "chain_flee"}
+            "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
+            "chain_traitor_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2390,6 +2501,9 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_jail_fight", [], CHAIN_JAIL_FIGHT_CASES, []),
              ("chain_agent", [], CHAIN_AGENT_CASES, []),
              ("chain_courses_poked", [], CHAIN_COURSES_POKED_CASES, []),
+             ("chain_lube_poked", [], CHAIN_LUBE_POKED_CASES, []),
+             ("chain_ward_poked", [], CHAIN_WARD_POKED_CASES, []),
+             ("chain_traitor_poked", [], CHAIN_TRAITOR_POKED_CASES, []),
              ("chain_cache_poked", [], CHAIN_CACHE_POKED_CASES, []),
              ("chain_cache_open", [], CHAIN_CACHE_OPEN_CASES, []),
              ("chain_entrance", [], CHAIN_ENTRANCE_CASES, []),
@@ -2827,7 +2941,7 @@ def main():
     ap.add_argument("--jobs", type=int, default=4,
                     help="at most this many runs of the original (DOSBox-X) at once (default 4)")
     ap.add_argument("--cache", help="the original's captures kept between runs (cache.py); "
-                                    "default: reference-cache beside --chr")
+                                    "default: $CHR_REFERENCE_CACHE, else reference-cache beside --chr")
     ap.add_argument("--no-cache", action="store_true", help="always run the original, keep nothing")
     ap.add_argument("--refresh", action="store_true", help="run the original even when cached, and re-cache")
     ap.add_argument("--prune-cache", action="store_true",
@@ -2850,7 +2964,8 @@ def main():
 
     os.makedirs(a.work, exist_ok=True)
     a.cache = None if a.no_cache else cache.Cache(
-        a.cache or os.path.join(os.path.dirname(os.path.abspath(a.chr)), "reference-cache"), a.game_dir)
+        a.cache or os.environ.get("CHR_REFERENCE_CACHE")
+        or os.path.join(os.path.dirname(os.path.abspath(a.chr)), "reference-cache"), a.game_dir)
     if a.prune_cache and a.cache:
         dropped, files, freed = a.cache.prune()
         print(f"cache: dropped {dropped} entries from another rig and {files} unused files ({freed >> 20} MB)")

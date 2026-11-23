@@ -185,6 +185,19 @@ TEST(key_script_set_flag) {
     CHECK(threw);
 }
 
+// A question's read after idle passes, a poke and the poke's own idle passes
+// gets the key after them all, the poke applied.
+TEST(key_script_poke_then_idle) {
+    ScriptKeys source(parse_key_script("idle:2 cbills:4e20 idle:2 y"));
+    int cbills = -1;
+    source.set_poke([&](bool, int record, int, int value) {
+        if (record == -1) cbills = value;
+    });
+    CHECK(source.next() == std::optional<int>('y'));
+    CHECK(cbills == 0x4e20);
+    CHECK(!source.next());
+}
+
 namespace {
 
 // Plays `script` on map 1 from the new-game start. False if the game files

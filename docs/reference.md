@@ -137,8 +137,10 @@ Only a run that gave every capture, with no disk prompt, is stored.
 
 The cache holds the original's screens and memory, so it stays on this machine and is never
 committed: `reference-cache` beside `--chr` (in `build/`, so it survives a reboot), or
-`--cache DIR`. Each file is stored once by its SHA-256 (`objects/`), read-only, and an entry
-(`runs/KEY.json`) lists its files by name; the chain sequences share their prefixes' captures.
+`--cache DIR`, or the folder in `CHR_REFERENCE_CACHE` when `--cache` is not given (one lasting
+cache for builds made in fresh folders). Each file is stored once by its SHA-256 (`objects/`),
+read-only, and an entry (`runs/KEY.json`) lists its files by name; the chain sequences share
+their prefixes' captures.
 A cached sequence's `original-SEQUENCE` folder is filled with hard links to them, and is emptied
 before the original runs into it again. `--refresh` runs the original anyway and stores the
 result; `--no-cache` neither reads nor stores; `--prune-cache` first drops the entries made with

@@ -185,6 +185,10 @@ narration of what happened, descriptions and flavour, and the original's own not
 | recruit.* | 5 | a new member joining (19b8:0d58) |
 | offer.give, offer.to, offer.drop, offer.already | 4 | a found weapon offered to the party (17dc:15e6) |
 | offer.armour_* | 4 | armour offered to the party (17dc:13de); its own copies of the first two |
+| weapon2.trade, weapon2.trade_end | 2 | WEAPON2's question around Jason's own weapon's name (24d3:140d, special 41) |
+| repair.* | 34 | REPAIR's repair shop (19b8:0002, special 18): each repair's count, price, question and shortfall; repair.system.0-2 by DG:1b3e's pointers |
+| ammo.* | 10 | REPAIR's ammunition (19b8:1762, special 44) |
+| upgrade.* | 6 | REPAIR's speed shop (19b8:080a and 0925, specials 19 and 20) |
 | over.leader.0-1, over.killed, over.new_game | 4 | the game over when the leader dies (1000:04a4), and its question |
 | ui.press_key, ui.plural_s, ui.full_stop | 3 | message pieces, kept imported: not on Owen's approved list |
 | shop.cbills_end | 1 | the end of a shop's price line, kept imported: not on Owen's approved list |

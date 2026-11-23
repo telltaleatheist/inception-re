@@ -414,6 +414,12 @@ private:
     bool alley_fight(KeySource& keys);
     bool new_member(int skill, KeySource& keys);
     bool offer_weapon(int weapon, KeySource& keys);
+    bool repair_shop(KeySource& keys);         // special 18
+    bool ammo_shop(KeySource& keys);           // special 44
+    bool upgrade_offer(KeySource& keys);       // special 19
+    bool upgrade_buy(KeySource& keys);         // special 20
+    bool hospital_treatment(KeySource& keys);  // special 24
+    bool weapon_trade(KeySource& keys);        // special 41
     bool offer_armour(int type, int points, KeySource& keys);
     bool buy(int n, KeySource& keys);
     void put_amount(std::uint32_t amount, int row);
@@ -639,6 +645,7 @@ private:
     std::array<std::uint8_t, 4> arena_kept_pilot_{};     // F:430e + m
     std::array<std::uint8_t, 4> arena_kept_rider_{};     // F:3ffa + m
     int arena_choice_ = 0;                               // DG:0068: the chosen 'Mech record
+    std::int16_t upgrade_price_ = 0;                     // F:0076: special 19's price for special 20
     int arena_patch_ = 0;                                // DG:0010: the wall patch, 0-3
     KeySource* round_keys_ = nullptr;  // the keys while a fight round runs (Combat's key hook)
     bool poll_open_ = false;
