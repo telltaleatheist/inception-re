@@ -137,7 +137,9 @@ std::optional<AssetId> Town::full_screen() const {
 // new game's panel. Then 1000:5154..51b6: the notice in window 6 and the
 // first-time question.
 void Town::new_game_screen() {
-    draw_panel();
+    text_.clear_all();  // 287f:1fbe
+    draw_panel(true);   // 1000:4cac(1)
+    clear_window();     // 2656:0388
     text_.select_window(6);
     text_.clear_window();
     text_.frame(0);
@@ -176,7 +178,8 @@ void Town::new_game() {
     kits_ = {};  // F:d450, d451 (4f7e)
     marks_.next = 0;
     for (auto& m : marks_.marks) m.area = m.x = m.y = 0;  // the codes stay
-    draw_panel(true);  // 1000:4cac(1)
+    text_.clear_all();  // 287f:1fbe
+    draw_panel(true);   // 1000:4cac(1)
     clear_window();    // 2656:0388
     position_ = new_game_position();
     terrain_.generate(0xcc);  // 287f:104e

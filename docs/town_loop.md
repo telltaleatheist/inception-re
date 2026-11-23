@@ -327,9 +327,10 @@ or after:
 | healing (`1c31:000a`, `4cac(0)`) | not cleared: the move log stays |
 | a new member (`19b8:0d58`, script E9) | not cleared, before or after |
 
-`287f:1fbe` writes zeros over the display's whole memory (CGA, EGA or MCGA, by DG:b764). The
-rebuild blanks the column inside `Town::draw_panel` (`blank_column`), with the same result,
-and skips it where the original doesn't clear.
+`287f:1fbe` writes zeros over the display's whole memory (CGA, EGA or MCGA, by DG:b764). Every
+caller passes 1 except the healing. In the rebuild `Town::draw_panel` draws only what `4cac`
+draws, and each caller does its own clears as in the table (`TextScreen::clear_all` for
+`287f:1fbe`).
 
 `1000:4aa6` prints the name and draws three bars at columns 9, 10, 11 of the name's row, with
 the character's bytes 1, 2 and 3 (its 17-byte record at F:c614; Jason: 8, 9, 7). Over the

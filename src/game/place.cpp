@@ -62,7 +62,9 @@ bool Town::visit_place(int entrance, KeySource& keys) {
             log_.push_back("training quiz: parts " + std::to_string(parts[0]) + " " + std::to_string(parts[1]) +
                            " " + std::to_string(parts[2]) + " (not shown)");
         }
-        // 1c67:0b40: the panel, the party box cleared, then the box above it.
+        // 1c67:0b3b: the screen cleared (287f:1fbe), the panel, the party box
+        // cleared, then the box above it.
+        text_.clear_all();
         draw_panel(true);
         text_.clear_window();
     }
@@ -90,7 +92,7 @@ bool Town::visit_place(int entrance, KeySource& keys) {
     text_.clear_window();
     picture_.reset();
     text_.select_window(3);
-    draw_panel();
+    draw_panel(true);  // 17dc:017e, 1000:4cac(1)
     // 1000:7f46: leaving ENTRANCE once its question is answered yes (flag
     // 36), into the cache. A column of the seen map is cleared first
     // (docs/cache.md).
@@ -323,7 +325,7 @@ bool Town::new_member(int skill, KeySource& keys) {
             print_id("character." + std::to_string(characters_[std::size_t(pilot)][character::kName]));
             print_id("recruit.mech");
         }
-        draw_panel(true, false);  // 1000:4cac(1): column 0-12 not blanked, before or after
+        draw_panel(true);  // 1000:4cac(1); window 4 not cleared, before or after
         // 1000:a960: a draw for every poll with no key waiting; the flush
         // (1000:2a2b) eats the key that ends it, and another is read. While
         // the demo plays (19b8:0dd6, F:3938) there is no wait: its poll
@@ -678,7 +680,7 @@ bool Town::game_settings(KeySource& keys) {
     default:
         return true;
     }
-    draw_panel(true, false);  // 1000:4cac(1): column 0-12 not blanked first
+    draw_panel(true);  // 1000:4cac(1); window 4 not cleared
     return true;
 }
 
@@ -1052,7 +1054,8 @@ bool Town::special(int n, KeySource& keys) {
         screen_picture_ = assets::kEndMechPicture;
         if (!read_key(keys)) return false;
         screen_picture_.reset();
-        draw_panel(true);  // 1000:4cac(1)
+        text_.clear_all();  // 287f:1fbe
+        draw_panel(true);   // 1000:4cac(1)
         clear_window();    // 2656:0388
         return true;
     case 27:

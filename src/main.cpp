@@ -507,7 +507,7 @@ int main(int argc, char** argv) {
                 town->set_show_quiz(options.show_quiz);
                 if (options.demo_to) town->set_demo_stop(*options.demo_to);
                 if (start_up) town->start_up();
-                else town->draw_panel();
+                else town->draw_panel(true);
                 for (const auto& [f, v] : options.set_flags) town->set_flag_when_town_starts(f, v);
                 chr::game::ScriptKeys source(keys);
                 source.set_poke([&](bool character, int r, int b, int v) {

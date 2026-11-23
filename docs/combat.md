@@ -1677,7 +1677,7 @@ sequence compares the scene with the original's, over the whole screen and the s
     case reaches it: in the training missions the party is Jason in his 'Mech alone, and no
     test value is poked to make one. It needs a party person on foot in a mission fight with
     the computer fighting.
-21. A duplicate waypoint recognised (203b:1c1f, the order removed): no reference case reaches it.
+22. A duplicate waypoint recognised (203b:1c1f, the order removed): no reference case reaches it.
     It needs a fight in area rows 0-7 (bug 16 hides it in rows 8-15, `chain_waypoints_edge`).
 
 ## Functions

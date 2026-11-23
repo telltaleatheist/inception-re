@@ -389,11 +389,8 @@ std::vector<StatBar> Town::party_bars() const {
 // BTECH.EXE 1000:4cac (Ghidra FUN_1000_4cac)
 // The party box: window 3 framed (cleared with `clear`), its heading, each
 // member's line and bars (1000:4aa6), the C-Bills; window 4 last.
-// `blank_column` blacks out columns 0-12 first, which 4cac itself does not:
-// it stands in for its callers' clear of window 4 (docs/town_loop.md, "The panel").
-void Town::draw_panel(bool clear, bool blank_column) {
+void Town::draw_panel(bool clear) {
     party_box_shown_ = true;
-    if (blank_column) text_.fill(0, 0, 13, kTextRows, TextRole::Background);
     text_.select_window(3);
     text_.frame(3);
     if (clear) text_.clear_window();

@@ -608,7 +608,7 @@ bool Town::heal(int doctor, KeySource& keys) {
     }
     text_.set_fg(TextRole::Text);
     if (!press_key(keys)) return false;  // 273d:086a, 1000:2a4f
-    draw_panel(false, false);  // 1000:4cac(0)
+    draw_panel(false);  // 1000:4cac(0)
     flags_[0x29] = 0x3f;
     return true;
 }
