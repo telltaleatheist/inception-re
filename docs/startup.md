@@ -80,3 +80,37 @@ inside `Random::at_town_start`.
 The title's tune plays while the title waits (docs/sound.md, "The title music"). Not rebuilt
 yet: the demo at the tune's end. After the tune (59.7 s on the speaker) the rebuild's title
 waits silently for a key however long.
+
+### The demo (not rebuilt)
+
+What it is (read, not traced through a run):
+
+- **The start** (`1000:51f9`): the panel (`1000:28cc(2)`), then DEMOFILE read into the key
+  buffer (at most 1023 bytes, at 2892:27b0, `173d:0814`). Its read position (F:39f8) starts at
+  10000, the buffer's offset from F:00a0. The random numbers are set to 25 13 90 (docs/random.md),
+  F:3988 = 0xffff, and F:3938 = 1 (the demo plays). Then a new game (`1000:4dc7`) and the main
+  loop (`1000:0000(1)`). After it, the title and its tune come again, and so on.
+- **The keys** (`273d:0259`, the one key read). While F:3938 is set it takes the next byte from
+  the buffer instead of the keyboard:
+  - 0x48 is a pause of 30 display frames (`273d:0006`), and the byte after it is read;
+  - any other byte waits one frame and is the key (arrows as minus their scan codes);
+  - a real key pressed meanwhile is read and thrown away, and DG:0152 is set: the demo ends;
+  - 0x50 is the end mark, and sets DG:0152 too.
+- **The file.** DEMOFILE (1023 bytes) has its end mark at byte 781. Before it: 64 pauses and
+  717 keys of 7 kinds, nearly all arrows (697), with 18 Enters. So it is mostly walking the new
+  game's party about, with a few menu choices. Whether it reaches a place or a fight is not yet
+  known; that needs a run of the original left on the title.
+- **Recording.** The same routine records keys into the buffer when F:458c is set (a typed `h`
+  becomes the pause mark). Nothing sets F:458c that we have found: a tool of the developers'.
+- **What the game does differently under F:3938:**
+  - no place pictures (scripts.md, EA; the training center's picture 0, combat.md 1.2);
+  - every menu starts on its first item (`2656:0b5e`, combat.md 2.6);
+  - the computer-in-control rounds don't take a waiting key (combat.md 2.5);
+  - the overhead map waits 600 frames instead of a key (overhead_map.md);
+  - the training quiz is not asked (scripts.md).
+
+**To rebuild it:** a key source that plays the buffer as above; the start (the seed, the new
+game, the main loop); the return to the title; and the F:3938 cases listed. Most of what the
+keys reach is rebuilt already. Size: the start-up's branch and the key source are small, and
+the F:3938 cases are a handful of one-line conditions. The rig can compare it by holding the
+title past the tune (`sound_title`'s hold, longer) and capturing the demo's screens.

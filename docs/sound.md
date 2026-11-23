@@ -313,7 +313,15 @@ The whole tune is not run, since its end starts the demo.
   13, 3, 5, 6, 11, 1, 9, 2, 4; combat.md 3), and no sequence the rig has fires those weapons.
 - The title music's end: the run stops short of it, since the demo would follow (see "The
   title music"). The end mark is read as the code reads, and the tests check it.
-- The title music on Tandy graphics (its three voices), not rebuilt.
+- The title music as Tandy owners heard it: a possible later option, not to be built now. On
+  Tandy graphics (`284b:02e4`) each step of 20 ticks (68.6 ms) reads four bytes: three for the
+  sound chip's tone voices and one for the speaker. In game terms that would be three tone
+  streams plus the speaker's, mixed by the platform, with no chip emulated (CLAUDE.md, goal 2).
+  The voices' pitches come from their own table (284b:019e, 12 words, to be imported like
+  `music_note_hz`). The octave shifts the table's divisor right by the octave less 2
+  (`284b:01b8`), and all three are set to attenuation 3 (of 15) at the start (`284b:020b`). A rest byte
+  on a voice is not silent there: it gives a very high divisor-derived pitch, to be checked.
+- The demo after the tune: not rebuilt (docs/startup.md, "The demo").
 
 ## The rebuild
 
