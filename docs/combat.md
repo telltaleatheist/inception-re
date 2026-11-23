@@ -1274,9 +1274,11 @@ Target figure 0-3 or 12-15 ('Mech m = t or t - 8).
 There are no ammunition explosions: a critical on an ammunition slot destroys the item like any
 other, and nothing else reads the ammunition bytes (0x27-0x30) when a slot is hit.
 
-Open: the life-support critical (byte 0x78 = ff) is now reached against the original
-(`chain_crit_poked`, docs/reference.md), but what reads byte 0x78 afterwards, and to what
-effect, is not yet checked.
+The life-support critical (byte 0x78 = ff) is reached against the original (`chain_crit_poked`,
+docs/reference.md). Nothing reads byte 0x78 to any effect: the only code that names it is this
+critical's own test and write (`1e31:11ab`, F:c79c + 0x7d m), in every segment including 287f.
+It travels only in whole-record copies (a salvaged wreck's bytes 1-0x7c, the saved game, the
+Arena's swaps), and the stats screen does not show it.
 
 ### 3.13 Fires and map marks
 
@@ -1599,8 +1601,12 @@ sequence compares the scene with the original's, over the whole screen and the s
 
 ## 8. Open questions
 
-1. `17dc:1c9b` sets the eight characters' 'Mech slot bytes to 3 (meaning unknown).
-2. F:32ae and F:3750 are what the figure drawer `1000:0e4b` worked out (3.14: the rows a figure
+1. (Answered.) `17dc:1c9b` and `17dc:1a26` set every character's 'Mech byte to 3 for the Arena
+   fight: any value below 8 is "not on foot", so no character is placed as a person. Jason's 3
+   also makes figure 3 the view's centre (F:c620, `1000:17bb`) and 'Mech 3 the one whose
+   critical hit shows picture 5, though the Arena's 'Mech is record 0.
+2. (Answered: the readers are the to-hit (3.7, row 7), the missed shot's fire (3.13) and the
+   water cooling at the round's end; bug 36.) F:32ae and F:3750 are what the figure drawer `1000:0e4b` worked out (3.14: the rows a figure
    sinks, the tile under it). `1000:051b` writes F:32ae for each 'Mech of records 0-3 (at the
    record's index): the same 8 or 16 rows as `0e4b`, 0 with F:d346 set. Before a fight it is read
    by the walking course (1.3). With combat graphics off nothing draws the
@@ -1608,21 +1614,35 @@ sequence compares the scene with the original's, over the whole screen and the s
    1-3).
 3. The nine bytes P:07a4..07ac whose bit 0x80 blocks salvage. In a fight's memory they are the
    area-grid entries of the 3x3 blocks in the cell window (0x80 + block, rows 8 apart), so bit
-   0x80 would mean a fixed block; how salvage uses that is not read.
+   0x80 means a map block (docs/wilderness.md). (Answered.) After a fight (`203b:000a`) the
+   salvage is offered only when none of the nine has it, the same test as the crew item's
+   refusal (`1000:4d57`).
 4. The location rows: d = 0 gives the rear column, but three directions give the left-side column
    and two the front. Either our reading of the facing (F:396c) or of the direction (`287f:0971`,
    not read) is off, or the original is lopsided. To check in the running original.
-5. The meaning of the mark codes 0x7c and 0x7f, and what draws the mark ring.
-6. Why character 1's death ends the fight like Jason's (DG:014a).
-7. F:396c + i and F:397c + i at the end of the fight: which figures 0-7 is meant for.
+5. (Answered.) `1000:2a93` draws the ring, and on each draw flips bit 0 of every code that is
+   0x7c or 0x7d (bit 7 aside): 0x7c is a two-frame flicker, added only by a fire weapon's miss
+   (3.13), so fire. 0x7f is a still one-cell mark beside the body's (0x7e) in the sprite table,
+   added by a missed shot into a building.
+6. (Answered.) Both places that kill set DG:014a = 0 behind an explicit test of the character
+   number below 2: `22e8:12c7` (a shot) and `1e31:16ab` (a crush). Character 1 is the alley
+   companion, so his death counts as the leader's by design of the code.
+7. (Answered.) The fight's end puts the eight townspeople back (i = 0-7): figure 16 + i's place
+   from walker i's record, its heading F:397c + i = ff, its walking frame 0x10. F:396c + i = ff
+   is figure i's heading, the party's: F:396c is also the town's walking facing
+   (`1000:231d`, `1000:1732`), so the party's walk starts with none after a fight.
 8. A party 'Mech that reaches its last waypoint has no order left, so it counts as standing for
    to-hit and heat; enemies keep their order. This follows from the code as read; check in play.
-9. Flag 24's values and where it is set, besides the traitor's 0x7f.
+9. (Answered.) Flag 24 is the outdoor encounter mask: each tick (`1000:01f4`) draws r and tries
+   an encounter when r & flag 24 is 0, flag 04 is set and F:d346 is clear. Only two places write
+   it: 0x1f when the double agent joins (`19b8:0d58`) and 0x7f for the traitor (`203b:000a`);
+   otherwise it holds what a new game or a load leaves.
 10. (Answered: `1c31:000a`, `17dc:15e6`, `15ab:18e8`, `1000:0e4b`, `287f:1df8` and `287f:1da8`
     are read and rebuilt.)
 11. (Answered: `2da8(4, 11)` loads map 11 into grid 4, 2.11.)
-12. Whether the menu `2656:0b5e` can return -1 (Esc).
-13. 'Mech byte 0x78, F:4586 / F:3986 readers besides those above, DG:015e and DG:0150 (where they
+12. (Answered: no.) `2656:0b5e`'s loop ends only on Enter or Space. After it, a key of Esc
+    would return the starting item without storing it, but that branch cannot be reached.
+13. ('Mech byte 0x78 answered, 3.12.) F:4586 / F:3986 readers besides those above, DG:015e and DG:0150 (where they
     are set).
 14. The three character bytes 1-3 (by use: byte 1 sets the hit-point maximum, byte 2 the walking
     speed on foot); their names.
