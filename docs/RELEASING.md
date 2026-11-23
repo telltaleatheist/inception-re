@@ -44,7 +44,7 @@ for a release.
 |---|---|---|
 | macOS | a Mac | `CHI-Rebuild-<label>-mac.dmg`: `Inception Rebuild.app`, signed ad hoc, universal (arm64 and x86_64) from macOS 12 |
 | Windows x64 | Windows, MSVC | `CHI-Rebuild-<label>-win64.zip` (`chi.exe`, `SDL3.dll` and the MSVC runtime at the top level), and with `--installer` `CHI-Rebuild-<label>-Setup.exe` |
-| Linux x86-64 | Linux or WSL | `CHI-Rebuild-<label>-x86_64.AppImage` |
+| Linux x86-64 | Linux or WSL | `CHI-Rebuild-<label>-linux-x86_64.tar.gz` (the checks' form), and with `--installer` `CHI-Rebuild-<label>-x86_64.AppImage` |
 
 Each file gets a `.sha256` beside it. For a release, put every platform's
 files in one folder and run `python3 -I tools/package/sums.py <folder>`.
@@ -87,7 +87,12 @@ of what the compiler writes (`CHR_TRIM_PATHS`).
   desktop shortcuts. Its uninstaller leaves the player's folder alone. The
   AppId is this project's own and stays the same in every version, so a new
   Setup upgrades in place.
-- **Linux**: `--appimage-tools DIR` names the folder holding
+- **Linux**: every run makes `CHI-Rebuild-<label>-linux-x86_64.tar.gz`,
+  the checks' form. It holds `chi` with `libSDL3.so.0` beside it (found
+  through `$ORIGIN`, which `ldd` confirms on the unpacked copy) and the rest
+  of the zip's layout, and is smoke-tested from the unpacked archive. The
+  release form is the AppImage, made with `--installer`.
+  `--appimage-tools DIR` names the folder holding
   `linuxdeploy-x86_64.AppImage` and `appimagetool-x86_64.AppImage`. The
   AppImage holds `usr/bin/chi` with `data/` beside it, and the notices in
   `usr/share/doc/chi`. Its desktop entry (`tools/package/chi.desktop`)

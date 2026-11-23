@@ -8,7 +8,8 @@ One platform per run, this machine's (docs/RELEASING.md):
                                                   (arm64, x86_64), or this Mac's alone with --this-arch
   Windows  CHI-Rebuild-<label>-win64.zip          chi.exe and SDL3.dll at the top level
            CHI-Rebuild-<label>-Setup.exe          with --installer (Inno Setup)
-  Linux    CHI-Rebuild-<label>-x86_64.AppImage    usr/bin/chi (--appimage-tools)
+  Linux    CHI-Rebuild-<label>-linux-x86_64.tar.gz   chi and libSDL3.so.0 (the checks' form)
+           CHI-Rebuild-<label>-x86_64.AppImage    with --installer: usr/bin/chi (needs an icon, --appimage-tools)
 The build's program stays chr, which the tools and the reference rig run; the
 package names it chi. Every file made gets a .sha256 beside it; sums.py writes
 a release's SHA256SUMS over all of them.
@@ -30,6 +31,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import zipfile
 
@@ -283,33 +285,85 @@ def windows_installer(root, stage, output, label):
 
 # --- Linux ---
 
-def package_linux(root, build, sdl, output, label, game, tools):
+def needed_sdl(executable):
+    """The SDL library the Linux program loads, by its soname (readelf's NEEDED): libSDL3.so.0."""
+    out = subprocess.run(["readelf", "-d", str(executable)], capture_output=True, text=True, check=True).stdout
+    names = re.findall(r"\(NEEDED\).*\[(libSDL3\.so[^\]]*)\]", out)
+    if not names:
+        raise RuntimeError(f"{executable.name} loads no libSDL3")
+    return names[0]
+
+
+def resolved_beside(executable, library):
+    """ldd's answer: `library` is loaded from the program's own folder, not the system's."""
+    out = subprocess.run(["ldd", str(executable)], capture_output=True, text=True, check=True).stdout
+    for line in out.splitlines():
+        if line.strip().startswith(library + " => "):
+            return Path(line.split("=>")[1].split("(")[0].strip()).resolve().parent == executable.parent.resolve()
+    return False
+
+
+def package_linux(root, build, sdl, output, label, game, installer, tools):
+    """CHI-Rebuild-<label>-linux-x86_64.tar.gz: chi, SDL's library beside it (found through $ORIGIN) and the
+    rest of the zip's layout, smoke-tested from the unpacked archive (the checks' form; the release form is
+    the AppImage). With `installer`, the AppImage too."""
+    name = f"{STEM}-{label}-linux-x86_64"
+    stage = output / name
+    if stage.exists():
+        shutil.rmtree(stage)
+    stage.mkdir(parents=True)
+    binary = configure_and_build(root, build, sdl, label)
+    shutil.copy2(binary, stage / PROGRAM)
+    soname = needed_sdl(stage / PROGRAM)
+    found = [p for p in build.rglob(soname) if p.exists()]
+    if not found:
+        raise RuntimeError(f"Missing runtime dependency: {soname}")
+    shutil.copy2(found[0].resolve(), stage / soname)
+    stage_common(root, build, sdl, stage)
+    check_paths(root, stage, root, sdl)
+    archive = output / f"{name}.tar.gz"
+    with tarfile.open(archive, "w:gz") as target:
+        target.add(stage, arcname=name)
+    extracted = output / "smoke"
+    if extracted.exists():
+        shutil.rmtree(extracted)
+    extracted.mkdir()
+    with tarfile.open(archive) as source:
+        source.extractall(extracted, filter="data")
+    executable = extracted / name / PROGRAM
+    if not resolved_beside(executable, soname):
+        raise RuntimeError(f"The unpacked {PROGRAM} does not load {soname} from beside it")
+    smoke(executable, game)
+    write_digest(archive)
+    print(f"Packaged and smoke-tested {archive}")
+    if installer:
+        appimage(root, stage, output, label, game, sdl, tools)
+    return archive
+
+
+def appimage(root, stage, output, label, game, sdl, tools):
     """CHI-Rebuild-<label>-x86_64.AppImage: usr/bin/chi with data/ beside it (SDL_GetBasePath), the
     notices in usr/share/doc/chi, the libraries by linuxdeploy. `tools` holds linuxdeploy-x86_64.AppImage
     and appimagetool-x86_64.AppImage. The desktop entry wants an icon, and the packages have none yet:
     tools/package/chi.png is used when there is one, else the AppImage is refused (docs/RELEASING.md)."""
-    if not tools:
-        raise RuntimeError("--appimage-tools DIR (linuxdeploy and appimagetool) is needed for the AppImage")
     icon = root / "tools/package/chi.png"
     if not icon.is_file():
         raise RuntimeError("The AppImage needs an icon (tools/package/chi.png), and the packages have none yet")
+    if not tools:
+        raise RuntimeError("--appimage-tools DIR (linuxdeploy and appimagetool) is needed for the AppImage")
     tools = Path(tools).resolve()
-    binary = configure_and_build(root, build, sdl, label)
     appdir = output / "AppDir"
     if appdir.exists():
         shutil.rmtree(appdir)
     bin_dir, doc = appdir / "usr/bin", appdir / f"usr/share/doc/{PROGRAM}"
     bin_dir.mkdir(parents=True)
     doc.mkdir(parents=True)
-    shutil.copy2(binary, bin_dir / PROGRAM)
-    stage_common(root, build, sdl, bin_dir)
+    shutil.copy2(stage / PROGRAM, bin_dir / PROGRAM)
+    shutil.copytree(stage / "data", bin_dir / "data")
     for name in ("LICENSE", "README.txt", "licenses"):
-        shutil.move(str(bin_dir / name), str(doc / name))
-    libs = [p.parent for p in build.rglob("libSDL3.so*")]
-    if not libs:
-        raise RuntimeError("Missing runtime dependency: libSDL3.so")
+        (shutil.copytree if (stage / name).is_dir() else shutil.copy2)(stage / name, doc / name)
     env = dict(os.environ, APPIMAGE_EXTRACT_AND_RUN="1", ARCH="x86_64",
-               LD_LIBRARY_PATH=os.pathsep.join([str(libs[0].resolve()), os.environ.get("LD_LIBRARY_PATH", "")]))
+               LD_LIBRARY_PATH=os.pathsep.join([str(stage.resolve()), os.environ.get("LD_LIBRARY_PATH", "")]))
     run(str(tools / "linuxdeploy-x86_64.AppImage"), "--appdir", str(appdir), "-e", str(bin_dir / PROGRAM),
         "-d", str(root / "tools/package/chi.desktop"), "-i", str(icon), env=env)
     smoke(bin_dir / PROGRAM, game)
@@ -458,7 +512,7 @@ def package(root, build, sdl, output, label, game=None, installer=False, tools=N
         return package_mac(root, build, sdl, output, label, game, universal)
     if which == "win64":
         return package_windows(root, build, sdl, output, label, game, installer)
-    return package_linux(root, build, sdl, output, label, game, tools)
+    return package_linux(root, build, sdl, output, label, game, installer, tools)
 
 
 def packaged_program(folder):
@@ -476,7 +530,8 @@ if __name__ == "__main__":
     parser.add_argument("--smoke", type=Path, help="a package folder (or an AppImage): run the smoke test only")
     parser.add_argument("--this-arch", action="store_true",
                         help="macOS: this Mac's architecture only, for a local test (a release is universal)")
-    parser.add_argument("--installer", action="store_true", help="Windows: also Setup.exe (Inno Setup)")
+    parser.add_argument("--installer", action="store_true",
+                        help="Windows: also Setup.exe (Inno Setup); Linux: also the AppImage")
     parser.add_argument("--appimage-tools", type=Path, help="Linux: the folder with linuxdeploy and appimagetool")
     parser.add_argument("--game", type=Path, default=os.environ.get("CHR_GAME_DIR") or None,
                         help="the player's game folder for the smoke test (default CHR_GAME_DIR; never packaged)")

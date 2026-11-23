@@ -7,8 +7,10 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -36,7 +38,8 @@ class Names(unittest.TestCase):
 
 
 class Staging(unittest.TestCase):
-    def fixture(self, root):
+    @staticmethod
+    def fixture(_, root):
         for name in ["LICENSE", "data/text/interface.json", "sdl/LICENSE.txt", "extern/re-setup-kit/LICENSE",
                      "extern/re-setup-kit/third_party/stb/LICENSE", "extern/re-setup-kit/third_party/miniz/LICENSE"]:
             write(root / name)
@@ -48,7 +51,7 @@ class Staging(unittest.TestCase):
     def test_the_stage_holds_our_data_the_read_me_and_every_licence(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            self.fixture(root)
+            Staging.fixture(None, root)
             out = root / "stage"
             out.mkdir()
             build_package.stage_common(root, root / "build", root / "sdl", out)
@@ -64,7 +67,7 @@ class Staging(unittest.TestCase):
     def test_a_missing_kit_licence_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            self.fixture(root)
+            Staging.fixture(None, root)
             (root / "extern/re-setup-kit/third_party/stb/LICENSE").unlink()
             (root / "stage").mkdir()
             with self.assertRaisesRegex(RuntimeError, "Missing licence"):
@@ -73,11 +76,52 @@ class Staging(unittest.TestCase):
     def test_a_shared_libarchive_is_refused(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            self.fixture(root)
+            Staging.fixture(None, root)
             write(root / "build/CMakeCache.txt", "REKIT_LIBARCHIVE_LIB:FILEPATH=/opt/x/lib/libarchive.dylib\n")
             (root / "stage").mkdir()
             with self.assertRaisesRegex(RuntimeError, "static libarchive"):
                 build_package.stage_common(root, root / "build", root / "sdl", root / "stage")
+
+
+@unittest.skipIf(os.name == "nt", "a shell script stands in for the program")
+class LinuxLayout(unittest.TestCase):
+    def build(self, root, installer=False):
+        Staging.fixture(None, root)
+        program = root / "build/chr"
+        write(program, '#!/bin/sh\n'
+                       '[ "$1" = --help ] && { echo "usage: chi --status | --setup"; exit 0; }\n'
+                       '[ "$1" = --status ] && { echo \'{"kit": 1, "game": "inception"}\'; exit 0; }\n'
+                       'exit 2\n')
+        program.chmod(0o755)
+        write(root / "build/sdl3/libSDL3.so.0.4.12", "fixture library")
+        (root / "build/sdl3/libSDL3.so.0").symlink_to("libSDL3.so.0.4.12")
+        with patch.object(build_package, "configure_and_build", return_value=program), \
+                patch.object(build_package, "needed_sdl", return_value="libSDL3.so.0"), \
+                patch.object(build_package, "resolved_beside", return_value=True), \
+                patch.object(build_package, "check_paths"), \
+                patch.object(build_package, "platform_name", return_value="x86_64"):
+            return build_package.package(root, root / "build", root / "sdl", root / "dist", "1-test",
+                                         installer=installer)
+
+    def test_the_tarball_has_chi_and_sdl_side_by_side(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            archive = self.build(root)
+            self.assertEqual(archive.name, "CHI-Rebuild-1-test-linux-x86_64.tar.gz")
+            names = tarfile.open(archive).getnames()
+            top = "CHI-Rebuild-1-test-linux-x86_64/"
+            for name in ["chi", "libSDL3.so.0", "data/text/interface.json", "README.txt", "licenses/SDL-LICENSE.txt"]:
+                self.assertIn(top + name, names)
+            self.assertNotIn(top + "chr", names)
+            unpacked = root / "dist/smoke/CHI-Rebuild-1-test-linux-x86_64/libSDL3.so.0"
+            self.assertFalse(unpacked.is_symlink())
+            self.assertEqual(unpacked.read_text(), "fixture library")
+            self.assertTrue((root / "dist/CHI-Rebuild-1-test-linux-x86_64.tar.gz.sha256").is_file())
+
+    def test_the_appimage_stops_without_an_icon(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaisesRegex(RuntimeError, "needs an icon"):
+                self.build(Path(d), installer=True)
 
 
 class Archives(unittest.TestCase):
