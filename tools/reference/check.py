@@ -1052,6 +1052,22 @@ CHAIN_WEAPONS_POKED_CASES = [dict(case, compare=False) for case in
     {"name": "chain_weapons_round", "keys": "enter", "match": SCREEN, "fight": True},
 ]
 
+# Crushing (the step check's squash, docs/combat.md 3.4), from chain_salvage_poked's hand-back
+# with Jason's Chameleon the current unit; nothing poked after chain_salvage_poked's own. Run
+# (seven points) up toward the enemy soldier beside the Wasp, Begin Fight; the soldier comes on
+# to two rows above. Run two up, onto his row: Begin Fight, and the Chameleon's step crushes him
+# (sound 0x12, mark 0x7e, the record emptied). Then a round against the Wasp.
+CHAIN_CRUSH_POKED_CASES = [dict(case, compare=False) for case in
+                           CHAIN_ORDERS_POKED_CASES[:[c["name"] for c in CHAIN_ORDERS_POKED_CASES].index(
+                               "chain_salvage_player") + 1]] + [
+    {"name": "chain_crush_run", "keys": "up*8 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crush_path", "keys": "pgup*4 up*3 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crush_round_1", "keys": "down*8 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crush_run_2", "keys": "up*8 enter up*2 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crush_crushed", "keys": "down*8 enter", "match": SCREEN, "fight": True},
+    {"name": "chain_crush_round_3", "keys": "enter", "match": SCREEN, "fight": True},
+]
+
 # Poked, for the critical hits (1e31:11ab, docs/combat.md 3.12), from chain_salvage_poked's fight
 # at the hand-back. Our own test values: both 'Mechs' armour and structure high (so the fight
 # lasts), head armour 0 (every head hit reaches the structure and draws criticals), Jason's
@@ -2565,7 +2581,7 @@ CAMPAIGN = {"chain_save", "save_startup", "chain", "chain_death", "chain_mech_po
             "chain_cache_open", "chain_finale", "chain_entrance", "chain_arena", "chain_frob", "chain_mayor",
             "chain_theater", "chain_inspect", "chain_flee", "chain_lube_poked", "chain_ward_poked",
             "chain_traitor_poked", "chain_garage", "chain_weapon2_poked", "chain_weapons_poked",
-            "chain_crit_poked", "chain_engine_poked"}
+            "chain_crit_poked", "chain_engine_poked", "chain_crush_poked"}
 
 # Sequences with a known mismatch, written up as an open item in
 # docs/reference.md: in neither tier (not --full, not --campaign), run by
@@ -2606,6 +2622,7 @@ SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], [
              ("chain_weapons_poked", [], CHAIN_WEAPONS_POKED_CASES, []),
              ("chain_crit_poked", [], CHAIN_CRIT_POKED_CASES, []),
              ("chain_engine_poked", [], CHAIN_ENGINE_POKED_CASES, []),
+             ("chain_crush_poked", [], CHAIN_CRUSH_POKED_CASES, []),
              ("chain_town", [], CHAIN_TOWN_CASES, []),
              ("chain_party", [], CHAIN_PARTY_CASES, []),
              ("chain_jail_no", [], CHAIN_JAIL_NO_CASES, []),

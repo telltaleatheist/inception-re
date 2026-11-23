@@ -185,7 +185,7 @@ DOS or run-time library: stood in for by the platform layer or the C++ library).
 | 1e31:11ab | 0x1f4bb | `FUN_1e31_11ab` | 1103 | Critical hits in a location | rebuilt |
 | 1e31:15fa | 0x1f90a | `FUN_1e31_15fa` | 68 |  | - |
 | 1e31:163e | 0x1f94e | `FUN_1e31_163e` | 109 |  | - |
-| 1e31:16ab | 0x1f9bb | `FUN_1e31_16ab` | 1177 | Is a place taken? Party characters, townspeople, 'Mechs (3 half-cells); 'Mechs also crush (not rebuilt) | rebuilt |
+| 1e31:16ab | 0x1f9bb | `FUN_1e31_16ab` | 1177 | Is a place taken? Party characters, townspeople, 'Mechs (3 half-cells); 'Mechs also crush (combat.md 3.4) | rebuilt |
 | 1e31:1b44 | 0x1fe54 | `FUN_1e31_1b44` | 75 |  | - |
 | 1e31:1b8f | 0x1fe9f | `FUN_1e31_1b8f` | 111 | Prints a hit location's name and "." as one string (docs/combat.md 3.8) | rebuilt |
 | 1e31:1bfe | 0x1ff0e | `FUN_1e31_1bfe` | 429 |  | - |

@@ -1069,6 +1069,16 @@ For each active figure, the next step of its path (F:0078 counts the steps taken
 
 There are no draws in movement.
 
+**Crushing.** The moving step's place test (`1e31:16ab`) is the only one that crushes; the
+planner's path test (3.3) does not. For a 'Mech stepping, after the tests that refuse the place
+(another active 'Mech on the row within 2 half-cells, one of its own side's people within 1 of
+its middle), every active person of the other side on the same row within 1 half-cell of the
+'Mech's middle is crushed: their name (a party member) or the enemy-person word, then
+`shot.squashed`, sound 0x12, a pause (two for a character record below 8), map mark 0x7e, frame
+0x7e, sprite base 0, the figure inactive, the character's hit points 0 and its record emptied.
+Crushing character 0 or 1 ends the fight, as their deaths do (open question 6). The 'Mech then
+takes the step. `chain_crush_poked` (docs/reference.md) checks it against the original.
+
 ### 3.5 Choosing a shot
 
 For figure s and weapon slot w (0-11), in this order:
@@ -1246,6 +1256,10 @@ Target figure 0-3 or 12-15 ('Mech m = t or t - 8).
 
 There are no ammunition explosions: a critical on an ammunition slot destroys the item like any
 other, and nothing else reads the ammunition bytes (0x27-0x30) when a slot is hit.
+
+Open: the life-support critical (byte 0x78 = ff) is now reached against the original
+(`chain_crit_poked`, docs/reference.md), but what reads byte 0x78 afterwards, and to what
+effect, is not yet checked.
 
 ### 3.13 Fires and map marks
 
