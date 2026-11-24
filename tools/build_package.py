@@ -143,14 +143,19 @@ def check_marker_slices(binary, label, archs):
             check_marker(thin, label)
 
 
+# Our own data files: the interface texts and the font for a copy that has none.
+OUR_DATA = ["data/text/interface.json", "data/font/font.txt"]
+
+
 def stage_common(root, build, sdl, resources):
     """Our data, the licence, the read-me and the notices into `resources` (beside the program,
     or a Mac app's Contents/Resources, where SDL_GetBasePath points)."""
-    interface = root / "data/text/interface.json"
-    if not interface.is_file():
-        raise RuntimeError(f"Missing our data: {interface}")
-    (resources / "data/text").mkdir(parents=True, exist_ok=True)
-    shutil.copy2(interface, resources / "data/text/interface.json")
+    for name in OUR_DATA:
+        ours = root / name
+        if not ours.is_file():
+            raise RuntimeError(f"Missing our data: {ours}")
+        (resources / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ours, resources / name)
     shutil.copy2(root / "LICENSE", resources / "LICENSE")
     notices = resources / "licenses"
     notices.mkdir(exist_ok=True)

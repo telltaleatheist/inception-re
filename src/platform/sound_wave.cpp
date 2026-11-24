@@ -26,4 +26,10 @@ SoundClip square_wave(std::span<const game::SoundSegment> segments, int rate, in
     return clip;
 }
 
+std::optional<SoundClip> SpeakerSounds::effect(int n) {
+    const auto segments = game::sound_segments(game::effect_steps(lists_, n), game::default_sound_machine());
+    if (segments.empty()) return std::nullopt;
+    return square_wave(segments, kSpeakerRate, kSpeakerAmplitude);
+}
+
 }  // namespace chr::platform

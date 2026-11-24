@@ -1347,14 +1347,14 @@ void Town::show_page() {
 }
 
 void Town::hold_screen(int frames) {
-    events_.push_back({Shown{view(), figures(), screen_sprites_, screen_lines_, text_, boxes(), picture_}, frames, -1, {}});
+    events_.push_back({Shown{view(), figures(), screen_sprites_, screen_lines_, text_, boxes(), picture_}, frames, -1, 0});
 }
 
 void Town::play_sound(int n) {
-    ShownEvent e{std::nullopt, 0, n, {}};
-    if (sound_.on) {
-        play_entries(sound_, tables_.sound_lists, n);  // 27c5:0002
-        e.segments = sound_segments(effect_steps(tables_.sound_lists, n), *sound_machine_);
+    ShownEvent e{std::nullopt, 0, n, 0};
+    if (const EffectRule* effect = sound_.on ? effect_rule(n) : nullptr) {
+        sound_.play(*effect);  // 27c5:0002
+        e.wait_ms = effect->wait_ms();
     }
     events_.push_back(std::move(e));
 }
@@ -1718,8 +1718,8 @@ bool Town::enemy_people_run(KeySource& keys, bool& over) {
                 tx = figs_.x[std::size_t(target)];
                 ty = figs_.y[std::size_t(target)];
             } else if (target == 0xff && !fixes_.fix_flee_target) {
-                tx = sound_.minus_one_x();
-                ty = sound_.minus_one_y();
+                tx = sound_.minus_one_x;
+                ty = sound_.minus_one_y;
             } else {
                 if (target != 0xff) {
                     char byte[8];

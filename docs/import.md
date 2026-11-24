@@ -13,8 +13,8 @@ After that the game reads only those files; BTECH.EXE is needed only to import.
 - On demand with `chr --import`, which imports again and quits.
 
 If an import is needed and the copy's program is missing or not one the rebuild reads, `chr`
-stops with a message that says so and how to run the importer. An Amiga copy stops there for now:
-it has no font (docs/formats/amiga.md), and the rebuild has none of its own yet.
+stops with a message that says so and how to run the importer. A copy that has no font (an Amiga
+one, docs/formats/amiga.md) is shown with our own (docs/formats/font.md).
 
 The data folder is `--data-dir DIR`, else the `CHR_DATA_DIR` environment variable, else the
 player's folder (on macOS `~/Library/Application Support/BattleTech/Inception Rebuild`). A
@@ -25,7 +25,7 @@ folder under an earlier name is moved to it once (docs/setup.md, "The player's f
     import.json          {"import_version": 33, "source": "BTECH.EXE DOS 1.03", "exe_sha256": ...,
                           "table_sha256": ...}
     text/english.json    {"texts": [{"id": ..., "address": "ssss:oooo", "text": ...}, ...]}
-    font/font.txt        the font (docs/formats/font.md)
+    font/font.txt        the font (docs/formats/font.md), when the copy has one
     rules/mechs.json     the 'Mech templates   } the rule tables built into the program,
     rules/weapons.json   the weapon table      } with named fields
     rules/combat.json    the combat tables     } (docs/formats/mech.md)
@@ -33,13 +33,17 @@ folder under an earlier name is moved to it once (docs/setup.md, "The player's f
     rules/shops.json     the shops' prices: armour, armour points, weapons (docs/scripts.md)
     tables.json          the program's small tables: layouts, offsets, masks, scripts
                          (docs/formats/tables.md)
+    sound/N.wav          sound effect N's recording, 8 bits, when the copy has them (docs/sound.md)
 
 The places' texts come from the player's .BLD files (docs/formats/bld.md): every text a script
 can print, as `bld.<file>.<offset>` with the address `FILE.BLD+offset`. All 26 .BLD files must
 be there. The names of the 'Mech templates and the weapons are texts too (`mech.<id>`,
 `weapon.<n>`), read from inside the rule tables.
 
-`import.json` is written last, so an interrupted import counts as missing.
+`import.json` is written last, so an interrupted import counts as missing. For a copy with no font
+it also holds `"font": "none"`; without that, a missing font file makes the import missing. The
+speaker's tables (`sound_lists`, `music_note_hz`) are left out of `tables.json` for a copy that has
+none. Importing another copy removes the last one's font and recordings if the new one has none.
 
 chr imports again when `import.json` has another `import_version` (the files changed shape) or
 another `table_sha256`: a hash of the import table itself, every piece's kind, ID, address, size

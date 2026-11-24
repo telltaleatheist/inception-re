@@ -23,6 +23,11 @@ namespace chr::formats {
 // number pad's digits where DOS has its own codes, and is otherwise DOS's byte for byte.
 std::vector<std::uint8_t> amiga_demo_keys(std::span<const std::uint8_t> demofile);
 
+// Sound n (1-19) of the sound file `snd`, whose offsets and periods are the program's
+// (docs/formats/amiga.md, "The sound file"). Throws FormatError for one that isn't in the file.
+SoundSample amiga_sound(std::span<const std::uint8_t> snd, std::span<const std::uint8_t> offsets,
+                        std::span<const std::uint8_t> periods, int n);
+
 class AmigaGameSource final : public GameSource {
 public:
     // The copy's files by name (any case), e.g. from its disk's Battletech folder, and where
@@ -40,7 +45,8 @@ public:
     std::optional<TileSheet> tile_sheet(const std::string& name) const override;
     std::optional<Palette16> picture_palette(const std::string& name) const override;
     std::optional<std::vector<std::uint8_t>> demo() const override;
-    // The Amiga has no speaker tune; its music is among its sound samples.
+    std::optional<SoundSample> effect_sound(int n) const override;
+    // The Amiga has no title tune (docs/formats/amiga.md, "The sound file").
     std::optional<std::vector<std::uint8_t>> title_tune() const override { return std::nullopt; }
     std::unique_ptr<const ProgramData> program() const override;
 

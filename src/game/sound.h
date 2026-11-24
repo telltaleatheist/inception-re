@@ -1,38 +1,53 @@
-// The sound effects (docs/sound.md). The logic names an effect by number
-// and works out what it sounds like in plain terms: square-wave tones in Hz
-// and silences, each with a length in ms on a chosen machine. The platform
-// plays them. It also keeps the words the original's player stores in the
-// far data, because the game reads one back.
+// The sound effects (docs/sound.md). The logic names an effect by number and
+// says how long the game waits for it and what the original's player leaves
+// in the one word the game reads back: the same for every version's copy.
+// What an effect sounds like is the platform's: DOS's lists, worked out below
+// as square-wave tones and silences, or the copy's own samples.
 #pragma once
 
-#include <array>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <vector>
 
 namespace chr::game {
 
-struct SoundState {
-    bool on = true;  // DG:015c
+inline constexpr int kEffectCount = 18;
 
-    // The last kind-2 entry's five words: F:0000, F:39f4, F:4000, F:4034,
-    // F:0062 (0 in the program image).
-    std::array<std::uint16_t, 5> sweep{};
-
-    // Figure -1's position (F:4002, F:4034): x is never written.
-    std::uint16_t minus_one_x() const { return 0; }
-    std::uint16_t minus_one_y() const { return sweep[3]; }
+// What playing an effect does to the game.
+struct EffectRule {
+    // The game waits while it plays: cycles of the 8 MHz AT (docs/sound.md, "Lengths").
+    int cycles = 0;
+    // What it leaves in F:4034, or none.
+    std::optional<std::uint16_t> minus_one_y = {};
+    double wait_ms() const { return cycles / 8000.0; }
 };
 
 // BTECH.EXE 27c5:0002 (Ghidra FUN_27c5_0002)
-// Effect n's entries from the lists (DG:5008), with what they store: here
-// only the kind-2 words.
-void play_entries(SoundState& state, std::span<const int> lists, int n);
+// Effect n's rule, from DOS 1.03's lists (DG:5008); null when there is no
+// effect n.
+const EffectRule* effect_rule(int n);
+
+struct SoundState {
+    bool on = true;  // DG:015c
+
+    // Figure -1's position (F:4002, F:4034; 0 in the program image): x is
+    // never written, y by the effects.
+    std::uint16_t minus_one_x = 0;
+    std::uint16_t minus_one_y = 0;
+
+    void play(const EffectRule& effect) { minus_one_y = effect.minus_one_y.value_or(minus_one_y); }
+};
+
+// BTECH.EXE 27c5:0345 (Ghidra FUN_27c5_0345)
+// What effect n of the lists leaves in F:4034: its last kind-2 entry's
+// fourth word, if it has such an entry.
+std::optional<std::uint16_t> effect_minus_one_y(std::span<const int> lists, int n);
 
 // One step of an effect in the original's own terms (docs/sound.md, "What
 // an effect plays"). The schedule below is worked out from these, and the
-// rig compares them with the original's speaker; nothing else uses them.
+// rig compares them with the original's speaker.
 struct SoundStep {
     enum class Kind { tone, rest, burst };
     Kind kind = Kind::rest;

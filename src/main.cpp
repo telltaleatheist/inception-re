@@ -46,6 +46,7 @@
 #include <SDL3/SDL_main.h>  // WinMain for the GUI program a package links (CHR_WINDOWS_GUI)
 #endif
 
+#include "formats/font_file.h"
 #include "formats/game_files.h"
 #include "formats/game_source.h"
 #include "formats/import.h"
@@ -491,6 +492,8 @@ int main(int argc, char** argv) {
         chr::platform::OriginalAssets assets(source, options.data_dir, original_palette,
                                              {{"ENDMECH.CMP", tables.endmech_palette}});
         const auto palette = chr::platform::screen_colours(assets, original_palette);
+        if (const char* base = SDL_GetBasePath())
+            assets.set_own_font(std::filesystem::path(base) / chr::formats::kOwnFontFile);
         chr::platform::Renderer renderer(sdl_renderer, assets);
         const auto& title = chr::assets::kTitleScreen;
 
@@ -612,7 +615,7 @@ int main(int argc, char** argv) {
                     else std::printf("music-step tone %d\n", m.divisor);
                 }
                 for (const auto& e : town->events()) {
-                    if (e.screen || e.segments.empty()) continue;
+                    if (e.screen || e.wait_ms <= 0) continue;
                     std::printf("sound %d\n", e.sound);
                     for (const auto& s : town->sound_steps(e.sound)) {
                         using Kind = chr::game::SoundStep::Kind;
@@ -642,10 +645,15 @@ int main(int argc, char** argv) {
         // Sound only for a player at the keyboard: a run with a script or a
         // screenshot (the rig, the tests) never opens an audio device.
         std::unique_ptr<chr::platform::WavSounds> sound_mods;
+        std::unique_ptr<chr::platform::WavSounds> copy_sounds;
+        chr::platform::SpeakerSounds speaker(tables.sound_lists);
         std::unique_ptr<chr::platform::SoundPlayer> sound_player;
         if (options.script.empty() && options.screenshot.empty()) {
             if (!options.sound_mod.empty()) sound_mods = std::make_unique<chr::platform::WavSounds>(options.sound_mod);
-            sound_player = std::make_unique<chr::platform::SoundPlayer>(sound_mods.get());
+            const auto imported_sounds = chr::formats::imported_sounds_dir(options.data_dir);
+            if (std::error_code ec; std::filesystem::exists(imported_sounds, ec))
+                copy_sounds = std::make_unique<chr::platform::WavSounds>(imported_sounds);
+            sound_player = std::make_unique<chr::platform::SoundPlayer>(sound_mods.get(), copy_sounds.get(), speaker);
         }
         audio_opened = audio_opened || SDL_WasInit(SDL_INIT_AUDIO) != 0;
         std::size_t sounded = played;  // the events before it have had their sound started
@@ -706,10 +714,10 @@ int main(int argc, char** argv) {
                     // it `step_hold` frames.
                     const auto& e = events[played];
                     if (played >= sounded) {
-                        if (sound_player && !e.screen && !e.segments.empty()) sound_player->play(e.sound, e.segments);
+                        if (sound_player && !e.screen && e.wait_ms > 0) sound_player->play(e.sound);
                         sounded = played + 1;
                     }
-                    const int cost = !e.screen ? int(std::ceil(e.sound_ms() * chr::game::kVgaRefreshHz / 1000.0))
+                    const int cost = !e.screen ? int(std::ceil(e.wait_ms * chr::game::kVgaRefreshHz / 1000.0))
                                      : e.frames > 0 ? e.frames
                                                     : options.step_hold;
                     if (held < cost) break;

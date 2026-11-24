@@ -372,6 +372,27 @@ TEST(amiga_tables_are_in_the_dos_import_table) {
     CHECK(sane);
 }
 
+TEST(amiga_sounds_play_at_their_period) {
+    // Two sounds back to back: a rate word the player doesn't use, a long length, the samples.
+    const Bytes snd{0x10, 0x00, 0, 0, 0, 2, 0x80, 0x7f, 0x20, 0x00, 0, 0, 0, 1, 0xff};
+    const Bytes offsets{0, 0, 0, 0, 0, 0, 0, 8};
+    const Bytes periods{0x01, 0x00, 0x02, 0x00};
+    const auto first = amiga_sound(snd, offsets, periods, 1);
+    CHECK(first.rate == 13983 && first.samples == std::vector<std::int8_t>({-128, 127}));
+    const auto second = amiga_sound(snd, offsets, periods, 2);
+    CHECK(second.rate == 6991 && second.samples == std::vector<std::int8_t>({-1}));
+    const auto refused = [&](const Bytes& file, int n) {
+        try {
+            amiga_sound(file, offsets, periods, n);
+        } catch (const FormatError&) {
+            return true;
+        }
+        return false;
+    };
+    CHECK(refused(snd, 0) && refused(snd, 3));
+    CHECK(refused(Bytes(snd.begin(), snd.end() - 1), 2) && refused(Bytes(snd.begin(), snd.begin() + 8), 2) && refused({}, 1));
+}
+
 TEST(amiga_colours_come_out_in_dos_numbers) {
     // Every Amiga number has one DOS number, and the other way round.
     std::array<int, 16> seen{};

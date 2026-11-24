@@ -1,6 +1,7 @@
 #include "game/sound.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -67,14 +68,38 @@ SoundStep burst(int a, int b, int flips, int seed) {
 
 }  // namespace
 
-void play_entries(SoundState& state, std::span<const int> lists, int n) {
+const EffectRule* effect_rule(int n) {
+    static const std::array<EffectRule, kEffectCount> kRules = {{
+        {1710000, 1},
+        {2394000, 1},
+        {1641600, 3},
+        {456108},
+        {288720},
+        {136800},
+        {7990752},
+        {8243736},
+        {2860160},
+        {1026000, 100},
+        {1026000, 10},
+        {5369934},
+        {152600},
+        {3252156},
+        {1026000},
+        {1539000},
+        {3711840},
+        {303475},
+    }};
+    return n >= 1 && n <= kEffectCount ? &kRules[std::size_t(n - 1)] : nullptr;
+}
+
+std::optional<std::uint16_t> effect_minus_one_y(std::span<const int> lists, int n) {
     const Lists l{lists};
+    std::optional<std::uint16_t> y;
     const long first = l.first(n);
-    if (first < 0) return;
-    for (std::size_t i = std::size_t(first); !l.ends(i); i += entry_size(l.word(i))) {
-        if (l.word(i) == kKind + 2)
-            for (std::size_t k = 0; k < state.sweep.size(); ++k) state.sweep[k] = std::uint16_t(l.word(i + 2 + k));
-    }
+    if (first < 0) return y;
+    for (std::size_t i = std::size_t(first); !l.ends(i); i += entry_size(l.word(i)))
+        if (l.word(i) == kKind + 2) y = std::uint16_t(l.word(i + 5));
+    return y;
 }
 
 std::vector<SoundStep> effect_steps(std::span<const int> lists, int n) {

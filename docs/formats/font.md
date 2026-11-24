@@ -30,6 +30,16 @@ missing glyph is blank. The asset provider answers `{"FONT", c}` from this file 
 in white on transparent, and the renderer colours it. The text layer measures its cells from the
 font's glyphs rather than assuming 8x8.
 
+## Our own font
+
+A copy with no font in it (the Amiga's, docs/formats/amiga.md) is shown with `data/font/font.txt`,
+in the same form: 8x8 cells, so lines break and windows fit as with the original's. It was drawn
+for this project (MIT, as the rest of the repository) and packaged beside the program; the asset
+provider reads it when the data folder has no `font/font.txt`. It has the characters 32-126 and the
+pictures the game prints: 1-8, the arrows from N clockwise (the path arrows and the overhead map's
+pointer). No glyph's cell is the same as DOS's but the space; eleven plain shapes (such as the
+brackets, the plus, I and l) are the same when moved within the cell.
+
 ## Frame pieces: BTBORDER.CMP
 
 At start-up (`1527:0044`) the program unpacks BTBORDER.CMP and cuts 8 cells of 8x8 pixels from it

@@ -177,7 +177,7 @@ as DOS has it. A sound's
 length is a wait of the same kind, but DOS's are kept whichever the copy: `snd`'s sounds have other
 lengths and the Amiga waits other times (docs/formats/amiga.md, "The sound file"), so neither may
 set the game's wait. And DOS's effects leave a word behind that the game reads (docs/sound.md,
-bug 21), which is DOS's too.
+bug 21), which is DOS's too. Both are numbers in the game logic (`effect_rule`, src/game/sound.h).
 
 ## One source by ID
 
@@ -185,8 +185,8 @@ The game and the asset provider read the player's copy through one interface,
 `formats::GameSource` (src/formats/game_source.h). It hands out each piece by what it is, in DOS
 1.03's working form: `script(file)` (a place's script, deciphered), `map(n)` (MAPn.MTP's
 bytes), `place_picture(n)` (O<n>.ANM decoded), `picture(name)` and `tile_sheet(name)` (a .CMP
-or .ICN decoded, by its DOS name, which is also its asset ID), `demo()` (DEMOFILE) and
-`title_tune()` (WWOODBT.SIF). Nothing missing is an empty answer; a broken file throws, as the
+or .ICN decoded, by its DOS name, which is also its asset ID), `demo()` (DEMOFILE),
+`title_tune()` (WWOODBT.SIF) and `effect_sound(n)` (a recorded sound effect, for a copy that has them). Nothing missing is an empty answer; a broken file throws, as the
 readers do. `describe()` names the copy for messages.
 
 `DosGameSource` is the DOS copy: the only place a game file is looked up by name in a folder.
@@ -319,7 +319,7 @@ check makes up a C64 disk image and lists it there.
 | Place scripts and dialogue | 26 .BLD, enciphered | inside `builds.bld`, enciphered, text in letter pairs | 25 `B` files, encoded | 25 `B` files, encoded |
 | Maps | 15 .MTP | `maps`: the same 15, three tables big-endian | 26 pages of 32x32; names and entrances probably in `T` files | as the C64, encoded differently |
 | Interface text | BTECH.EXE | the 68000 program, 145/151 plain | code overlays, encoded | code overlays, encoded |
-| Font | BTECH.EXE | the program (to find) | the C64's own characters | the Apple's own |
+| Font | BTECH.EXE | not in the copy: ours | the C64's own characters | the Apple's own |
 | Tables ('Mechs, combat, prices) | BTECH.EXE | the program's data hunk | `MECHS` and the overlays | `MECHS` and the overlays |
 | Sound | speaker sequences in BTECH.EXE | `snd`: 8-bit samples | its own sound chip routines | the speaker, its own routines |
 | Demo | DEMOFILE | `demofile` (same size, another form) | `DEMO` | not seen |

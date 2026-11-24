@@ -348,7 +348,8 @@ escape: a font drawn differently from DOS's; glyphs wider, taller, interleaved o
 compressed one; one in a picture file; the Font field set through a pointer; and the parts of the
 disks outside the game's folder, of which only the folder names and `system-configuration` were
 looked at. How it draws the characters below 32 that
-DOS's font has as pictures (the arrows, the path marks) was not read.
+DOS's font has as pictures (the arrows, the path marks) was not read. The rebuild shows an Amiga
+copy with its own font (docs/formats/font.md, "Our own font").
 
 ## The sound file
 
@@ -369,6 +370,10 @@ or +45 for 0x10, 0x11 and 0x12, effect 4 by +900 whenever it isn't 0. What it ho
 by those values) was not traced. Then, unless 1:1c3e is set (the place pictures' code sets and clears it), the program
 waits 35 ticks after effect 3, 20 after 2, 6 and 7, none after 4, 14 and 17-19, until the sample is
 done after 8, and 15 ticks after the rest. DOS waits for the sound to end.
+
+**In the rebuild** sounds 1-18 are imported as recordings (`amiga_sound`), each at the NTSC clock
+over its period. The game's waits are DOS's (docs/sound.md). Not rebuilt: the two effects' varied
+periods, and sounds during the place pictures.
 
 **No title music.** The program has a sequence player for three channels (0:2465c, 0:246ae), with
 one caller (at 0:1c880), but its start flag (1:25b8) is 0 in the file, its pointers (1:88ba, 1:88d6) are

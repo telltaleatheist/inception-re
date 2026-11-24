@@ -20,7 +20,8 @@ steps.
   (`SDL_SetDefaultTextureScaleMode`). libarchive 3.7.9, zlib 1.3.1
   and liblzma (xz 5.8.1) are linked in statically, built from their release
   sources, each pinned by its sha256.
-- `data/text/interface.json` (our interface texts, docs/text.md), beside the
+- `data/text/interface.json` (our interface texts, docs/text.md) and
+  `data/font/font.txt` (our own font, docs/formats/font.md), beside the
   program or in the Mac app's `Contents/Resources`.
 - `LICENSE`, a `README.txt`, and `licenses/`: SDL's, re-setup-kit's,
   stb's, miniz's, libarchive's, zlib's and xz's.

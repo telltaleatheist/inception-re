@@ -20,6 +20,15 @@
 
 namespace chr::formats {
 
+// How many sound effects there are, numbered from 1.
+inline constexpr int kEffectSounds = 18;
+
+// A recorded sound: signed 8-bit samples, one channel.
+struct SoundSample {
+    int rate = 0;  // samples a second
+    std::vector<std::int8_t> samples;
+};
+
 class GameSource {
 public:
     virtual ~GameSource() = default;
@@ -47,6 +56,11 @@ public:
     }
     // The demo's keys, DOS's DEMOFILE.
     virtual std::optional<std::vector<std::uint8_t>> demo() const = 0;
+    // The copy's own recording of sound effect n (1-18), for a copy whose effects are recorded.
+    virtual std::optional<SoundSample> effect_sound(int n) const {
+        (void)n;
+        return std::nullopt;
+    }
     // The title tune, DOS's WWOODBT.SIF.
     virtual std::optional<std::vector<std::uint8_t>> title_tune() const = 0;
     // The program's texts and tables (formats/program_data.h), for the importer only. Throws

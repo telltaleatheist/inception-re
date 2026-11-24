@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -10,6 +11,7 @@
 #include "formats/exe_data.h"
 #include "formats/exepack.h"
 #include "formats/game_files.h"
+#include "formats/game_source.h"
 #include "formats/sha256.h"
 #include "game/text.h"
 #include "game/text_provider.h"
@@ -193,6 +195,95 @@ TEST(import_writes_text_and_font) {
         std::ofstream(data / "import.json") << manifest;
     }
     CHECK(formats::import_state(data) == formats::ImportState::Outdated);
+}
+
+namespace {
+
+// The DOS copy as one with no font or speaker tables, but with recorded effects.
+class RecordedProgram final : public formats::ProgramData {
+public:
+    explicit RecordedProgram(std::unique_ptr<const formats::ProgramData> dos) : dos_(std::move(dos)) {}
+    std::span<const std::uint8_t> get(std::string_view name) const override {
+        if (!has(name)) throw formats::FormatError("not in this copy");
+        return dos_->get(name);
+    }
+    bool has(std::string_view name) const override {
+        return name != "font" && name != "tables.sound_lists" && name != "tables.music_note_hz" && dos_->has(name);
+    }
+    std::string text(std::string_view name) const override { return dos_->text(name); }
+    std::vector<formats::Rgb> colours(std::string_view name) const override { return dos_->colours(name); }
+    std::string address(std::string_view name) const override { return dos_->address(name); }
+    std::string source() const override { return "a recorded copy"; }
+    std::string sha256() const override { return dos_->sha256(); }
+
+private:
+    std::unique_ptr<const formats::ProgramData> dos_;
+};
+
+class RecordedSource final : public formats::GameSource {
+public:
+    explicit RecordedSource(std::filesystem::path dir) : dos_(std::move(dir)) {}
+    std::string describe() const override { return dos_.describe(); }
+    std::string program_name() const override { return "a recorded copy"; }
+    std::optional<std::vector<std::uint8_t>> script(int file) const override { return dos_.script(file); }
+    std::optional<std::vector<std::uint8_t>> map(int number) const override { return dos_.map(number); }
+    std::optional<formats::AnmPicture> place_picture(int number) const override { return dos_.place_picture(number); }
+    std::optional<formats::CmpPicture> picture(const std::string& name) const override { return dos_.picture(name); }
+    std::optional<formats::TileSheet> tile_sheet(const std::string& name) const override { return dos_.tile_sheet(name); }
+    std::optional<std::vector<std::uint8_t>> demo() const override { return dos_.demo(); }
+    std::optional<std::vector<std::uint8_t>> title_tune() const override { return std::nullopt; }
+    std::optional<formats::SoundSample> effect_sound(int n) const override {
+        if (n != 2) return std::nullopt;
+        return formats::SoundSample{8000, {-128, 0, 127}};
+    }
+    std::unique_ptr<const formats::ProgramData> program() const override {
+        return std::make_unique<const RecordedProgram>(dos_.program());
+    }
+
+private:
+    formats::DosGameSource dos_;
+};
+
+}  // namespace
+
+// A copy with no font and no speaker tables imports without them, its recorded effects as WAV
+// files; a DOS import over it brings the font and tables and takes the recordings away.
+TEST(import_of_a_copy_with_recorded_sounds) {
+    const auto dir = chrtest::game_dir();
+    if (dir.empty()) return chrtest::skip("no game folder (set CHR_GAME_DIR)");
+    const auto data = scratch("import-recorded");
+    const RecordedSource recorded(dir);
+    CHECK(formats::ensure_imported(recorded, data));
+    CHECK(formats::import_state(data, "a recorded copy") == formats::ImportState::Current);
+    CHECK(!std::filesystem::exists(formats::imported_font_path(data)));
+    const auto tables = formats::read_tables(data);
+    CHECK(tables.sound_lists.front() == 0 && tables.music_note_hz.front() == 0 && tables.walking_keys.front() != 0);
+    const auto sounds = formats::imported_sounds_dir(data);
+    CHECK(!std::filesystem::exists(sounds / "1.wav"));
+    // 44 bytes of header, three samples stored unsigned, one byte of padding.
+    const auto wav = formats::read_file(sounds / "2.wav");
+    CHECK(wav.size() == 48 && wav[24] == (8000 & 0xff) && wav[25] == (8000 >> 8) && wav[40] == 3);
+    CHECK(wav.size() == 48 && wav[44] == 0 && wav[45] == 128 && wav[46] == 255);
+
+    CHECK(formats::ensure_imported(dir, data));
+    CHECK(formats::import_state(data, formats::dos_program_name()) == formats::ImportState::Current);
+    CHECK(std::filesystem::exists(formats::imported_font_path(data)) && !std::filesystem::exists(sounds));
+    CHECK(formats::read_tables(data).sound_lists.front() != 0);
+    // A DOS import whose font has gone is missing.
+    std::filesystem::remove(formats::imported_font_path(data));
+    CHECK(formats::import_state(data, formats::dos_program_name()) == formats::ImportState::Missing);
+}
+
+// Our own font has every character the game prints, in the original's 8x8 cells: 32-126, and
+// the arrows 1-8.
+TEST(own_font_has_every_printed_character) {
+    const auto bytes = formats::read_file(CHR_OWN_FONT);
+    const auto font = formats::parse_font_file(std::string(bytes.begin(), bytes.end()));
+    CHECK(font.width == 8 && font.height == 8);
+    for (std::size_t c = 0; c < font.glyphs.size(); ++c) {
+        const bool lit = std::find(font.glyphs[c].begin(), font.glyphs[c].end(), 1) != font.glyphs[c].end();
+        CHECK(lit == ((c > 32 && c < 127) || (c >= 1 && c <= 8)));
+    }
 }
 
 TEST(import_table_hash_follows_the_table) {

@@ -19,6 +19,9 @@
 
 namespace chr::formats {
 
+// Our own font, next to the program: shown for a copy that has none.
+inline constexpr const char* kOwnFontFile = "data/font/font.txt";
+
 struct Font {
     int width = 0, height = 0;
     // For each character 0..127, width*height values, 1 where the pixel is set.

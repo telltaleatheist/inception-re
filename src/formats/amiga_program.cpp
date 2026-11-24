@@ -33,7 +33,7 @@ struct Reader {
 };
 
 // The program's spans. Hunk 0 is the code, hunk 1 the data.
-constexpr std::array<AmigaSpan, 7> kSpans{{
+constexpr std::array<AmigaSpan, 9> kSpans{{
     // 0:5fba reads place n's script from builds.bld at the n-th of these 26 offsets (big-endian).
     {"bld.offsets", 1, 0x07d6, 26 * 4},
     // 0:a81e, the text printer: a text byte with its top bit set stands for two letters, the
@@ -44,6 +44,9 @@ constexpr std::array<AmigaSpan, 7> kSpans{{
     {"maps.offsets", 1, 0x1b8e, 15 * 4},
     // 0:23f7a, the place picture loader: where each of the 22 starts in `animation.anm`.
     {"anm.offsets", 1, 0x1c40, 22 * 4},
+    // 0:265ea plays sound n from snd at the n-th of these offsets, with the n-th period.
+    {"snd.offsets", 1, 0x2540, 19 * 4},
+    {"snd.periods", 1, 0x2590, 19 * 2},
     // The text windows and the menus, DOS's 385b:0000 and 385b:0092 in the same layout with
     // big-endian words (the last two windows overlap the first menus, as in DOS).
     {"windows", 1, 0x1530, 11 * 16},

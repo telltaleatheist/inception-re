@@ -119,7 +119,7 @@ bool Town::run_demo() {
 // speaker (on Tandy graphics, DG:4fba = 1, its three voices instead: not
 // rebuilt, docs/sound.md) until a key or its end.
 std::vector<MusicStep> Town::title_tune() const {
-    if (!source_) return {};
+    if (!source_ || tables_.music_note_hz.front() == 0) return {};
     const auto tune = source_->title_tune();
     if (!tune) return {};
     return tune_steps(*tune, tables_.music_note_hz);
@@ -127,8 +127,8 @@ std::vector<MusicStep> Town::title_tune() const {
 
 // BTECH.EXE 1000:4874 (in Ghidra FUN_1000_476d): the wait ends with the tune.
 double Town::title_wait_ms() const {
-    const auto tune = source_ ? source_->title_tune() : std::nullopt;
-    return game::title_wait_ms(tune ? tune_steps(*tune, tables_.music_note_hz).size() : std::size_t(kDosTuneSteps));
+    const auto tune = title_tune();
+    return game::title_wait_ms(tune.empty() ? std::size_t(kDosTuneSteps) : tune.size());
 }
 
 std::optional<AssetId> Town::full_screen() const {

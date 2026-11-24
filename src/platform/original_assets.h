@@ -31,6 +31,8 @@ public:
     // colour n from `palette`.
     std::optional<Image> image(const AssetId& id) override;
 
+    // The font file shown when the import has none (formats/font_file.h kOwnFontFile).
+    void set_own_font(std::filesystem::path path) { own_font_ = std::move(path); }
 
     // Why the last image() call returned nothing (empty after a success).
     const std::string& last_error() const { return last_error_; }
@@ -50,6 +52,7 @@ private:
 
     formats::Palette16 palette_;
     std::map<std::string, formats::Palette16> picture_palettes_;
+    std::filesystem::path own_font_;
     std::unique_ptr<formats::Font> font_;
     std::string font_error_;
     std::string last_error_;

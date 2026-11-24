@@ -28,6 +28,7 @@ struct Flat {
     std::uint16_t segment, offset;
     Element element;
     std::function<std::span<int>(Tables&)> values;
+    bool optional = false;  // a copy may have none: left out of the file, all 0 in Tables
 };
 
 template <std::size_t N>
@@ -134,8 +135,8 @@ const std::vector<Flat>& flat_tables() {
         {"overhead_cell_bytes", 0x46db, 0x0a70, Element::U16, [](Tables& t) { return all(t.overhead_cell_bytes); }},
         {"overhead_pointer_column", 0x46db, 0x0a8a, Element::S8, [](Tables& t) { return all(t.overhead_pointer_column); }},
         {"overhead_pointer_row", 0x46db, 0x0a92, Element::S8, [](Tables& t) { return all(t.overhead_pointer_row); }},
-        {"sound_lists", 0x46db, 0x5008, Element::U16, [](Tables& t) { return all(t.sound_lists); }},
-        {"music_note_hz", 0x284b, 0x0121, Element::U16, [](Tables& t) { return all(t.music_note_hz); }},
+        {"sound_lists", 0x46db, 0x5008, Element::U16, [](Tables& t) { return all(t.sound_lists); }, true},
+        {"music_note_hz", 0x284b, 0x0121, Element::U16, [](Tables& t) { return all(t.music_note_hz); }, true},
     };
     return kFlat;
 }
@@ -244,6 +245,7 @@ fs::path tables_path(const fs::path& data_dir) { return data_dir / "tables.json"
 Tables tables_from_original(const ProgramData& exe) {
     Tables t;
     for (const auto& f : flat_tables()) {
+        if (f.optional && !exe.has(span_name(f.name))) continue;
         const auto bytes = exe.get(span_name(f.name));
         auto out = f.values(t);
         if (bytes.size() != out.size() * std::size_t(element_size(f.element)))
@@ -289,8 +291,10 @@ std::string write_tables_file(const Tables& tables, int import_version, std::str
                     ",\n  \"what\": \"the program's small tables (docs/formats/tables.md)\",\n  \"tables\": {\n";
     bool first = true;
     for (const auto& f : flat_tables()) {
+        const auto values = f.values(t);
+        if (f.optional && std::all_of(values.begin(), values.end(), [](int v) { return v == 0; })) continue;
         s += std::string(first ? "" : ",\n") + "    " + json_quote(f.name) + ": {\"address\": " +
-             json_quote(address(f.segment, f.offset)) + ", \"values\": " + number_list(f.values(t)) + "}";
+             json_quote(address(f.segment, f.offset)) + ", \"values\": " + number_list(values) + "}";
         first = false;
     }
     s += "\n  },\n  \"colours\": {\n";
@@ -329,6 +333,7 @@ Tables read_tables_file(const std::string& text) {
     const Json root = parse_json(text);
     const Json& flat = member(root, "tables");
     for (const auto& f : flat_tables()) {
+        if (f.optional && !flat.find(f.name)) continue;
         const auto& a = member(member(flat, f.name), "values").array();
         auto out = f.values(t);
         if (a.size() != out.size()) throw FormatError("tables: " + std::string(f.name) + " has the wrong length");

@@ -92,7 +92,7 @@ copy shows for each colour number (DOS's numbers), "#rrggbb": for DOS, the stand
 | `overhead_block_x`, `_y` | DG:0a38/0a46 | 13 bytes each | by map - 1, the block column and row the overhead map puts the map at in its grid (1000:3fae) |
 | `overhead_blocks_across`, `_down` | DG:0a54/0a62 | 13 bytes each | by map - 1, its size in blocks |
 | `overhead_cell_bytes` | DG:0a70 | 13 words | by map - 1, how many bytes of cells the overhead map reads from the map's file, and how far its store moves on (bug 39) |
-| `sound_lists` | DG:5008 | 314 words | the 18 sound effects' entries back to back, ending with a 0 word (27c5:0002, docs/sound.md) |
+| `sound_lists` | DG:5008 | 314 words | the 18 sound effects' entries back to back, ending with a 0 word (27c5:0002, docs/sound.md); left out for a copy with no speaker lists |
 | `overhead_pointer_column`, `_row` | DG:0a8a/0a92 | 8 bytes each | by direction, the text cell of the overhead map's pointer |
 | `path_quarters` | DG:3b12 | 4 bytes | by the half-cell's parity, the tile bits that make a path step cost more (203b:193b) |
 | `leg_actuator_bit`, `_keep` | DG:316a/3172 | 8 bytes each | by a d6, a leg actuator a critical hit takes out, and the mask that clears it (1e31:11ab) |

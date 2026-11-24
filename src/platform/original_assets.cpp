@@ -78,7 +78,10 @@ const formats::TileSheet* OriginalAssets::sheet(const std::string& file) {
 const formats::Font* OriginalAssets::font() {
     if (!font_ && font_error_.empty()) {
         try {
-            const auto bytes = formats::read_file(formats::imported_font_path(data_dir_));
+            auto path = formats::imported_font_path(data_dir_);
+            std::error_code ec;
+            if (!own_font_.empty() && !std::filesystem::exists(path, ec)) path = own_font_;
+            const auto bytes = formats::read_file(path);
             font_ = std::make_unique<formats::Font>(
                 formats::parse_font_file(std::string(bytes.begin(), bytes.end())));
         } catch (const std::exception& e) {

@@ -42,10 +42,46 @@ void write_file(const fs::path& path, const std::string& contents) {
     fs::rename(temp, path);
 }
 
+// A WAV file of the samples: one channel, 8 bits (which WAV stores unsigned).
+std::string wav_file(const SoundSample& sound) {
+    std::string s;
+    const auto number = [&](std::uint32_t v, int bytes) {
+        for (int i = 0; i < bytes; ++i) s += char(std::uint8_t(v >> (8 * i)));
+    };
+    const std::uint32_t size = std::uint32_t(sound.samples.size()), padding = size & 1;
+    s += "RIFF";
+    number(36 + size + padding, 4);
+    s += "WAVEfmt ";
+    number(16, 4);
+    number(1, 2);  // PCM
+    number(1, 2);  // channels
+    number(std::uint32_t(sound.rate), 4);
+    number(std::uint32_t(sound.rate), 4);  // bytes a second
+    number(1, 2);  // bytes a sample
+    number(8, 2);  // bits
+    s += "data";
+    number(size, 4);
+    for (const std::int8_t v : sound.samples) number(std::uint8_t(v + 128), 1);
+    number(0, int(padding));
+    return s;
+}
+
+// The copy's recorded effects; another copy's are removed.
+void write_sounds(const GameSource& source, const fs::path& dir) {
+    std::error_code ec;
+    for (int n = 1; n <= kEffectSounds; ++n) {
+        const fs::path path = dir / (std::to_string(n) + ".wav");
+        if (const auto sound = source.effect_sound(n)) write_file(path, wav_file(*sound));
+        else fs::remove(path, ec);
+    }
+    fs::remove(dir, ec);  // only when empty
+}
+
 }  // namespace
 
 fs::path imported_text_path(const fs::path& data_dir) { return data_dir / "text" / "english.json"; }
 fs::path imported_font_path(const fs::path& data_dir) { return data_dir / "font" / "font.txt"; }
+fs::path imported_sounds_dir(const fs::path& data_dir) { return data_dir / "sound"; }
 
 std::string import_table_hash(std::span<const ExeSpan> table) {
     std::string all;
@@ -66,8 +102,7 @@ std::string import_table_hash() { return import_table_hash(OriginalExe::table())
 
 ImportState import_state(const fs::path& data_dir, std::string_view program) {
     std::error_code ec;
-    if (!fs::exists(manifest_path(data_dir), ec) || !fs::exists(imported_text_path(data_dir), ec) ||
-        !fs::exists(imported_font_path(data_dir), ec))
+    if (!fs::exists(manifest_path(data_dir), ec) || !fs::exists(imported_text_path(data_dir), ec))
         return ImportState::Missing;
     for (const auto name : kRulesFiles)
         if (!fs::exists(rules_dir(data_dir) / name, ec)) return ImportState::Missing;
@@ -81,6 +116,8 @@ ImportState import_state(const fs::path& data_dir, std::string_view program) {
         if (!table || table->string() != import_table_hash()) return ImportState::Outdated;
         const auto* source = manifest.find("source");
         if (!program.empty() && (!source || source->string() != program)) return ImportState::Outdated;
+        // A copy with no font says so in the manifest.
+        if (!manifest.find("font") && !fs::exists(imported_font_path(data_dir), ec)) return ImportState::Missing;
     } catch (const std::exception&) {
         return ImportState::Outdated;
     }
@@ -90,8 +127,6 @@ ImportState import_state(const fs::path& data_dir, std::string_view program) {
 void import_original(const GameSource& source, const fs::path& data_dir) {
     const auto program = source.program();
     const ProgramData& exe = *program;
-    if (!exe.has("font"))
-        throw FormatError("there is no font in this copy (" + exe.source() + "), and the rebuild has none of its own yet");
 
     std::string text = "{\n  \"import_version\": " + std::to_string(kImportVersion) +
                        ",\n  \"source\": " + json_quote(exe.source()) + ",\n  \"texts\": [\n";
@@ -130,7 +165,9 @@ void import_original(const GameSource& source, const fs::path& data_dir) {
     std::error_code ec;
     fs::remove(manifest_path(data_dir), ec);
     write_file(imported_text_path(data_dir), text);
-    write_file(imported_font_path(data_dir), write_font_file(font_from_original(exe.get("font"))));
+    const bool font = exe.has("font");
+    if (font) write_file(imported_font_path(data_dir), write_font_file(font_from_original(exe.get("font"))));
+    else fs::remove(imported_font_path(data_dir), ec);
     const auto files = write_rules_files(rules, kImportVersion, exe.source());
     write_file(rules_dir(data_dir) / kRulesFiles[0], files.mechs);
     write_file(rules_dir(data_dir) / kRulesFiles[1], files.weapons);
@@ -138,11 +175,12 @@ void import_original(const GameSource& source, const fs::path& data_dir) {
     write_file(rules_dir(data_dir) / kRulesFiles[3], files.quiz);
     write_file(rules_dir(data_dir) / kRulesFiles[4], files.shops);
     write_file(tables_path(data_dir), write_tables_file(tables, kImportVersion, exe.source()));
+    write_sounds(source, imported_sounds_dir(data_dir));
     write_file(manifest_path(data_dir),
                "{\n  \"import_version\": " + std::to_string(kImportVersion) + ",\n  \"source\": " +
                    json_quote(exe.source()) + ",\n  \"exe_sha256\": " +
                    json_quote(exe.sha256()) + ",\n  \"table_sha256\": " + json_quote(import_table_hash()) +
-                   "\n}\n");
+                   (font ? "" : ",\n  \"font\": \"none\"") + "\n}\n");
 }
 
 void import_original(const fs::path& copy, const fs::path& data_dir) {

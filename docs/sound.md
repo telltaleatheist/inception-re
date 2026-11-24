@@ -6,14 +6,13 @@ player drives the PC speaker itself and busy-waits while it plays, so the game s
 as the effect lasts. It also leaves words behind in the far data, and the game reads one of those
 back (combat.md 2.10, bug 21).
 
-Rebuilt in `Town::play_sound` (src/game/sound.cpp). The logic records the effect as an event and
-updates the player's state (`SoundState`, src/game/sound.h). With sound on, it also works out
-what the effect sounds like in plain terms: square-wave tones in Hz and silences, each with a
-length in ms on a chosen machine (`ShownEvent::segments`). The platform holds the event for that
-length, which stands in for the busy-wait. Nothing in the rebuild models the timer chip, port 61
+Rebuilt in `Town::play_sound` (src/game/fight.cpp). The logic records the effect as an event by its
+number and, with sound on, how long the game waits for it and what it leaves behind (`effect_rule`, "The rules" below). Those two are the same for every
+version's copy; what is heard is the copy's. The platform holds the event for that length, which
+stands in for the busy-wait. Nothing in the rebuild models the timer chip, port 61
 or the speaker: the hardware is replaced, not emulated (docs/rules.md, "How the rebuild is
-built"). The platform plays the segments, or a mod's file in place of any effect ("Playing it",
-below).
+built"). The platform plays the speaker's tones, the copy's recordings, or a mod's file
+in place of any effect ("Playing it", below).
 
 ## Sound on and off
 
@@ -24,8 +23,8 @@ writer, and it shows which state the sound is in (DG:08c9 / DG:08cc). It is not 
 flipped by `Town::game_settings`.
 
 With sound off, `1000:19bf` returns before calling the player, so there is no wait either: the
-busy-wait is inside the player's loops. The rebuild's sound event then has no segments and takes
-no time.
+busy-wait is inside the player's loops. The rebuild's sound event then has no length and makes no
+sound.
 
 ## The lists (DG:5008)
 
@@ -179,19 +178,35 @@ Rebuilt in `sound_calibration` and `sound_segments`: a tone is int16(length x DG
 flips x half-period at clock / (2 x half-period) Hz, the half-period being 184 + DG:5006 x
 (151 + 10 x count) cycles. Segments of the same pitch next to each other are joined.
 
+## The rules
+
+`effect_rule(n)` (src/game/sound.h) holds, for each of the 18 effects, the wait above as a whole
+number of the AT's cycles and what the effect leaves in F:4034: 1 for effects 1 and 2, 3 for
+effect 3, 100 for effect 10, 10 for effect 11; the others leave it as it is. The game uses only
+these, whatever the copy: a copy without the lists has no lengths of its own to wait, and its
+recordings' lengths must not change the game's time or what an enemy does. A test works them out from
+the lists in the player's BTECH.EXE (`sound_segments`, `effect_minus_one_y`) and requires the same.
+So editing `sound_lists` in `tables.json` changes what is heard, not how the game plays.
+
 ## Playing it
 
-The platform plays each effect as the event loop reaches it (src/platform/sound_player.cpp), on
-one SDL3 audio stream (16-bit, one channel, 44100 samples a second; SDL converts for the
-device). The segments become a square wave at a quarter of full scale that keeps its phase from
-one segment to the next (`square_wave`, src/platform/sound_wave.cpp, plain C++). The event loop
-then holds the event for the effect's length, which stands in for the player's busy-wait; the
-stream plays on its own meanwhile.
+The platform plays each effect as the event loop reaches it (src/platform/sound_player.cpp), through
+SDL3 (16-bit, one channel, 44100 samples a second; SDL converts for the device). The sound comes
+from the first that has it (`SoundProvider`, src/platform/sound_wave.h, like the pictures' asset
+provider):
 
-**Mods.** `chr --sound-mod DIR` plays `DIR/N.wav` in place of effect N (any WAV SDL reads,
-converted to the stream's format). The seam is `SoundProvider` (src/platform/sound_wave.h), like
-the pictures' asset provider. The game still waits the original effect's length, so a mod's
-sound can't change how the game plays.
+1. a mod's `DIR/N.wav` (`chr --sound-mod DIR`; any WAV SDL reads, converted);
+2. the copy's recording, the data folder's `sound/N.wav`, for a copy that has them (docs/import.md);
+3. the speaker (`SpeakerSounds`): the steps' segments as a square wave at a quarter of full scale
+   that keeps its phase from one segment to the next (`square_wave`, plain C++).
+
+The speaker's effects play one after another on one audio stream, as they always end before the
+wait does. Recordings may be longer than the wait, so they play over each other on four streams in
+turn, each cutting off what its stream still plays; four is the Amiga's number (0:272a2). The event loop
+holds the event for the rule's length, which stands in for the player's busy-wait; the sound plays
+on meanwhile, so no recording can change how the game plays.
+
+
 
 **Never under a script.** The player is made only for a run with neither `--script` nor
 `--screenshot`, so the rig, the tests and any scripted run open no audio device. `chr
@@ -328,9 +343,8 @@ The whole tune is not run, since its end starts the demo.
 
 ## The rebuild
 
-`SoundState` holds `on` (DG:015c) and `sweep`, the last kind-2 entry's five words (F:0000,
-F:39f4, F:4000, F:4034, F:0062). `Town::play_sound(n)` records the event (`ShownEvent::sound`)
-and, with sound on, walks the lists as above, keeps the last kind-2 entry's words and attaches
-the effect's segments on the chosen machine (`ShownEvent::segments`). With sound off the event
-has no segments and takes no time, as in the original. `SoundState::minus_one_y()` gives the
-F:4034 word for the people's run. chr's `--sound-log` prints each effect's steps for the rig.
+`SoundState` holds `on` (DG:015c) and `minus_one_y`, the F:4034 word the people's run reads (the last
+kind-2 entry's fourth word; nothing reads its other four). `Town::play_sound(n)` records the event
+(`ShownEvent::sound`) and, with sound on, applies the effect's rule: the word and the wait
+(`ShownEvent::wait_ms`). With sound off the event takes no time, as in the original. chr's `--sound-log` prints
+each effect's steps for the rig.

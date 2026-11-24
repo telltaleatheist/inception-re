@@ -1,5 +1,9 @@
+#include <cmath>
 #include <vector>
 
+#include "formats/game_source.h"
+#include "formats/tables.h"
+#include "game/clock.h"
 #include "game/music.h"
 #include "game/sound.h"
 #include "platform/sound_wave.h"
@@ -27,36 +31,44 @@ const std::vector<int> kLists = {
 
 }  // namespace
 
-TEST(sound_keeps_the_last_kind_two_words) {
-    SoundState s;
-    CHECK(s.minus_one_x() == 0 && s.minus_one_y() == 0);  // the image's values
-    play_entries(s, kLists, 1);
-    CHECK(s.sweep[0] == 10 && s.sweep[3] == 13 && s.sweep[4] == 14);
-    play_entries(s, kLists, 2);
-    CHECK(s.sweep[0] == 30 && s.minus_one_y() == 33);
-    play_entries(s, kLists, 3);  // no kind-2 entry: kept
-    CHECK(s.minus_one_y() == 33);
-    CHECK(s.minus_one_x() == 0);
-}
-
-TEST(sound_past_the_last_effect_plays_nothing) {
-    SoundState s;
-    play_entries(s, kLists, 4);
-    play_entries(s, kLists, 40);
-    CHECK(s.minus_one_y() == 0);
+TEST(sound_lists_leave_the_last_kind_two_word) {
+    CHECK(effect_minus_one_y(kLists, 1) == 13);
+    CHECK(effect_minus_one_y(kLists, 2) == 33);
+    CHECK(!effect_minus_one_y(kLists, 3));  // no kind-2 entry
+    CHECK(!effect_minus_one_y(kLists, 4) && !effect_minus_one_y(kLists, 40));
     // An entry whose next two words are 0 ends the effect before it plays.
     const std::vector<int> ends_first = {0x3ea, 0, 0, 5, 5, 5, 5, 0};
-    play_entries(s, ends_first, 1);
-    CHECK(s.minus_one_y() == 0);
-}
-
-TEST(sound_codes_are_compared_signed) {
+    CHECK(!effect_minus_one_y(ends_first, 1));
     // 0x8000 counts as a note (3 words), so the kind-2 entry after it is
     // reached as effect 1's second entry.
-    const std::vector<int> lists = {0x8000, 1, 1, 0x3ea, 1, 1, 2, 3, 77, 5, 500, 0, 0, 0};
+    const std::vector<int> signed_code = {0x8000, 1, 1, 0x3ea, 1, 1, 2, 3, 77, 5, 500, 0, 0, 0};
+    CHECK(effect_minus_one_y(signed_code, 1) == 77);
+}
+
+TEST(sound_state_keeps_the_word_until_an_effect_sets_it) {
     SoundState s;
-    play_entries(s, lists, 1);
-    CHECK(s.minus_one_y() == 77);
+    CHECK(s.minus_one_x == 0 && s.minus_one_y == 0);  // the image's values
+    s.play(*effect_rule(10));
+    CHECK(s.minus_one_y == 100);
+    s.play(*effect_rule(4));  // leaves it
+    CHECK(s.minus_one_y == 100);
+    CHECK(!effect_rule(0) && !effect_rule(kEffectCount + 1) && !effect_rule(-1));
+    CHECK(kEffectCount == chr::formats::kEffectSounds);
+}
+
+TEST(sound_rules_are_dos_s) {
+    const auto dir = chrtest::game_dir();
+    if (dir.empty()) return chrtest::skip("no game folder (set CHR_GAME_DIR)");
+    const auto tables = chr::formats::tables_from_original(*chr::formats::DosGameSource(dir).program());
+    CHECK(effect_steps(tables.sound_lists, kEffectCount + 1).empty());
+    for (int n = 1; n <= kEffectCount; ++n) {
+        const auto& rule = *effect_rule(n);
+        CHECK(rule.minus_one_y == effect_minus_one_y(tables.sound_lists, n));
+        double ms = 0;
+        for (const auto& s : sound_segments(effect_steps(tables.sound_lists, n), default_sound_machine())) ms += s.ms;
+        CHECK(std::fabs(ms - rule.wait_ms()) < 1e-6);
+        CHECK(std::ceil(ms * kVgaRefreshHz / 1000.0) == std::ceil(rule.wait_ms() * kVgaRefreshHz / 1000.0));
+    }
 }
 
 TEST(sound_calibration_on_the_default_machine) {

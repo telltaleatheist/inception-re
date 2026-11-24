@@ -176,7 +176,8 @@ target_link_libraries(chrtests PRIVATE chrgame)
 target_include_directories(chrtests PRIVATE src)
 target_compile_definitions(chrtests PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}"
   CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/test-scratch"
-  CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
+  CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json"
+  CHR_OWN_FONT="${CMAKE_SOURCE_DIR}/data/font/font.txt")
 add_test(NAME chrtests COMMAND chrtests)
 
 # The setup recipe on made-up folders: the player's folder's move, settings.ini,
@@ -226,7 +227,10 @@ if(SDL3_FOUND)
   # The repo's default interface texts, next to the program (docs/text.md).
   add_custom_command(TARGET chr POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/text/interface.json"
-            "$<TARGET_FILE_DIR:chr>/data/text/interface.json")
+            "$<TARGET_FILE_DIR:chr>/data/text/interface.json"
+    # Our own font, for a copy that has none (docs/formats/font.md).
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/font/font.txt"
+            "$<TARGET_FILE_DIR:chr>/data/font/font.txt")
   target_compile_definitions(chr PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}" CHR_VERSION_TAG="${CHR_VERSION_TAG}")
   # The program itself, walking known routes on map 1 with no window (SDL's
   # dummy video driver). They need the game files.

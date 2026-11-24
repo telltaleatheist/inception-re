@@ -31,6 +31,8 @@ inline constexpr int kImportVersion = 33;
 
 std::filesystem::path imported_text_path(const std::filesystem::path& data_dir);
 std::filesystem::path imported_font_path(const std::filesystem::path& data_dir);
+// The copy's recorded sound effects, <n>.wav; the folder is there only for a copy that has them.
+std::filesystem::path imported_sounds_dir(const std::filesystem::path& data_dir);
 
 // A hash of the import table (OriginalExe::table()): every piece's kind,
 // ID, address, size and expected hash. import.json records it, and a data

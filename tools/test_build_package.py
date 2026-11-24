@@ -40,7 +40,7 @@ class Names(unittest.TestCase):
 class Staging(unittest.TestCase):
     @staticmethod
     def fixture(_, root):
-        for name in ["LICENSE", "data/text/interface.json", "sdl/LICENSE.txt", "extern/re-setup-kit/LICENSE",
+        for name in ["LICENSE", *build_package.OUR_DATA, "sdl/LICENSE.txt", "extern/re-setup-kit/LICENSE",
                      "extern/re-setup-kit/third_party/stb/LICENSE", "extern/re-setup-kit/third_party/miniz/LICENSE"]:
             write(root / name)
         prefix = root / "deps/prefix"
@@ -55,7 +55,8 @@ class Staging(unittest.TestCase):
             out = root / "stage"
             out.mkdir()
             build_package.stage_common(root, root / "build", root / "sdl", out)
-            self.assertTrue((out / "data/text/interface.json").is_file())
+            for name in build_package.OUR_DATA:
+                self.assertTrue((out / name).is_file())
             self.assertTrue((out / "LICENSE").is_file() and (out / "README.txt").is_file())
             for name in ["SDL-LICENSE.txt", "re-setup-kit-LICENSE", "stb-LICENSE", "miniz-LICENSE",
                          *build_package.ARCHIVE_LICENCES.values()]:
@@ -109,7 +110,7 @@ class LinuxLayout(unittest.TestCase):
             self.assertEqual(archive.name, "CHI-Rebuild-1-test-linux-x86_64.tar.gz")
             names = tarfile.open(archive).getnames()
             top = "CHI-Rebuild-1-test-linux-x86_64/"
-            for name in ["chi", "libSDL3.so.0", "data/text/interface.json", "README.txt", "licenses/SDL-LICENSE.txt"]:
+            for name in ["chi", "libSDL3.so.0", *build_package.OUR_DATA, "README.txt", "licenses/SDL-LICENSE.txt"]:
                 self.assertIn(top + name, names)
             self.assertNotIn(top + "chr", names)
             unpacked = root / "dist/smoke/CHI-Rebuild-1-test-linux-x86_64/libSDL3.so.0"

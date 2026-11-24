@@ -734,7 +734,6 @@ private:
     std::vector<ShownLine> screen_lines_;
     std::vector<ShownEvent> events_;
     SoundState sound_;
-    const SoundMachine* sound_machine_ = &default_sound_machine();
     int message_speed_ = 2;  // DG:015e
     int steps_per_key_ = 1;  // DG:015a
     int investments_shown_ = 0;  // F:e482: special 6's count

@@ -40,6 +40,9 @@ constexpr std::array<std::pair<std::uint8_t, std::uint8_t>, 5> kDemoKeys = {{
     {0x38, 0xb8}, {0x32, 0xb0}, {0x34, 0xb5}, {0x36, 0xb3}, {0x33, 0xaf},
 }};
 
+// The NTSC Amiga's clock, whose count between two samples is the period.
+constexpr std::uint32_t kAmigaClockHz = 3579545;
+
 }  // namespace
 
 std::vector<std::uint8_t> amiga_demo_keys(std::span<const std::uint8_t> demofile) {
@@ -124,6 +127,34 @@ std::optional<Palette16> AmigaGameSource::picture_palette(const std::string& nam
     const auto* bytes = from ? file(*from) : nullptr;
     if (!bytes) return std::nullopt;
     return amiga_palette(*bytes);
+}
+
+SoundSample amiga_sound(std::span<const std::uint8_t> snd, std::span<const std::uint8_t> offsets,
+                        std::span<const std::uint8_t> periods, int n) {
+    const auto number = [](std::span<const std::uint8_t> b, std::size_t at, std::size_t bytes) {
+        if (at > b.size() || bytes > b.size() - at) throw FormatError("an Amiga sound runs past its file");
+        std::uint32_t v = 0;
+        for (std::size_t i = 0; i < bytes; ++i) v = v << 8 | b[at + i];
+        return v;
+    };
+    if (n < 1) throw FormatError("no Amiga sound " + std::to_string(n));
+    const std::size_t at = number(offsets, std::size_t(n - 1) * 4, 4);
+    const std::uint32_t period = number(periods, std::size_t(n - 1) * 2, 2);
+    // The player uses the table's period, not the rate stored before the length.
+    if (at > snd.size()) throw FormatError("an Amiga sound runs past its file");
+    const std::size_t size = number(snd, at + 2, 4);
+    const std::size_t first = at + 6;
+    if (period == 0 || size > snd.size() - first) throw FormatError("an Amiga sound runs past its file");
+    SoundSample sound;
+    sound.rate = int((kAmigaClockHz + period / 2) / period);
+    for (const std::uint8_t b : snd.subspan(first, size)) sound.samples.push_back(std::int8_t(b));
+    return sound;
+}
+
+std::optional<SoundSample> AmigaGameSource::effect_sound(int n) const {
+    const auto* bytes = file("snd");
+    if (!bytes || n < 1 || n > kEffectSounds) return std::nullopt;
+    return amiga_sound(*bytes, program_.span("snd.offsets"), program_.span("snd.periods"), n);
 }
 
 std::unique_ptr<const ProgramData> AmigaGameSource::program() const {
