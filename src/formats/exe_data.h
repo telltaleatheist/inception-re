@@ -39,6 +39,8 @@ struct ExeSpan {
 
 // The version we support: DOS 1.03, unpacked SHA-256 below.
 inline constexpr std::string_view kSupportedVersion = "DOS 1.03";
+// "BTECH.EXE DOS 1.03", as the imported files name their source.
+std::string dos_program_name();
 
 // The unpacked DOS 1.03 program's layout. The header (with the relocation
 // table) is hashed whole: it has no game logic, only where things go.
@@ -69,6 +71,7 @@ public:
     // up to the NUL that ends it, where the codes 02, 06, 09 and 13 take the
     // next byte as their argument (so `06 00`, black, is not the end), and a
     // byte with the top bit set is the last one.
+    bool has(std::string_view name) const override;
     std::string text(std::string_view name) const override;
     // The same reading of any bytes (for texts inside a table).
     static std::string text_of(std::span<const std::uint8_t> bytes);

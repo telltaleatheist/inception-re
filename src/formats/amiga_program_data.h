@@ -15,6 +15,8 @@
 
 namespace chr::formats {
 
+inline constexpr std::string_view kAmigaProgramName = "Amiga battletech 2.3";
+
 // Where one of the DOS import table's texts is in the Amiga program, and how it becomes DOS's.
 struct AmigaText {
     std::string_view id;  // the DOS text ID (formats/exe_data.h)
@@ -83,10 +85,11 @@ public:
     AmigaProgramData(std::span<const std::uint8_t> file, std::span<const std::uint8_t> endmech);
 
     std::span<const std::uint8_t> get(std::string_view name) const override;
+    bool has(std::string_view name) const override { return pieces_.contains(name); }
     std::string text(std::string_view name) const override;
     std::vector<Rgb> colours(std::string_view name) const override;
     std::string address(std::string_view name) const override;
-    std::string source() const override { return "Amiga battletech 2.3"; }
+    std::string source() const override { return std::string(kAmigaProgramName); }
     std::string sha256() const override { return sha256_; }
 
 private:

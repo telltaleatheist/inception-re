@@ -1,10 +1,14 @@
 // The disk image readers on images built here, byte by byte (no game files).
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
 #include "formats/cmp.h"
 #include "formats/disk_image.h"
+#include "formats/exe_data.h"
+#include "formats/open_source.h"
 #include "test.h"
 
 using namespace chr::formats;
@@ -212,4 +216,59 @@ TEST(rdos_refuses_another_disk_and_an_entry_off_the_disk) {
 TEST(other_sizes_are_not_disk_images) {
     CHECK(disk_kind_by_size(1000) == DiskKind::None);
     CHECK(read_disk_image(Bytes(1000, 0)).empty());
+}
+
+// Which source a copy opens as (formats/open_source.h). The Amiga's program here is junk, so an
+// Amiga copy is told by its refusal.
+namespace {
+
+std::string opened_as(const std::filesystem::path& copy) {
+    try {
+        return open_game_source(copy)->program_name();
+    } catch (const FormatError& e) {
+        return e.what();
+    }
+}
+
+void put_file(const std::filesystem::path& path, const Bytes& bytes) {
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream out(path, std::ios::binary);
+    out.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+}
+
+}  // namespace
+
+TEST(a_copy_opens_by_what_it_holds) {
+    const auto dir = std::filesystem::path(CHR_TEST_SCRATCH) / "open-source";
+    std::filesystem::remove_all(dir);
+    const Bytes junk = pattern(64, 1);
+
+    std::filesystem::create_directories(dir / "nothing");
+    CHECK(opened_as(dir / "nothing") == dos_program_name());
+    CHECK(opened_as(dir / "not-there") == dos_program_name());
+
+    put_file(dir / "dos" / "btech.exe", junk);
+    CHECK(opened_as(dir / "dos") == dos_program_name());
+
+    for (const char* name : {"battletech", "BUILDS.BLD", "Maps"}) put_file(dir / "amiga" / "Battletech" / name, junk);
+    const auto files = opened_as(dir / "amiga" / "Battletech");
+    CHECK(files != dos_program_name());
+    CHECK(opened_as(dir / "amiga") == files);  // the disk's top folder
+
+    // A folder with both is the DOS copy.
+    for (const char* name : {"battletech", "builds.bld", "maps"}) put_file(dir / "dos" / name, junk);
+    CHECK(opened_as(dir / "dos") == dos_program_name());
+
+    Adf disk;
+    const auto folder = disk.folder(880, 0, "Battletech");
+    disk.file(folder, 0, "battletech", junk);
+    disk.file(folder, 1, "builds.bld", junk);
+    put_file(dir / "part.adf", disk.d);
+    CHECK(opened_as(dir / "part.adf").find("Battletech/maps") != std::string::npos);
+    disk.file(folder, 2, "maps", junk);
+    put_file(dir / "whole.adf", disk.d);
+    CHECK(opened_as(dir / "whole.adf") == files);
+
+    put_file(dir / "some.txt", junk);
+    CHECK(opened_as(dir / "some.txt").find("not a folder or an Amiga disk image") != std::string::npos);
 }

@@ -20,7 +20,7 @@ TEST(rules_round_trip_to_the_programs_bytes) {
     }
     const auto exe = formats::OriginalExe::load(dir);
     const auto rules = formats::rules_from_original(exe);
-    const auto back = formats::read_rules_files(formats::write_rules_files(rules, formats::kImportVersion));
+    const auto back = formats::read_rules_files(formats::write_rules_files(rules, formats::kImportVersion, "a test"));
 
     const auto mechs = exe.get("rules.mech_templates");
     CHECK(back.mechs.size() == 8);

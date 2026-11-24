@@ -14,6 +14,8 @@ std::optional<std::vector<std::uint8_t>> DosGameSource::file(const std::string& 
     return read_file(*path);
 }
 
+std::string DosGameSource::program_name() const { return dos_program_name(); }
+
 std::optional<std::vector<std::uint8_t>> DosGameSource::script(int number) const {
     if (number < 0 || number >= static_cast<int>(kBldFiles.size())) return std::nullopt;
     const auto bytes = file(std::string(kBldFiles[std::size_t(number)]) + ".BLD");

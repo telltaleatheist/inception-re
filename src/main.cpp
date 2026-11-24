@@ -50,6 +50,7 @@
 #include "formats/game_source.h"
 #include "formats/import.h"
 #include "formats/mtp.h"
+#include "formats/open_source.h"
 #include "formats/palette.h"
 #include "formats/tables.h"
 #include "game/asset_id.h"
@@ -410,13 +411,15 @@ int main(int argc, char** argv) {
         if (ready != 0) return ready == 1 ? 0 : 1;
         options.game_dir = folder;
     }
+    std::shared_ptr<const chr::formats::GameSource> source;
     try {
+        source = chr::formats::open_game_source(options.game_dir);
         if (options.import) {
-            chr::formats::import_original(options.game_dir, options.data_dir);
+            chr::formats::import_original(*source, options.data_dir);
             std::printf("imported the text and font into %s\n", options.data_dir.string().c_str());
             return 0;
         }
-        if (chr::formats::ensure_imported(options.game_dir, options.data_dir))
+        if (chr::formats::ensure_imported(*source, options.data_dir))
             std::fprintf(stderr, "chr: imported the text and font into %s\n", options.data_dir.string().c_str());
     } catch (const std::exception& e) {
         std::fprintf(stderr, "chr: %s\n", e.what());
@@ -455,7 +458,6 @@ int main(int argc, char** argv) {
     // game begins on map 1.
     const bool start_up = options.map == 0;
     if (start_up) options.map = 1;
-    const auto source = std::make_shared<const chr::formats::DosGameSource>(options.game_dir);
     if (!load_map(*source, options.map, map, start)) status = 1;
     chr::game::TextTable overrides;
     if (status == 0 && !options.text_file.empty()) {

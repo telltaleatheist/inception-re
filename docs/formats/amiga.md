@@ -264,9 +264,9 @@ Open:
   Amiga's code for both is not read, so what it shows there is unknown.
 - The overhead map's third table is DOS's for the cache's level 1, and the Amiga has no such table:
   0:bac0 swaps the level 0 table in on both levels. So `tables.overhead_colours` has that table
-  twice, and level 1 looks as on the Amiga. (A tile number past 249 reads on into the next table.
-  On level 1 that is the land's on the Amiga and the cache's in the rebuild. Whether a tile there
-  goes past 249 was not checked.)
+  twice, and level 1 looks as on the Amiga. A tile number past 249 would read on into the next table,
+  which isn't the Amiga's on level 1, but no cell of maps 14 and 15 has one, in DOS's files or the
+  Amiga's, nor has the block store's tail (the puzzle's changes stay in 97-f0).
 
 ## The texts
 

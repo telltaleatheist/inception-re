@@ -7,12 +7,14 @@ After that the game reads only those files; BTECH.EXE is needed only to import.
 
 ## When it runs
 
-- By itself, the first time `chr` starts, and again whenever the data folder's import is missing
-  or comes from another import version (`kImportVersion` in `src/formats/import.h`).
+- By itself, the first time `chr` starts, and again whenever the data folder's import is missing,
+  comes from another import version (`kImportVersion` in `src/formats/import.h`) or from another
+  version's copy (`source` in `import.json`): the colours and the rest follow the copy played.
 - On demand with `chr --import`, which imports again and quits.
 
-If an import is needed and BTECH.EXE is missing or is not DOS 1.03, `chr` stops with a message
-that says so and how to run the importer.
+If an import is needed and the copy's program is missing or not one the rebuild reads, `chr`
+stops with a message that says so and how to run the importer. An Amiga copy stops there for now:
+it has no font (docs/formats/amiga.md), and the rebuild has none of its own yet.
 
 The data folder is `--data-dir DIR`, else the `CHR_DATA_DIR` environment variable, else the
 player's folder (on macOS `~/Library/Application Support/BattleTech/Inception Rebuild`). A
@@ -77,8 +79,14 @@ program's pieces by the import table's IDs (`GameSource::program()`, src/formats
 and the places' scripts (`GameSource::script`). A DOS copy's program is BTECH.EXE, read as above.
 Another version's reader hands out the same IDs in DOS's forms, so the files written are the
 same shape whichever copy the player has; `import.json`'s `source` and `exe_sha256` name the
-program it came from. The Amiga's is `AmigaProgramData` (docs/formats/amiga.md, "The texts"):
-so far it gives the texts only.
+program it came from. The addresses in the rules and tables files stay DOS's. The Amiga's is
+`AmigaProgramData` (docs/formats/amiga.md).
+
+Which source a copy is, `open_game_source` decides by what is there (src/formats/open_source.h): a
+folder with BTECH.EXE is the DOS copy, whatever else it holds; a folder with the Amiga's
+battletech, builds.bld and maps, or with a folder Battletech that has them, or an .adf of the
+game's disk, is an Amiga copy; anything else is tried as DOS, so what is missing is named. The
+setup (docs/setup.md) does not offer an Amiga copy yet; `--game-dir` takes one.
 
 ## Overrides
 

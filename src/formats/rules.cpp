@@ -69,9 +69,9 @@ std::string number_list(std::span<const std::uint8_t> bytes) {
     return s + "]";
 }
 
-std::string header(int import_version, std::string_view what) {
+std::string header(int import_version, std::string_view source, std::string_view what) {
     return "{\n  \"import_version\": " + std::to_string(import_version) + ",\n  \"source\": " +
-           json_quote("BTECH.EXE " + std::string(kSupportedVersion)) + ",\n  \"what\": " +
+           json_quote(source) + ",\n  \"what\": " +
            json_quote(what) + ",\n";
 }
 
@@ -172,10 +172,10 @@ std::vector<NamedText> rules_texts_from_original(const ProgramData& exe) {
     return out;
 }
 
-RulesFiles write_rules_files(const Rules& rules, int import_version) {
+RulesFiles write_rules_files(const Rules& rules, int import_version, std::string_view source) {
     RulesFiles f;
 
-    f.mechs = header(import_version, "the 'Mech templates (docs/formats/mech.md)") + "  \"mechs\": [\n";
+    f.mechs = header(import_version, source, "the 'Mech templates (docs/formats/mech.md)") + "  \"mechs\": [\n";
     for (std::size_t i = 0; i < rules.mechs.size(); ++i) {
         const auto& t = rules.mechs[i];
         const auto& r = t.record;
@@ -192,7 +192,7 @@ RulesFiles write_rules_files(const Rules& rules, int import_version) {
     }
     f.mechs += "\n  ]\n}\n";
 
-    f.weapons = header(import_version, "the weapon table (docs/formats/mech.md)") + "  \"weapons\": [\n";
+    f.weapons = header(import_version, source, "the weapon table (docs/formats/mech.md)") + "  \"weapons\": [\n";
     for (std::size_t i = 0; i < rules.weapons.size(); ++i) {
         const auto& w = rules.weapons[i];
         const bool personal = w[0x0c] & 0x80;
@@ -218,7 +218,7 @@ RulesFiles write_rules_files(const Rules& rules, int import_version) {
     f.weapons += "\n  ]\n}\n";
 
     const auto& c = rules.combat;
-    f.combat = header(import_version, "the combat tables (docs/combat.md)");
+    f.combat = header(import_version, source, "the combat tables (docs/combat.md)");
     f.combat += "  \"hit_locations\": {\"address\": \"46db:2e42\", \"by\": \"side 0-3, then 2d6 - 2\", \"rows\": [";
     for (int s = 0; s < 4; ++s) f.combat += std::string(s ? ", " : "") + number_list(c.hit_locations[s]);
     f.combat += "]},\n  \"clusters\": {\"address\": \"46db:2e6e\", \"by\": \"2d6 - 2, then column - 2\", \"rows\": [";
@@ -232,7 +232,7 @@ RulesFiles write_rules_files(const Rules& rules, int import_version) {
     f.combat += "  \"personal_armour\": {\"address\": \"46db:4ddb\", \"by\": \"armour type\", \"values\": " +
                 number_list(c.personal_armour) + "}\n}\n";
 
-    f.quiz = header(import_version, "the training center quiz's parts (docs/combat.md 7)");
+    f.quiz = header(import_version, source, "the training center quiz's parts (docs/combat.md 7)");
     f.quiz += "  \"address\": {\"x\": \"46db:28c4\", \"y\": \"46db:28d8\", \"answer\": \"46db:28ec\"},\n"
               "  \"parts\": [\n";
     for (int i = 0; i < kQuizParts; ++i) {
@@ -248,7 +248,7 @@ RulesFiles write_rules_files(const Rules& rules, int import_version) {
         for (std::size_t i = 0; i < values.size(); ++i) out += (i ? ", " : "") + std::to_string(values[i]);
         return out + "]";
     };
-    f.shops = header(import_version, "the shops' prices in C-Bills (docs/scripts.md, \"The shops\")");
+    f.shops = header(import_version, source, "the shops' prices in C-Bills (docs/scripts.md, \"The shops\")");
     f.shops += "  \"armour\": {\"address\": \"46db:4f26\", \"by\": \"armour type\", \"values\": " + numbers(sh.armour) +
                "},\n  \"armour_point\": {\"address\": \"46db:4f3e\", \"by\": \"armour type - 1\", \"values\": " +
                numbers(sh.armour_point) +

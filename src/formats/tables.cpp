@@ -282,10 +282,10 @@ Tables tables_from_original(const ProgramData& exe) {
     return t;
 }
 
-std::string write_tables_file(const Tables& tables, int import_version) {
+std::string write_tables_file(const Tables& tables, int import_version, std::string_view source) {
     Tables t = tables;
     std::string s = "{\n  \"import_version\": " + std::to_string(import_version) + ",\n  \"source\": " +
-                    json_quote("BTECH.EXE " + std::string(kSupportedVersion)) +
+                    json_quote(source) +
                     ",\n  \"what\": \"the program's small tables (docs/formats/tables.md)\",\n  \"tables\": {\n";
     bool first = true;
     for (const auto& f : flat_tables()) {

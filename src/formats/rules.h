@@ -114,7 +114,9 @@ std::vector<NamedText> rules_texts_from_original(const ProgramData& exe);
 struct RulesFiles {
     std::string mechs, weapons, combat, quiz, shops;
 };
-RulesFiles write_rules_files(const Rules& rules, int import_version);
+// `source` names the program they came from (ProgramData::source); the addresses in them are
+// where DOS 1.03 has each.
+RulesFiles write_rules_files(const Rules& rules, int import_version, std::string_view source);
 Rules read_rules_files(const RulesFiles& files);
 Rules read_rules(const std::filesystem::path& data_dir);
 

@@ -187,7 +187,9 @@ struct Tables {
 Tables tables_from_original(const ProgramData& exe);
 // tables.json's contents, and reading them back. Throws FormatError or
 // JsonError for a file that is not of this shape.
-std::string write_tables_file(const Tables& tables, int import_version);
+// `source` names the program they came from (ProgramData::source); the addresses in it are
+// where DOS 1.03 has each.
+std::string write_tables_file(const Tables& tables, int import_version, std::string_view source);
 Tables read_tables_file(const std::string& text);
 Tables read_tables(const std::filesystem::path& data_dir);
 std::filesystem::path tables_path(const std::filesystem::path& data_dir);

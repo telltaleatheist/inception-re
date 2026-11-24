@@ -29,6 +29,7 @@ private:
 class OneSheet : public formats::GameSource {
 public:
     std::string describe() const override { return "a made-up source"; }
+    std::string program_name() const override { return "a made-up program"; }
     std::optional<std::vector<std::uint8_t>> script(int) const override { return std::nullopt; }
     std::optional<std::vector<std::uint8_t>> map(int) const override { return std::nullopt; }
     std::optional<formats::AnmPicture> place_picture(int) const override { return std::nullopt; }

@@ -32,6 +32,7 @@ public:
     static AmigaGameSource from_folder(const std::filesystem::path& dir);
 
     std::string describe() const override { return where_; }
+    std::string program_name() const override;
     std::optional<std::vector<std::uint8_t>> script(int file) const override;
     std::optional<std::vector<std::uint8_t>> map(int number) const override;
     std::optional<AnmPicture> place_picture(int number) const override;

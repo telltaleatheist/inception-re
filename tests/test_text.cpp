@@ -178,6 +178,10 @@ TEST(import_writes_text_and_font) {
     CHECK(formats::ensure_imported(dir, data));
     CHECK(formats::import_state(data) == formats::ImportState::Current);
 
+    // So is one from another version's copy.
+    CHECK(formats::import_state(data, formats::dos_program_name()) == formats::ImportState::Current);
+    CHECK(formats::import_state(data, "another program") == formats::ImportState::Outdated);
+
     // So is one made with another import table, at the same version.
     const auto manifest_bytes = formats::read_file(data / "import.json");
     std::string manifest(manifest_bytes.begin(), manifest_bytes.end());

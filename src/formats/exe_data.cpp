@@ -836,7 +836,9 @@ void OriginalExe::check() {
 
 std::string OriginalExe::sha256() const { return sha256_hex(unpacked_); }
 
-std::string OriginalExe::source() const { return "BTECH.EXE " + std::string(kSupportedVersion); }
+std::string dos_program_name() { return "BTECH.EXE " + std::string(kSupportedVersion); }
+
+std::string OriginalExe::source() const { return dos_program_name(); }
 
 std::string OriginalExe::address(std::string_view name) const {
     for (const auto& span : kDos103)
@@ -857,6 +859,10 @@ std::span<const std::uint8_t> OriginalExe::get(std::string_view name) const {
     const std::size_t at = image_start_ + std::size_t(it->segment - kLoadSegment) * 16 + it->offset;
     if (at + it->size > unpacked_.size()) throw FormatError("BTECH.EXE: piece out of range");
     return std::span(unpacked_).subspan(at, it->size);
+}
+
+bool OriginalExe::has(std::string_view name) const {
+    return std::any_of(kDos103.begin(), kDos103.end(), [&](const ExeSpan& s) { return s.name == name; });
 }
 
 std::vector<Rgb> OriginalExe::colours(std::string_view name) const { return ega_colours(get(name)); }

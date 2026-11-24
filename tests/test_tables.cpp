@@ -14,7 +14,7 @@ TEST(tables_round_trip) {
     if (dir.empty()) return chrtest::skip("no game folder (set CHR_GAME_DIR)");
     const auto exe = formats::OriginalExe::load(dir);
     const auto tables = formats::tables_from_original(exe);
-    const auto back = formats::read_tables_file(formats::write_tables_file(tables, formats::kImportVersion));
+    const auto back = formats::read_tables_file(formats::write_tables_file(tables, formats::kImportVersion, "a test"));
     CHECK(back == tables);
     // Each piece table ends with its end mark, and each frame style names one.
     for (const auto& pieces : tables.frame_pieces) CHECK(pieces.back() == formats::kFramePieceEnd);
@@ -29,7 +29,7 @@ TEST(tables_file_out_of_range_is_refused) {
     bad.animated_tiles[0] = 300;  // stored as a byte
     bool refused = false;
     try {
-        formats::read_tables_file(formats::write_tables_file(bad, formats::kImportVersion));
+        formats::read_tables_file(formats::write_tables_file(bad, formats::kImportVersion, "a test"));
     } catch (const std::exception&) {
         refused = true;
     }
@@ -42,7 +42,7 @@ TEST(tables_file_colours_are_hex) {
     if (!tables) return chrtest::skip("no imported tables (set CHR_GAME_DIR)");
     auto changed = *tables;
     changed.stats_pulse[2] = {0x12, 0xab, 0xef};
-    const auto text = formats::write_tables_file(changed, formats::kImportVersion);
+    const auto text = formats::write_tables_file(changed, formats::kImportVersion, "a test");
     CHECK(formats::read_tables_file(text).stats_pulse[2] == changed.stats_pulse[2]);
     const auto at = text.find("#12abef");
     CHECK(at != std::string::npos);

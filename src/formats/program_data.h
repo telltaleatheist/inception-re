@@ -21,6 +21,8 @@ public:
     // The bytes of the named piece, as DOS 1.03's. Throws FormatError for a piece this copy
     // can't give.
     virtual std::span<const std::uint8_t> get(std::string_view name) const = 0;
+    // Whether this copy has the named piece.
+    virtual bool has(std::string_view name) const = 0;
     // A named text, read the way DOS's printer reads it (OriginalExe::text_of).
     virtual std::string text(std::string_view name) const = 0;
     // The colours of a palette table (tables.palette, ...), by DOS's colour numbers, as the copy

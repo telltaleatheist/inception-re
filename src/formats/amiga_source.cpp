@@ -64,6 +64,8 @@ AmigaGameSource AmigaGameSource::from_folder(const std::filesystem::path& dir) {
     return AmigaGameSource(std::move(files), dir.string());
 }
 
+std::string AmigaGameSource::program_name() const { return std::string(kAmigaProgramName); }
+
 const std::vector<std::uint8_t>* AmigaGameSource::file(const std::string& name) const {
     const auto it = files_.find(lower(name));
     return it == files_.end() ? nullptr : &it->second;

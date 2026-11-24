@@ -15,6 +15,7 @@
 #include "formats/font_file.h"
 #include "formats/game_files.h"
 #include "formats/json.h"
+#include "formats/open_source.h"
 #include "formats/rules.h"
 
 namespace chr::formats {
@@ -63,7 +64,7 @@ std::string import_table_hash(std::span<const ExeSpan> table) {
 
 std::string import_table_hash() { return import_table_hash(OriginalExe::table()); }
 
-ImportState import_state(const fs::path& data_dir) {
+ImportState import_state(const fs::path& data_dir, std::string_view program) {
     std::error_code ec;
     if (!fs::exists(manifest_path(data_dir), ec) || !fs::exists(imported_text_path(data_dir), ec) ||
         !fs::exists(imported_font_path(data_dir), ec))
@@ -78,6 +79,8 @@ ImportState import_state(const fs::path& data_dir) {
         if (!version || version->number() != kImportVersion) return ImportState::Outdated;
         const auto* table = manifest.find("table_sha256");
         if (!table || table->string() != import_table_hash()) return ImportState::Outdated;
+        const auto* source = manifest.find("source");
+        if (!program.empty() && (!source || source->string() != program)) return ImportState::Outdated;
     } catch (const std::exception&) {
         return ImportState::Outdated;
     }
@@ -87,6 +90,8 @@ ImportState import_state(const fs::path& data_dir) {
 void import_original(const GameSource& source, const fs::path& data_dir) {
     const auto program = source.program();
     const ProgramData& exe = *program;
+    if (!exe.has("font"))
+        throw FormatError("there is no font in this copy (" + exe.source() + "), and the rebuild has none of its own yet");
 
     std::string text = "{\n  \"import_version\": " + std::to_string(kImportVersion) +
                        ",\n  \"source\": " + json_quote(exe.source()) + ",\n  \"texts\": [\n";
@@ -126,13 +131,13 @@ void import_original(const GameSource& source, const fs::path& data_dir) {
     fs::remove(manifest_path(data_dir), ec);
     write_file(imported_text_path(data_dir), text);
     write_file(imported_font_path(data_dir), write_font_file(font_from_original(exe.get("font"))));
-    const auto files = write_rules_files(rules, kImportVersion);
+    const auto files = write_rules_files(rules, kImportVersion, exe.source());
     write_file(rules_dir(data_dir) / kRulesFiles[0], files.mechs);
     write_file(rules_dir(data_dir) / kRulesFiles[1], files.weapons);
     write_file(rules_dir(data_dir) / kRulesFiles[2], files.combat);
     write_file(rules_dir(data_dir) / kRulesFiles[3], files.quiz);
     write_file(rules_dir(data_dir) / kRulesFiles[4], files.shops);
-    write_file(tables_path(data_dir), write_tables_file(tables, kImportVersion));
+    write_file(tables_path(data_dir), write_tables_file(tables, kImportVersion, exe.source()));
     write_file(manifest_path(data_dir),
                "{\n  \"import_version\": " + std::to_string(kImportVersion) + ",\n  \"source\": " +
                    json_quote(exe.source()) + ",\n  \"exe_sha256\": " +
@@ -140,18 +145,22 @@ void import_original(const GameSource& source, const fs::path& data_dir) {
                    "\n}\n");
 }
 
-void import_original(const fs::path& game_dir, const fs::path& data_dir) {
-    import_original(DosGameSource(game_dir), data_dir);
+void import_original(const fs::path& copy, const fs::path& data_dir) {
+    import_original(*open_game_source(copy), data_dir);
 }
 
-bool ensure_imported(const fs::path& game_dir, const fs::path& data_dir) {
-    const auto state = import_state(data_dir);
+bool ensure_imported(const fs::path& copy, const fs::path& data_dir) {
+    return ensure_imported(*open_game_source(copy), data_dir);
+}
+
+bool ensure_imported(const GameSource& source, const fs::path& data_dir) {
+    const auto state = import_state(data_dir, source.program_name());
     if (state == ImportState::Current) return false;
     try {
-        import_original(game_dir, data_dir);
+        import_original(source, data_dir);
     } catch (const std::exception& e) {
         throw FormatError(std::string("the game's text, font and rule tables have ") +
-                          (state == ImportState::Missing ? "not been imported" : "an older import") +
+                          (state == ImportState::Missing ? "not been imported" : "an older import or another copy's") +
                           " in " + data_dir.string() + ", and importing them failed: " + e.what() +
                           ". Run `chr --import --game-dir DIR` with your copy of the game (DOS " +
                           std::string(kSupportedVersion.substr(4)) + ").");

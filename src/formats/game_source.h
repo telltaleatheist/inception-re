@@ -26,6 +26,8 @@ public:
 
     // Where the copy is, for messages only.
     virtual std::string describe() const = 0;
+    // Which version's program the copy has, as ProgramData::source names it. Reads nothing.
+    virtual std::string program_name() const = 0;
 
     // Place script `file` (0-25, formats/bld.h kBldFiles), deciphered, as DOS's <name>.BLD.
     virtual std::optional<std::vector<std::uint8_t>> script(int file) const = 0;
@@ -60,6 +62,7 @@ public:
     explicit DosGameSource(std::filesystem::path dir) : dir_(std::move(dir)) {}
 
     std::string describe() const override { return dir_.string(); }
+    std::string program_name() const override;
     std::optional<std::vector<std::uint8_t>> script(int file) const override;
     std::optional<std::vector<std::uint8_t>> map(int number) const override;
     std::optional<AnmPicture> place_picture(int number) const override;
