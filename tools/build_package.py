@@ -180,10 +180,12 @@ def started(executable, args, env, what):
     return result
 
 
-def smoke(executable, game=None):
+def smoke(executable, game=None, **more):
+    """--help and --status from the packaged program; with `game`, the setup from that folder and a start.
+    `more` goes into each run's environment."""
     with tempfile.TemporaryDirectory(prefix="chi-smoke-") as scratch:
         scratch = Path(scratch)
-        env = hidden_env(scratch)
+        env = hidden_env(scratch, **more)
         if f"usage: {PROGRAM}" not in started(executable, ["--help"], env, "--help").stdout:
             raise RuntimeError("The packaged program's --help has no usage line")
         status = json.loads(started(executable, ["--status"], env, "--status").stdout.strip().splitlines()[-1])
@@ -193,7 +195,7 @@ def smoke(executable, game=None):
         if not game:
             return
         user = scratch / "player"
-        env = hidden_env(scratch, CHR_DATA_DIR=str(user), CHR_SETUP_PICK=str(Path(game).resolve()))
+        env = hidden_env(scratch, CHR_DATA_DIR=str(user), CHR_SETUP_PICK=str(Path(game).resolve()), **more)
         started(executable, ["--setup"], env, "--setup from the game folder")
         if not (user / "install").is_dir() or "game_folder=" not in (user / "settings.ini").read_text():
             raise RuntimeError("--setup copied no game into the player's folder")
@@ -369,7 +371,8 @@ def appimage(root, stage, output, label, game, sdl, tools):
     check_paths(root, appdir, root, sdl)
     image = output / f"{STEM}-{label}-x86_64.AppImage"
     run(str(tools / "appimagetool-x86_64.AppImage"), str(appdir), str(image), env=env)
-    smoke(image.resolve(), game)
+    # Started without FUSE (a CI runner has none): the image unpacks itself and runs.
+    smoke(image.resolve(), game, APPIMAGE_EXTRACT_AND_RUN="1")
     write_digest(image)
     print(f"AppImage {image}")
     return image

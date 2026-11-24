@@ -130,7 +130,9 @@ The packaging's unit tests (no build, no game files):
 ## The package check workflow
 
 `.github/workflows/package-check.yml` ("package check") runs the packaging on
-GitHub's runners, one job per platform: Linux (Ubuntu 24.04, the tarball),
+GitHub's runners, one job per platform: Linux (Ubuntu 24.04, the tarball
+and the AppImage, with linuxdeploy and appimagetool at pinned releases
+checked by SHA-256, the AppImage started without FUSE),
 Windows (Windows Server 2022, MSVC: the zip and Setup.exe) and macOS (the
 universal dmg). It runs by hand (workflow_dispatch), and on pushes to main
 that touch `src/`, `tools/`, `CMakeLists.txt`, `extern/` or the workflow.

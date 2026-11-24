@@ -52,8 +52,23 @@ jobs:
         run: python -I -m unittest discover -s tools -p test_build_package.py -v
       - name: The static archive libraries, from pinned sources
         run: tools/deps/build_archive.sh linux
-      - name: Package and smoke-test (the tarball; the AppImage waits for an icon)
-        run: python -I tools/build_package.py --sdl build-deps/SDL --label "$LABEL"
+      - name: The AppImage tools, pinned releases checked by SHA-256
+        run: |
+          mkdir -p build-deps/appimage
+          cd build-deps/appimage
+          curl -fsSL -o linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
+          curl -fsSL -o appimagetool-x86_64.AppImage \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          printf '%s\n' \
+            'c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d  linuxdeploy-x86_64.AppImage' \
+            'ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  appimagetool-x86_64.AppImage' \
+            | sha256sum -c -
+          chmod +x linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage
+      - name: Package and smoke-test (the tarball and the AppImage)
+        run: >-
+          python -I tools/build_package.py --sdl build-deps/SDL --label "$LABEL" --installer
+          --appimage-tools build-deps/appimage
       - uses: actions/upload-artifact@v4
         with:
           name: package-check-linux
@@ -61,6 +76,7 @@ jobs:
           retention-days: 7
           path: |
             dist/*.tar.gz
+            dist/*.AppImage
             dist/*.sha256
 
   windows:
