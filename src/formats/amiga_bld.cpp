@@ -16,7 +16,28 @@ constexpr int kPlaces = 26;
 // The printer's codes that take one argument byte (docs/text.md).
 bool takes_argument(std::uint8_t c) { return c == 0x02 || c == 0x06 || c == 0x09 || c == 0x13; }
 
+constexpr int kJail = 13, kTheater = 16;  // place numbers (formats/bld.h kBldFiles)
+
+// By offset in the Amiga script; the opcode guards against another build's script.
+constexpr ScriptEdit kJailEdits[] = {
+    {2401, 0xE4, ScriptEdit::Kind::SetByte, 17},  // the sound: effect 17, not 18
+};
+constexpr ScriptEdit kTheaterEdits[] = {
+    {240, 0xEE, ScriptEdit::Kind::Drop, 0},          // no charge here
+    {441, 0xFC, ScriptEdit::Kind::InsertSound, 12},  // DOS's sounds the Amiga leaves out ...
+    {542, 0xE4, ScriptEdit::Kind::SetByte, 2},       // ... and one it plays as effect 12
+    {634, 0xFB, ScriptEdit::Kind::InsertSound, 2},
+    {634, 0xFB, ScriptEdit::Kind::InsertSound, 1},
+    {676, 0xFB, ScriptEdit::Kind::InsertSound, 1},
+};
+
 }  // namespace
+
+std::span<const ScriptEdit> amiga_dos_edits(int place) {
+    if (place == kJail) return kJailEdits;
+    if (place == kTheater) return kTheaterEdits;
+    return {};
+}
 
 // Amiga battletech 0:5fba: seeks to the place's offset, reads a big-endian length and that many
 // bytes, and deciphers them as DOS does (formats/bld.h decipher_bld_byte).
@@ -63,11 +84,13 @@ std::vector<std::uint8_t> relay_amiga_script(const std::vector<std::uint8_t>& pa
         p = in.next;
         code.emplace(in.at, std::move(in));
     }
-    std::map<int, const ScriptEdit*> by_offset;
+    std::map<int, const ScriptEdit*> by_offset;          // Drop and SetByte
+    std::multimap<int, const ScriptEdit*> inserts;        // InsertSound, in the order given
     for (const ScriptEdit& e : edits) {
         const auto it = code.find(e.at);
         if (it == code.end() || it->second.raw != e.op) throw FormatError("a script edit for an instruction the script doesn't have");
-        by_offset[e.at] = &e;
+        if (e.kind == ScriptEdit::Kind::InsertSound) inserts.emplace(e.at, &e);
+        else if (!by_offset.emplace(e.at, &e).second) throw FormatError("two script edits change one instruction");
     }
     const int size = static_cast<int>(packed.size());
     std::vector<int> moved(std::size_t(size) + 1, 0);  // each old offset's new one
@@ -75,10 +98,15 @@ std::vector<std::uint8_t> relay_amiga_script(const std::vector<std::uint8_t>& pa
     std::vector<std::uint8_t> out;
     out.reserve(packed.size() * 2);
     for (const auto& [p, in] : code) {
+        const int before = static_cast<int>(out.size());  // jumps to this instruction land here
+        for (auto [i, end] = inserts.equal_range(p); i != end; ++i) {
+            out.push_back(static_cast<std::uint8_t>(Op::Sound));
+            out.push_back(static_cast<std::uint8_t>(i->second->value));
+        }
         const auto edit = by_offset.find(p);
         const int start = static_cast<int>(out.size());
         if (edit != by_offset.end() && edit->second->kind == ScriptEdit::Kind::Drop) {
-            for (int q = p; q < in.next; ++q) moved[std::size_t(q)] = start;
+            for (int q = p; q < in.next; ++q) moved[std::size_t(q)] = before;
             continue;
         }
         const int copy_end = in.text_at >= 0 ? in.text_at : in.next;
@@ -86,6 +114,7 @@ std::vector<std::uint8_t> relay_amiga_script(const std::vector<std::uint8_t>& pa
             moved[std::size_t(q)] = start + (q - p);
             out.push_back(packed[std::size_t(q)]);
         }
+        moved[std::size_t(p)] = before;
         if (edit != by_offset.end()) {  // SetByte: the first byte operand follows the opcode
             if (in.bytes.empty()) throw FormatError("a script edit sets a byte an instruction doesn't have");
             out[std::size_t(start) + 1] = static_cast<std::uint8_t>(edit->second->value);

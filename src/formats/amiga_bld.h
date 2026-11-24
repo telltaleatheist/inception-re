@@ -29,14 +29,20 @@ std::vector<std::uint8_t> amiga_place_script(std::span<const std::uint8_t> build
 // byte as it is (the Amiga printer, 0:a81e, reads it raw).
 std::string expand_amiga_text(std::string_view packed, const AmigaTextPairs& pairs);
 
-// A change to one instruction while laying a script out: the instruction at offset `at` of the
-// Amiga script, when it has opcode `op`.
+// A change at one instruction while laying a script out: the instruction at offset `at` of the
+// Amiga script, when it has opcode `op`. Drop leaves it out; SetByte gives its first byte operand
+// `value`; InsertSound puts a sound instruction playing effect `value` just before it (several at
+// one instruction go in the order given), and jumps to the instruction land on the first.
 struct ScriptEdit {
     int at;
     std::uint8_t op;
-    enum class Kind { Drop, SetByte } kind = Kind::Drop;
-    int value = 0;  // SetByte: the new value of its first byte operand
+    enum class Kind { Drop, SetByte, InsertSound } kind = Kind::Drop;
+    int value = 0;
 };
+
+// The edits that make the Amiga 2.3 copy's script for `place` play as DOS 1.03's (docs/versions.md,
+// "Amiga rules"): what the rebuild applies unless amiga_rules is on. Empty for most places.
+std::span<const ScriptEdit> amiga_dos_edits(int place);
 
 // The script in DOS form: decoded from its start to its end, one instruction after another (as
 // every script decodes, its unreached parts too), each copied with its text expanded, and every

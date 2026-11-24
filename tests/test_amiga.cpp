@@ -146,6 +146,17 @@ TEST(amiga_script_is_laid_out_in_dos_form) {
                             0xF9, 0x00, 4,  0, 16,   0,  0xF8, 6,   0,   0xFF};
     CHECK(edited == want_edited);
 
+    // Sounds put in: one before the print (the goto's jump to the print now lands on it, as in
+    // DOS) and two before the menu, in the order given.
+    const std::array<ScriptEdit, 3> inserted{{{6, 0xFC, ScriptEdit::Kind::InsertSound, 7},
+                                              {13, 0xF9, ScriptEdit::Kind::InsertSound, 8},
+                                              {13, 0xF9, ScriptEdit::Kind::InsertSound, 9}}};
+    const Bytes with_sounds = relay_amiga_script(packed, p.tables(), menus, inserted);
+    const Bytes want_sounds{0xF7, 0x03, 16, 0,   0xE4, 18, 0xE4, 7,  0xFC, 'A', 'a', 'A', 'b', 0x00, 0xEE, 0x05, 0x00,
+                            0xE4, 8,    0xE4, 9, 0xF9, 0x00, 4,  0,  25,   0,   0xF8, 6,   0,   0xFF};
+    CHECK(with_sounds == want_sounds);
+    CHECK(!amiga_dos_edits(13).empty() && !amiga_dos_edits(16).empty() && amiga_dos_edits(0).empty());
+
     // An edit naming an instruction that isn't there, or one of another kind, is refused.
     for (const ScriptEdit& bad : {ScriptEdit{5, 0xE4, ScriptEdit::Kind::SetByte, 1}, ScriptEdit{4, 0xEE, ScriptEdit::Kind::Drop, 0}}) {
         bool refused = false;

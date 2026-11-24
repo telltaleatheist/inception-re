@@ -128,9 +128,13 @@ its instruction's offset in the Amiga script:
 |---|---|---|
 | JAIL, the sound at offset 2401 | effect 18 | effect 17 |
 | THEATER, the `pay` at offset 240 | charges the player | no charge there (the instruction is left out) |
+| THEATER, the sound at offset 542 | effect 12 | effect 2 |
+| THEATER, before the print at offset 441 | nothing | a sound, effect 12 |
+| THEATER, before the key wait at offset 634 | nothing | two sounds, effects 2 then 1 |
+| THEATER, before the key wait at offset 676 | nothing | a sound, effect 1 |
 
-THEATER also leaves out four of DOS's sound instructions; with `amiga_rules` off those four
-sounds stay silent for now, as on the Amiga.
+With these edits (`amiga_dos_edits` in src/formats/amiga_bld.cpp) every Amiga script laid out
+in DOS form is DOS 1.03's byte for byte, apart from filler bytes no instruction reaches.
 
 ## Commodore 64
 

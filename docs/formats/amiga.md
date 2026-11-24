@@ -69,7 +69,7 @@ Compared with DOS 1.03, laid out this way:
   which keep the Amiga's values.
 - **JAIL**: the sound instruction at Amiga offset 2401 plays effect 18 where DOS plays 17.
 - **THEATER**: the Amiga charges the player once more (a `pay` instruction at Amiga offset
-  240 that DOS doesn't have) and leaves out four of DOS's sound instructions later in the
-  script. Its text is DOS's.
+  240 that DOS doesn't have), plays effect 12 for one of DOS's effect-2 sounds (offset 542) and
+  leaves out four of DOS's sound instructions later in the script. Its text is DOS's.
 
 docs/versions.md, "Amiga rules", says how the rebuild plays these.
