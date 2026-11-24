@@ -35,3 +35,26 @@ TEST(tables_file_out_of_range_is_refused) {
     }
     CHECK(refused);
 }
+
+// The palettes are kept as #rrggbb; anything else is refused.
+TEST(tables_file_colours_are_hex) {
+    const auto* tables = chrtest::tables();
+    if (!tables) return chrtest::skip("no imported tables (set CHR_GAME_DIR)");
+    auto changed = *tables;
+    changed.stats_pulse[2] = {0x12, 0xab, 0xef};
+    const auto text = formats::write_tables_file(changed, formats::kImportVersion);
+    CHECK(formats::read_tables_file(text).stats_pulse[2] == changed.stats_pulse[2]);
+    const auto at = text.find("#12abef");
+    CHECK(at != std::string::npos);
+    for (const char* wrong : {"12abef0", "#12abeg", "#12abe"}) {
+        auto bad = text;
+        bad.replace(at, 7, wrong);
+        bool refused = false;
+        try {
+            formats::read_tables_file(bad);
+        } catch (const std::exception&) {
+            refused = true;
+        }
+        CHECK(refused);
+    }
+}

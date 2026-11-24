@@ -485,9 +485,9 @@ int main(int argc, char** argv) {
         }
     }
     if (status == 0) {
-        const auto original_palette = chr::formats::standard_palette_ega(tables);
+        const auto original_palette = tables.palette;
         chr::platform::OriginalAssets assets(source, options.data_dir, original_palette,
-                                             {{"ENDMECH.CMP", chr::formats::palette_ega(tables.endmech_palette)}});
+                                             {{"ENDMECH.CMP", tables.endmech_palette}});
         const auto palette = chr::platform::screen_colours(assets, original_palette);
         chr::platform::Renderer renderer(sdl_renderer, assets);
         const auto& title = chr::assets::kTitleScreen;

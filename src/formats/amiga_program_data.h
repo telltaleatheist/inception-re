@@ -44,6 +44,8 @@ struct AmigaTable {
         PiecePointers,     // pointers to the three frame piece tables
         PosePointers,      // pointers to the pose scripts
         PoseScripts,       // the pose scripts; DOS pads each to an even length
+        Menus,             // big-endian words, the colours renumbered
+        OverheadColours,   // the land's and the cache's tables, renumbered; DOS's third is the second again
     };
     struct Edit {
         std::uint16_t at = 0;    // in the DOS form
@@ -63,20 +65,33 @@ struct AmigaTable {
 // The tables that can be read so far, in the DOS import table's order.
 std::span<const AmigaTable> amiga_tables();
 
+// Where one of the palettes (ProgramData::colours) is in the Amiga program.
+struct AmigaColours {
+    std::string_view id;
+    std::uint8_t hunk = 0;
+    std::uint32_t offset = 0;
+    std::uint8_t words = 16;  // 16: a palette, one for each colour number; fewer: steps of one colour
+};
+
+std::span<const AmigaColours> amiga_colour_tables();
+
 class AmigaProgramData final : public ProgramData {
 public:
     // Reads and checks the program `battletech` (formats/amiga_program.h), then every text
-    // and table against its hash. Throws FormatError naming those that differ.
-    explicit AmigaProgramData(std::span<const std::uint8_t> file);
+    // and table against its hash. Throws FormatError naming those that differ. `endmech` is
+    // the file ENDMECH.CMP, whose palette the ending is shown with (docs/formats/amiga.md).
+    AmigaProgramData(std::span<const std::uint8_t> file, std::span<const std::uint8_t> endmech);
 
     std::span<const std::uint8_t> get(std::string_view name) const override;
     std::string text(std::string_view name) const override;
+    std::vector<Rgb> colours(std::string_view name) const override;
     std::string address(std::string_view name) const override;
     std::string source() const override { return "Amiga battletech 2.3"; }
     std::string sha256() const override { return sha256_; }
 
 private:
     std::map<std::string, std::vector<std::uint8_t>, std::less<>> pieces_;  // DOS form, by ID
+    std::map<std::string, std::vector<Rgb>, std::less<>> colours_;
     std::map<std::string, std::string, std::less<>> addresses_;
     std::string sha256_;
 };

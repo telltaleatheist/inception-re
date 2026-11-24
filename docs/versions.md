@@ -58,6 +58,7 @@ needs to boot (a start-up script and two small system commands).
 palette in front:
 
     +0   16 words, big-endian: the picture's own palette, one 0x0RGB Amiga colour each
+         (3 bits a component: docs/formats/amiga.md, "Colours")
     +32  the DOS .CMP container: length (big-endian here), type byte, run-length stream
 
 The run-length code is the DOS one (docs/formats/cmp.md), with the 0 code's 16-bit count
@@ -118,8 +119,9 @@ its three builds (or only the five-disk build, with the other two recognised and
 **What the Amiga can fill.** Maps: all. Pictures and tile sheets: all twelve, in the Amiga's
 own colours and, for the title and the town tiles, the Amiga's own art. Interface text: at
 least 145 of 151 directly. Place scripts and their dialogue: all 26, every text (above).
-Place pictures, the demo, the font, the palettes and the tables: present, in forms still to
-be read. Sound: the Amiga's
+Place pictures, the demo, the palettes and the tables: all read (docs/formats/amiga.md) but the
+sound tables. The font: not in the copy
+(docs/formats/amiga.md). Sound: the Amiga's
 own samples, an option beside the DOS speaker sound.
 
 ## Amiga rules
@@ -176,8 +178,8 @@ readers do. `describe()` names the copy for messages.
 `DosGameSource` is the DOS copy: the only place a game file is looked up by name in a folder.
 The game logic (src/game) and the platform (src/platform) hold a source, never a path. An Amiga
 source, `AmigaGameSource` (src/formats/amiga_source.h), hands out the same forms from its own
-files (the readers in docs/formats/amiga.md), with the edits above always applied; its pictures
-will bring their own palettes as the copy's colours. The importer also goes through the source (docs/import.md, "Through the
+files (the readers in docs/formats/amiga.md), with the edits above always applied; its colour
+numbers turned into DOS's, and each palette it shows with them (docs/formats/amiga.md, "Colours"). The importer also goes through the source (docs/import.md, "Through the
 source"): the program's texts and tables by the import table's IDs, the places' texts from the
 scripts.
 

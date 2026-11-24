@@ -10,6 +10,7 @@
 
 #include "formats/amiga_anm.h"
 #include "formats/amiga_bld.h"
+#include "formats/amiga_colours.h"
 #include "formats/amiga_map.h"
 #include "formats/amiga_picture.h"
 #include "formats/amiga_program.h"
@@ -350,9 +351,9 @@ TEST(amiga_texts_cover_the_dos_import_table) {
 TEST(amiga_tables_are_in_the_dos_import_table) {
     // In the DOS table's order, each once, with edits inside the table; the tables not read yet
     // are named here, so a table can't be left out unnoticed.
+    // The four palettes are colours, not tables in DOS's form (amiga_colour_tables).
     const std::vector<std::string_view> not_yet{"tables.palette", "tables.endmech_palette", "tables.stats_palette",
-                                                "tables.stats_pulse", "tables.overhead_colours",
-                                                "tables.sound_lists", "tables.music_note_hz"};
+                                                "tables.stats_pulse", "tables.sound_lists", "tables.music_note_hz"};
     std::vector<std::string_view> dos;
     for (const auto& span : OriginalExe::table())
         if (span.kind == ExeSpan::Kind::Table &&
@@ -369,4 +370,36 @@ TEST(amiga_tables_are_in_the_dos_import_table) {
             for (std::size_t i = 0; span.name == t.id && i < t.edit_count; ++i) sane = sane && t.edits[i].at < span.size;
     }
     CHECK(sane);
+}
+
+TEST(amiga_colours_come_out_in_dos_numbers) {
+    // Every Amiga number has one DOS number, and the other way round.
+    std::array<int, 16> seen{};
+    for (int n = 0; n < 16; ++n) ++seen[dos_colour(std::uint8_t(n))];
+    CHECK(std::all_of(seen.begin(), seen.end(), [](int k) { return k == 1; }));
+    CHECK(dos_colour_pair(0x3c) == 0xed);  // Amiga 3 is DOS's 14, 12 its 13
+
+    // Three bits a component, doubled on the 0-15 scale; the fourth bit is dropped.
+    CHECK((amiga_colour(0x0700) == Rgb{0xee, 0, 0}));
+    CHECK((amiga_colour(0x0f1c) == Rgb{0xee, 0x22, 0x88}));
+
+    Bytes words(32, 0);
+    words[2 * 3 + 1] = 0x07;  // Amiga colour 3: blue
+    const Palette16 palette = amiga_palette(words);
+    CHECK((palette[14] == Rgb{0, 0, 0xee}));
+    CHECK((palette[3] == Rgb{}));
+    bool refused = false;
+    try {
+        amiga_palette(Bytes(31, 0));
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
+
+    // Only the colour codes' arguments change, up to the text's end.
+    Bytes text{'a', 0x06, 3, 'b', 0x02, 12, 0x09, 0x06, 3, 0x13, 0x02, 'c', 0x06, 0, 0x06, 3, 'd' | 0x80, 0x06, 3};
+    renumber_text_colours(text);
+    CHECK(text == Bytes({'a', 0x06, 14, 'b', 0x02, 13, 0x09, 0x06, 3, 0x13, 0x02, 'c', 0x06, 0, 0x06, 14, 'd' | 0x80, 0x06, 3}));
+
+    for (const auto& c : amiga_colour_tables()) CHECK(c.hunk == 1 && (c.words == 16 || c.words == 2));
 }

@@ -26,7 +26,7 @@ namespace chr::formats {
 // The shape of the imported files (docs/import.md has each version). A data
 // folder from another version, or imported with another import table
 // (import_table_hash), is imported again.
-inline constexpr int kImportVersion = 32;
+inline constexpr int kImportVersion = 33;
 
 std::filesystem::path imported_text_path(const std::filesystem::path& data_dir);
 std::filesystem::path imported_font_path(const std::filesystem::path& data_dir);

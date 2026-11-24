@@ -59,6 +59,12 @@ OriginalAssets::OriginalAssets(std::shared_ptr<const formats::GameSource> source
     : source_(std::move(source)), data_dir_(std::move(data_dir)), palette_(palette),
       picture_palettes_(std::move(picture_palettes)) {}
 
+formats::Palette16 OriginalAssets::colours_of(const std::string& file) const {
+    if (const auto own = source_->picture_palette(file)) return *own;
+    const auto own = picture_palettes_.find(file);
+    return own != picture_palettes_.end() ? own->second : palette_;
+}
+
 const formats::TileSheet* OriginalAssets::sheet(const std::string& file) {
     if (auto it = sheets_.find(file); it != sheets_.end()) return &it->second;
     auto found = source_->tile_sheet(file);
@@ -159,18 +165,15 @@ std::optional<Image> OriginalAssets::image(const AssetId& id) {
                 last_error_ = to_string(id) + ": a .CMP holds one picture";
                 return std::nullopt;
             }
-            // The standard 256K EGA/VGA palette (formats/palette.h), from the
-            // import, unless the picture has its own.
-            const auto own = picture_palettes_.find(id.file);
-            return from_colour_numbers(found->pixels(), formats::kCmpWidth, formats::kCmpHeight,
-                                       own != picture_palettes_.end() ? own->second : palette_);
+            // The game's colours, unless the picture has its own.
+            return from_colour_numbers(found->pixels(), formats::kCmpWidth, formats::kCmpHeight, colours_of(id.file));
         }
         if (has_extension(id.file, ".ICN")) {
             const auto* tiles = sheet(id.file);
             if (!tiles) return std::nullopt;
             const auto pixels = tiles->tile(id.index);
             return from_colour_numbers({pixels.begin(), pixels.end()}, formats::kTileSize,
-                                       formats::kTileSize, palette_);
+                                       formats::kTileSize, colours_of(id.file));
         }
         if (has_extension(id.file, ".ANM")) {
             // {"O17.ANM", k}: frame k of a place's picture, as shown.

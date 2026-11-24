@@ -73,6 +73,8 @@ public:
     // The same reading of any bytes (for texts inside a table).
     static std::string text_of(std::span<const std::uint8_t> bytes);
 
+    std::vector<Rgb> colours(std::string_view name) const override;
+
     static std::span<const ExeSpan> table();
     // The SHA-256 of the unpacked program (for the import's manifest).
     std::string sha256() const override;

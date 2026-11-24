@@ -78,7 +78,7 @@ docs/versions.md, "Amiga rules", says how the rebuild plays these.
 
 src/formats/amiga_picture.h. Every one starts with the picture's own palette:
 
-    +0   16 words, big-endian: colours 0-15, each 0x0RGB (4 bits a component)
+    +0   16 words, big-endian: colours 0-15, each 0x0RGB ("Colours" below)
     +32  word, big-endian: the length of what follows
     +34  that many bytes
 
@@ -98,7 +98,8 @@ more. What the bytes are depends on the file:
 
 In each byte bit 7 is the leftmost pixel, and plane p gives bit p of the colour number. The
 reader writes the DOS working forms (cmp.md, [icn.md](icn.md)): 32,000 bytes, two pixels a
-byte, the left pixel in the high nibble; the colour numbers index the file's own palette.
+byte, the left pixel in the high nibble; the colour numbers index the file's own palette, until
+`AmigaGameSource` turns them into DOS's numbers ("Colours").
 
 Checked against DOS 1.03 offline, with each Amiga colour matched to its most frequent DOS
 colour: `map.icn` is DOS's tiles 80-249 pixel for pixel; the other files agree as
@@ -130,7 +131,8 @@ src/formats/amiga_anm.h. DOS's O0-O21.ANM ([anm.md](anm.md)) one after another. 
 the next one's; picture 21, to the file's end. Each is in DOS's own form: frame list, delays,
 speed, then frames of XOR runs (0:1ad54 unpacks them with a size of 3,872 bytes, two pixels a
 byte, the 0 code's count big-endian as in DOS), and the delay of frame k is found and scaled as
-in DOS (0:12084). So formats/anm.h reads them as they are. The colour numbers are the Amiga's.
+in DOS (0:12084). So formats/anm.h reads them as they are, and the source turns the colour
+numbers of the frames into DOS's ("Colours").
 
 Compared with DOS 1.03 offline (each Amiga colour matched to its most frequent DOS colour):
 every picture has its DOS frame count except O4, O5, O6, O9 and O15. The last frames agree with
@@ -151,10 +153,10 @@ DOS's tables at 385b:0000 and 385b:0092 ([../scripts.md](../scripts.md), "Menus"
 layout, the words big-endian. As in DOS, the last two window records overlap the first menu
 records, so menus 0 and 1's highlight colours (word 5) are also windows 9 and 10's starting
 columns. Windows 0-8 are DOS's byte for byte. All that differs is the menus' highlight colour,
-the Amiga's own colour number in all 40 non-empty records (a colour, so it follows the copy), and
+the Amiga's own colour number in all 40 non-empty records (3, which is DOS's 14: "Colours"), and
 with it those two starting columns (3 where DOS has 14: a place on screen, so DOS's must stay).
 The two uses come from the same bytes but are handed out apart: the menus from the `menus`
-bytes as stored (`amiga_menus`, and `tables.menus` below), and `tables.windows` from a copy of
+bytes as stored (`amiga_menus`) or with the colours renumbered (`tables.menus` below), and `tables.windows` from a copy of
 the windows' bytes with word 6 of records 9 and 10 set to DOS's 14.
 `amiga_menus` reads the menus as DOS's records; the scripts' menu instructions need their item
 counts to be laid out.
@@ -176,6 +178,7 @@ each of these comparisons fail):
 
 - Scripts: 11 are DOS's byte for byte and 15 differ only in 16 bytes that no instruction walked
   from offset 0 covers (two in TRAINING, one in each of the others).
+  Besides, five text colours come out as 7 where DOS has 14, in scripts 1 and 14 ("Colours").
 - Maps (15) and the demo: DOS's byte for byte.
 
 The art can't be compared byte for byte: the colour numbers are the Amiga's, and much of it is
@@ -203,8 +206,69 @@ colour, several Amiga colours often to one DOS colour): they say the art is DOS'
 recoloured, not that it was read right.
 
 There is no speaker tune (`title_tune()` is empty); the Amiga's music is in `snd`,
-not read yet. The pictures keep the Amiga's colour numbers; their palettes are still to be
-handed to the renderer as the copy's colours.
+not read yet.
+
+## Colours
+
+src/formats/amiga_colours.h. The Amiga's colour numbers aren't DOS's. Where the same thing has a
+number in both, they are tied together the same way everywhere:
+
+- the overhead map's cell colours, 500 of the 750 bytes of DOS's table (its first two thirds;
+  below): each Amiga number to one DOS number and the other way round, in both tables, and the
+  same way in the two;
+- the menus' highlight and the picked yes/no answer: 3 where DOS has 14;
+- the colour the stats screen pulses: 2 where DOS has 4.
+
+Colour 1 is in none of these; it is the one left over on both sides, so it goes with 1. The
+result, DOS's number for Amiga 0 to 15: 0, 1, 4, 14, 9, 5, 6, 12, 3, 2, 10, 8, 13, 11, 7, 15.
+Colours named by the game's own code (the dot, the bars, the text windows) are DOS's numbers, so
+the readers turn every Amiga number into DOS's, and each palette into the same order: the pixels
+come out as the Amiga shows them whatever the numbering, and the game's named colours get the
+Amiga colour that does the same job. This doesn't make the art DOS's art: the Amiga's own
+numbers in its pictures don't map one to one onto DOS's ("What was compared").
+
+Texts: the arguments of the colour codes 0x02 and 0x06 are renumbered like the pictures (docs/text.md).
+Scripts' texts too. The 424 texts of the scripts hold only colours 15 and, five times, 14, which the
+Amiga's scripts share with DOS's: on the Amiga 14 is another colour than DOS's 14, so it becomes 7.
+
+**What a colour looks like.** The program sets the screen's colours (0:1c4a0) from 16 words by
+keeping the low three bits of each component and doubling them: a component is 0, 2 ... 14 on the
+Amiga's 0-15 scale. No word in the files has a component over 7. So its white is 0xee.
+
+**Which palette is on screen.** A picture file's 16 words are only read into a buffer (1:70a0) by
+the loader (0:1b3f8); the program sets the screen's colours from:
+
+- 1:1c1e, the game's palette, after the title and after a load (0:218e2, 0:2271e): the towns, the
+  wilderness, the fights, the places and the text. `tables.palette`. It differs from the palettes
+  of BTTLTECH.ICN and BTSTATS.CMP in one colour (Amiga 9).
+- 1:07a0, the stats screen's, the same 16 words as the game's, set every 16th pass (0:02c4a), with
+  its colour 2 alternating between the two words at 1:07c0. `tables.stats_palette` and
+  `tables.stats_pulse`: DOS's pulse has four steps (docs/town_loop.md), so the two alternate over
+  them.
+- The loaded file's, in a fade, for INFOCOM.CMP and BTTITLE.CMP (0:23798, 0:245b4).
+- STARLEAG.ICN's, on going into the cache and after ENDMECH.CMP (0:ae12, 0:b000, special 45 at
+  0:17e60). So both levels of the cache, MAP.ICN too, are shown with it. The picture ENDMECH.CMP is
+  drawn while the cache's colours are on, which are the same 16 words as its own:
+  `tables.endmech_palette`, taken from ENDMECH.CMP.
+- All black (1:1a10) at start-up and before the cache's colours.
+
+The other files' palettes are never set. `AmigaGameSource::picture_palette` gives the two start-up
+pictures' and the cache's tiles' own; everything else has the game's.
+
+Open:
+
+- In the Amiga cache the whole screen is under STARLEAG.ICN's palette, not only the tiles: the
+  frame, the text and the figures. Only the tiles have it here; the rest keep the game's colours.
+- XORs work on colour numbers: the menus' highlight bar (docs/text.md) and the boxes over the map
+  (docs/combat.md 2.6). On DOS's numbers they don't give what they would on the Amiga's. The picked
+  yes/no answer is what an XOR with 3 on the Amiga's numbers makes of 15 on 0 (12 on 3), so its
+  highlight bar probably XORs too; that code has not been read. On DOS's numbers the bar's letters
+  come out as colour 1 instead.
+- The overhead map's third table is DOS's for the cache's level 1, and the Amiga has no such table:
+  0:bac0 swaps the level 0 table in on both levels. So `tables.overhead_colours` has that table
+  twice, and level 1 looks as on the Amiga. (A tile number past 249 reads on into the next table.
+  On level 1 that is the land's on the Amiga and the cache's in the rebuild. Whether a tile there
+  goes past 249 was not checked.)
 
 ## The texts
 
@@ -216,9 +280,9 @@ or, for the six below, to its own.
 
 - 525 are DOS's letter for letter.
 - 6 differ only in colour numbers, the arguments of codes 0x02 and 0x06: the two crew labels, the
-  two hit marks of a shot, and the yes/no question's picked answers (fg 12 on bg 3 where DOS has
-  0 on 14, as the menus' highlight is 3 where DOS's is 14). Colour follows the copy, so these
-  are taken as the Amiga has them.
+  two hit marks of a shot, and the yes/no question's picked answers (the Amiga's fg 12 on bg 3 where
+  DOS has 0 on 14). Renumbered ("Colours") they are still not DOS's: the labels are 10 (DOS 2), the
+  marks 4 (DOS 13) and the answers' letters 13 (DOS 0), on 14 as in DOS. Colour follows the copy.
 - 6 differ in the case of some letters: the Amiga capitalises words that DOS doesn't. The
   table lists the positions, and the reader flips them back, so the player reads DOS's text.
 - 1 (`orders.points_left`) is three strings the Amiga prints one after another; joined, they are
@@ -228,9 +292,9 @@ Checked in all seven copies: 532 texts equal DOS's and 6 differ only in colour n
 
 ## The tables
 
-`AmigaProgramData` also hands out 113 of the DOS import table's 120 tables by the same IDs, in
-DOS's form (src/formats/amiga_tables.cpp says where each is). 109 hash to the DOS table's own hash
-once in that form; 4 have a hash of their own.
+`AmigaProgramData` also hands out 114 of the DOS import table's 120 tables by the same IDs, in
+DOS's form (src/formats/amiga_tables.cpp says where each is), and four palettes as colours
+("Colours"). 110 hash to the DOS table's own hash once in that form; 4 have a hash of their own.
 
 The forms:
 
@@ -255,7 +319,7 @@ Four tables are the Amiga's own:
 | `rules.armour_prices` | entry 0 | special 9 (24d3:09fa) indexes it by the armour menus' item, and ARMOR.BLD sends item 0 to its end |
 | `tables.treatment_cost` | entry 0 | 24d3:0d48 skips a treatment of 0 |
 | `tables.upgrade_price` | entry 8 | special 19 reads it into F:0076, but REPAIR leaves for any case above 7 before spending it |
-| `tables.menus` | the highlight colours | colour follows the copy |
+| `tables.overhead_colours` | the last 250 bytes | colour follows the copy; the Amiga has no third table ("Colours") |
 
 `rules.personal_armour`'s entry 0 is not read either: 24d3:0a3c has the same index as the prices,
 and the three other readers (1000:3a49, 1000:3acd, 15ab:1a8f) come after a test that the type is
@@ -269,5 +333,12 @@ from the order of the tables around them ("by neighbours"), not from the code th
 Each place holds the same bytes, and the data hunk's hash is fixed, so a wrong choice would give the
 same table; only its address here, and the claim that the Amiga reads it there, would be wrong.
 
-Not read yet: the three palettes, `stats_pulse` and `overhead_colours` (colours), `sound_lists` and
-`music_note_hz` (sound), and the font.
+Not read yet: `sound_lists` and `music_note_hz` (sound).
+
+**The font is not in the copy.** The program draws text through graphics.library's Text (0:1c706,
+the stub at 0:2848e), in rastports it sets up with InitRastPort (0:1bf9e). It has no call to
+SetFont or to graphics.library's OpenFont, no font name, and none of DOS's glyphs in any of the bit
+orders tried (as stored, mirrored, transposed, inverted); the disks have no fonts folder. So it
+shows the system's default font, which is in the machine's ROM, at the size the disk's
+`system-configuration` asks for (8 in all seven copies). How it draws the characters below 32 that
+DOS's font has as pictures (the arrows, the path marks) was not read.

@@ -1,7 +1,7 @@
 // The Amiga 2.3 copy as a GameSource (formats/game_source.h, docs/versions.md "One source by
 // ID"): each piece read from the Amiga's own files and laid out in DOS 1.03's working form, with
-// the Amiga's rule differences always put back to DOS's (docs/versions.md, "Amiga rules"). The
-// pictures keep the Amiga's colour numbers.
+// the Amiga's rule differences always put back to DOS's (docs/versions.md, "Amiga rules") and
+// its colour numbers turned into DOS's (formats/amiga_colours.h).
 #pragma once
 
 #include <array>
@@ -37,6 +37,7 @@ public:
     std::optional<AnmPicture> place_picture(int number) const override;
     std::optional<CmpPicture> picture(const std::string& name) const override;
     std::optional<TileSheet> tile_sheet(const std::string& name) const override;
+    std::optional<Palette16> picture_palette(const std::string& name) const override;
     std::optional<std::vector<std::uint8_t>> demo() const override;
     // The Amiga has no speaker tune; its music is among its sound samples.
     std::optional<std::vector<std::uint8_t>> title_tune() const override { return std::nullopt; }

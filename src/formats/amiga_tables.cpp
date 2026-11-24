@@ -11,7 +11,7 @@ namespace {
 
 using Form = AmigaTable::Form;
 
-constexpr std::array<AmigaTable, 113> kTables{{
+constexpr std::array<AmigaTable, 114> kTables{{
     {"rules.mech_templates", 1, 0x02d6, Form::Bytes, {}, {{{6 * 0x7d, 0x20, true}}}, 1},
     {"rules.weapons", 1, 0x0cca, Form::Weapons},
     {"rules.hit_locations", 1, 0x0c34, Form::Bytes},
@@ -30,7 +30,7 @@ constexpr std::array<AmigaTable, 113> kTables{{
     {"tables.frame_pieces_1", 1, 0x1868, Form::Words},
     {"tables.frame_pieces_2", 1, 0x1880, Form::Words},
     {"tables.frame_styles", 1, 0x1898, Form::PiecePointers},
-    {"tables.menus", 1, 0x15c2, Form::Words, "d1384109f86c4fc8"},
+    {"tables.menus", 1, 0x15c2, Form::Menus},
     {"tables.seen_bits", 1, 0x06e4, Form::Bytes},
     {"tables.money_loss_mask", 1, 0x06ec, Form::Words},
     {"tables.money_rate", 1, 0x06f2, Form::Words},
@@ -117,6 +117,7 @@ constexpr std::array<AmigaTable, 113> kTables{{
     {"tables.store_tail", 0, 0x20168, Form::Bytes},
     {"tables.mirror_east_west", 0, 0x20268, Form::Bytes},
     {"tables.mirror_north_south", 0, 0x20288, Form::Bytes},
+    {"tables.overhead_colours", 0, 0x202a8, Form::OverheadColours, "3e963030d45364db"},
     {"tables.overhead_block_x", 1, 0x06f8, Form::Bytes},
     {"tables.overhead_block_y", 1, 0x0705, Form::Bytes},
     {"tables.overhead_blocks_across", 1, 0x0712, Form::Bytes},
@@ -127,8 +128,16 @@ constexpr std::array<AmigaTable, 113> kTables{{
     {"rules.quiz_answers", 1, 0x0aac, Form::Words},
 }};
 
+constexpr std::array<AmigaColours, 3> kColours = {{
+    {"tables.palette", 1, 0x1c1e},
+    {"tables.stats_palette", 1, 0x07a0},
+    {"tables.stats_pulse", 1, 0x07c0, 2},
+}};
+
 }  // namespace
 
 std::span<const AmigaTable> amiga_tables() { return kTables; }
+
+std::span<const AmigaColours> amiga_colour_tables() { return kColours; }
 
 }  // namespace chr::formats

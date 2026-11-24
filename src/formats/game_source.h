@@ -15,6 +15,7 @@
 #include "formats/anm.h"
 #include "formats/cmp.h"
 #include "formats/icn.h"
+#include "formats/palette.h"
 #include "formats/program_data.h"
 
 namespace chr::formats {
@@ -36,6 +37,12 @@ public:
     virtual std::optional<CmpPicture> picture(const std::string& name) const = 0;
     // A tile sheet by its DOS name ("BTTLTECH.ICN", ...), decoded (formats/icn.h).
     virtual std::optional<TileSheet> tile_sheet(const std::string& name) const = 0;
+    // The colours a picture or tile sheet is shown with when they aren't the game's own
+    // (tables.json, palette) or the ending's, by the same names.
+    virtual std::optional<Palette16> picture_palette(const std::string& name) const {
+        (void)name;
+        return std::nullopt;
+    }
     // The demo's keys, DOS's DEMOFILE.
     virtual std::optional<std::vector<std::uint8_t>> demo() const = 0;
     // The title tune, DOS's WWOODBT.SIF.

@@ -87,7 +87,10 @@ app-activation notifications and a 20 ms frontmost poll logged no DOSBox-X, Pyth
 the front. The only front changes in the four-at-once run were from the editor to a browser and
 back, which look like the user's own switching but can't be attributed from a log. A stop by
 SIGTERM to `check.py` mid-run ended it in 0.3 s with no DOSBox-X left and no change of front app.
-Not proven: `--sound` (the patched build).
+`--sound` (the patched build) is proven for one DOSBox-X at a time, from one run (sound_drawn, 27
+s): the same watchers logged no activation and no front change, and the copy of the patched binary
+was BackgroundOnly. Silence there is shown by the settings (`nosound=true`, `pcspeaker=false`) and
+the process's own SDL_AUDIODRIVER=dummy, not by listening.
 
     tools/reference/compare.py OUT/NAME.bin chr-screenshot.bmp --diff diff.png
     tools/reference/check.py --chr build/chr --game-dir DIR --data-dir DIR --work DIR

@@ -16,20 +16,23 @@ gives back exactly what was read from the program.
 ```
 {"import_version": N,
  "tables":       {"<name>": {"address": "ssss:oooo", "values": [...]}, ...},
+ "colours":      {"<name>": {"address": "ssss:oooo", "values": ["#rrggbb", ...]}, ...},
  "windows":      {"address": "385b:0000", "records": [{"x", "y", "width", "height", "fg", "bg", "col", "row"}, ...]},
  "menus":        {"address": "385b:0092", "records": [{"first_row", "width", "items", "colour", "highlight"}, ...]},
  "frame_styles": {"address": "46db:4fa4", "by": "frame_pieces", "values": [...]}}
 ```
 
 A value is read back only if it fits the way the program stored it (a byte, a signed byte or a
-word); anything else is refused, and the game asks for a new import.
+word); anything else is refused, and the game asks for a new import. The `colours` are what the
+copy shows for each colour number (DOS's numbers), "#rrggbb": for DOS, the standard EGA colours
+(formats/palette.h). Another version's copy has its own.
 
 ## The tables
 
 | Name | Address | Shape | Read by |
 |---|---|---|---|
-| `palette` | 37e8:0000 | 16 bytes | the EGA colour number of each of the 16 colours (formats/palette.h) |
-| `endmech_palette` | 3858:0000 | 16 bytes | the same, for ENDMECH.CMP only (special 45, docs/formats/cmp.md) |
+| `palette` | 37e8:0000 | 16 bytes, read as 16 colours | the game's colours by colour number: the program stores EGA colour numbers (formats/palette.h) |
+| `endmech_palette` | 3858:0000 | 16 bytes, read as 16 colours | the same, for ENDMECH.CMP only (special 45, docs/formats/cmp.md) |
 | `windows` | 385b:0000 | 11 records of 8 words | the text windows: inside's position and size, colours, cursor (game/text.h) |
 | `frame_pieces_0..2` | 385b:0320/0338/0350 | 12 words each | a frame's corners, then its edges, each run ended by 0xff (2656 frame drawing) |
 | `frame_styles` | DG:4fa4 | 5 far pointers | which piece table each frame style uses; written as the table's number |
@@ -78,8 +81,8 @@ word); anything else is refused, and the game asks for a new import.
 | `path_arrows` | DG:3b06 | 12 bytes | by (dy + 1) x 4 + dx + 1, the glyph of a step of the path the orders screen shows (203b:1774) |
 | `stats_bar_structure` | DG:1306 | 11 words | the 'Mech stats screen (15ab:1afe): each bar's structure byte in the 'Mech record, 0 for none (docs/town_loop.md) |
 | `stats_bar_x`, `stats_bar_y` | DG:131c, DG:1332 | 11 words each | each bar's x and bottom row (15ab:174c) |
-| `stats_palette` | DG:1348 | 16 bytes | the stats screen's colour numbers (EGA), set every 16th frame |
-| `stats_pulse` | DG:1378 | 4 bytes | colour 4's number, step by step |
+| `stats_palette` | DG:1348 | 16 bytes, read as 16 colours | the stats screen's colours, set every 16th frame |
+| `stats_pulse` | DG:1378 | 4 bytes, read as 4 colours | colour 4, step by step |
 | `world_heights` | 2c6c:0b0b | 256 bytes | one height per area of the 16 x 16 world, row by row (287f:104e; docs/wilderness.md) |
 | `terrain_templates` | 2c6c:0c1d | 1024 bytes | 16 blocks of 8 x 8, the block store's first 16: a terrain block's tiles by its neighbour mask (287f:13d9) |
 | `plain_block` | 2c6c:209d | 64 bytes | the one block every type-0x10 terrain block shows |

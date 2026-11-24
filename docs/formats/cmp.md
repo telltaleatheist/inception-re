@@ -68,7 +68,9 @@ Special 45 (24d3:15dd) shows ENDMECH.CMP with the table at 3858:0000 (MCGA: 3858
 nothing else uses; it differs from the standard one in colours 5 and 13. It is imported as
 `endmech_palette`, and the original-files provider colours ENDMECH.CMP with it.
 
-The rebuild shows every other picture with the standard table for now. Still to do:
+The rebuild shows every other picture with the standard table for now. (The colours are imported as
+the copy shows them; a copy whose pictures have other palettes says so by the picture's name,
+`GameSource::picture_palette`.) Still to do:
 
 - find the screens that set a palette of their own (`15ab:1afe` puts the standard one back after
   them, so there are some), and the tables they use;
@@ -110,8 +112,8 @@ rebuild does not use them yet.
 
 `src/formats/cmp.cpp` reads the file into `CmpPicture` (the 32,000 packed bytes
 and their order) and gives one colour number per pixel. `src/formats/palette.cpp`
-holds the title screens' EGA palette. The default asset provider
+turns the stored EGA numbers into colours, at import. The default asset provider
 (`src/platform/original_assets.cpp`) combines them into an RGBA image for the
-renderer, using the standard palette unless it was given one for that file name
-(`main.cpp` gives ENDMECH.CMP's). CGA's 4-colour reduction and the Tandy and MCGA colours are not
+renderer, using the standard palette unless the source or `main.cpp` (ENDMECH.CMP) gives one for that
+file name. CGA's 4-colour reduction and the Tandy and MCGA colours are not
 built, because the rebuild always shows the 16-colour EGA picture.

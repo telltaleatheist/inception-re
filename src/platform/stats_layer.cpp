@@ -24,9 +24,9 @@ constexpr int kPipsPerRow = 5;
 formats::Palette16 stats_colours(const game::StatsScene& scene, const formats::Tables& tables,
                                  const formats::Palette16& standard) {
     if (!scene.pulse) return standard;
-    std::array<int, 16> numbers = tables.stats_palette;
-    if (*scene.pulse >= 0) numbers[kPulsing] = tables.stats_pulse[std::size_t(*scene.pulse & 3)];
-    return formats::palette_ega(numbers);
+    formats::Palette16 colours = tables.stats_palette;
+    if (*scene.pulse >= 0) colours[kPulsing] = tables.stats_pulse[std::size_t(*scene.pulse & 3)];
+    return colours;
 }
 
 bool draw_stats(Renderer& renderer, const game::StatsScene& scene, const formats::Tables& tables,

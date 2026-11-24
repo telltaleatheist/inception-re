@@ -45,6 +45,9 @@ private:
     const formats::Font* font();
 
     std::filesystem::path data_dir_;
+    // The colours `file`'s pictures are shown with.
+    formats::Palette16 colours_of(const std::string& file) const;
+
     formats::Palette16 palette_;
     std::map<std::string, formats::Palette16> picture_palettes_;
     std::unique_ptr<formats::Font> font_;

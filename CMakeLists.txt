@@ -54,6 +54,7 @@ add_library(chrformats STATIC
   src/formats/adf.cpp
   src/formats/amiga_anm.cpp
   src/formats/amiga_bld.cpp
+  src/formats/amiga_colours.cpp
   src/formats/amiga_map.cpp
   src/formats/amiga_picture.cpp
   src/formats/amiga_program.cpp
@@ -167,6 +168,7 @@ add_executable(chrtests
   tests/test_walk.cpp
   tests/test_colours.cpp
   # The effects as samples: plain C++, no SDL.
+  src/platform/original_assets.cpp
   src/platform/sound_wave.cpp
 )
 target_link_libraries(chrtests PRIVATE chrgame)

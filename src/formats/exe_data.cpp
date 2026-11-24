@@ -859,6 +859,8 @@ std::span<const std::uint8_t> OriginalExe::get(std::string_view name) const {
     return std::span(unpacked_).subspan(at, it->size);
 }
 
+std::vector<Rgb> OriginalExe::colours(std::string_view name) const { return ega_colours(get(name)); }
+
 std::string OriginalExe::text(std::string_view name) const { return text_of(get(name)); }
 
 std::string OriginalExe::text_of(std::span<const std::uint8_t> bytes) {

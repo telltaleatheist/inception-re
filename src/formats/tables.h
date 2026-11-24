@@ -11,6 +11,8 @@
 #include <filesystem>
 #include <string>
 
+#include "formats/palette.h"
+
 namespace chr::formats {
 
 class ProgramData;
@@ -44,8 +46,8 @@ inline constexpr std::uint8_t kFramePieceEnd = 0xff;
 
 struct Tables {
     // The screen.
-    std::array<int, 16> palette{};                  // 37e8:0000: colour number of each register (EGA)
-    std::array<int, 16> endmech_palette{};          // 3858:0000: the same, for ENDMECH.CMP (24d3:15dd)
+    Palette16 palette{};                            // 37e8:0000: the standard colours, by colour number
+    Palette16 endmech_palette{};                    // 3858:0000: the same, for ENDMECH.CMP (24d3:15dd)
     std::array<WindowRecord, kWindowCount> windows{};  // 385b:0000
     // 385b:0320/0338/0350: the four corners, then the top, left, right and
     // bottom edges, each a run of frame pieces ended by kFramePieceEnd.
@@ -145,8 +147,8 @@ struct Tables {
     std::array<int, 11> stats_bar_structure{};  // DG:1306: each bar's structure byte in the record (0: none)
     std::array<int, 11> stats_bar_x{};          // DG:131c: each bar's x
     std::array<int, 11> stats_bar_y{};          // DG:1332: each bar's bottom row
-    std::array<int, 16> stats_palette{};        // DG:1348: the screen's colour numbers (EGA)
-    std::array<int, 4> stats_pulse{};           // DG:1378: colour 4's number, step by step
+    Palette16 stats_palette{};                  // DG:1348: the screen's colours
+    std::array<Rgb, 4> stats_pulse{};           // DG:1378: colour 4, step by step
 
     // The terrain outside the towns (docs/wilderness.md).
     std::array<int, 256> world_heights{};        // 2c6c:0b0b: one height per area, 16 x 16

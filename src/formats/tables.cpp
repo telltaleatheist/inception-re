@@ -1,5 +1,6 @@
 #include "formats/tables.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <functional>
 #include <span>
@@ -36,8 +37,6 @@ std::span<int> all(std::array<std::array<int, M>, N>& a) { return {a.front().dat
 
 const std::vector<Flat>& flat_tables() {
     static const std::vector<Flat> kFlat = {
-        {"palette", 0x37e8, 0x0000, Element::U8, [](Tables& t) { return all(t.palette); }},
-        {"endmech_palette", 0x3858, 0x0000, Element::U8, [](Tables& t) { return all(t.endmech_palette); }},
         {"frame_pieces_0", 0x385b, 0x0320, Element::U16, [](Tables& t) { return all(t.frame_pieces[0]); }},
         {"frame_pieces_1", 0x385b, 0x0338, Element::U16, [](Tables& t) { return all(t.frame_pieces[1]); }},
         {"frame_pieces_2", 0x385b, 0x0350, Element::U16, [](Tables& t) { return all(t.frame_pieces[2]); }},
@@ -113,8 +112,6 @@ const std::vector<Flat>& flat_tables() {
         {"stats_bar_structure", 0x46db, 0x1306, Element::U16, [](Tables& t) { return all(t.stats_bar_structure); }},
         {"stats_bar_x", 0x46db, 0x131c, Element::U16, [](Tables& t) { return all(t.stats_bar_x); }},
         {"stats_bar_y", 0x46db, 0x1332, Element::U16, [](Tables& t) { return all(t.stats_bar_y); }},
-        {"stats_palette", 0x46db, 0x1348, Element::U8, [](Tables& t) { return all(t.stats_palette); }},
-        {"stats_pulse", 0x46db, 0x1378, Element::U8, [](Tables& t) { return all(t.stats_pulse); }},
         {"world_heights", 0x2c6c, 0x0b0b, Element::U8, [](Tables& t) { return all(t.world_heights); }},
         {"area_maps", 0x37e8, 0x0030, Element::U8, [](Tables& t) { return all(t.area_maps); }},
         {"encounter_weapons", 0x46db, 0x2cf4, Element::U8, [](Tables& t) { return all(t.encounter_weapons); }},
@@ -141,6 +138,43 @@ const std::vector<Flat>& flat_tables() {
         {"music_note_hz", 0x284b, 0x0121, Element::U16, [](Tables& t) { return all(t.music_note_hz); }},
     };
     return kFlat;
+}
+
+// A palette: the same for colours, which the copy gives as they show
+// (ProgramData::colours).
+struct ColourTable {
+    std::string_view name;
+    std::uint16_t segment, offset;
+    std::function<std::span<Rgb>(Tables&)> colours;
+};
+
+const std::vector<ColourTable>& colour_tables() {
+    static const std::vector<ColourTable> kColours = {
+        {"palette", 0x37e8, 0x0000, [](Tables& t) { return std::span<Rgb>(t.palette); }},
+        {"endmech_palette", 0x3858, 0x0000, [](Tables& t) { return std::span<Rgb>(t.endmech_palette); }},
+        {"stats_palette", 0x46db, 0x1348, [](Tables& t) { return std::span<Rgb>(t.stats_palette); }},
+        {"stats_pulse", 0x46db, 0x1378, [](Tables& t) { return std::span<Rgb>(t.stats_pulse); }},
+    };
+    return kColours;
+}
+
+// "#rrggbb", as the file holds a colour.
+std::string colour_text(const Rgb& c) {
+    char buf[8];
+    std::snprintf(buf, sizeof buf, "#%02x%02x%02x", c.r, c.g, c.b);
+    return buf;
+}
+
+Rgb colour_of(const std::string& text) {
+    unsigned v = 0;
+    if (text.size() != 7 || text[0] != '#') throw FormatError("tables: a colour is not #rrggbb");
+    for (std::size_t i = 1; i < text.size(); ++i) {
+        const char c = text[i];
+        const int digit = c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+        if (digit < 0) throw FormatError("tables: a colour is not #rrggbb");
+        v = v << 4 | unsigned(digit);
+    }
+    return {std::uint8_t(v >> 16), std::uint8_t(v >> 8), std::uint8_t(v)};
 }
 
 int read_element(std::span<const std::uint8_t> b, std::size_t i, Element e) {
@@ -216,6 +250,12 @@ Tables tables_from_original(const ProgramData& exe) {
             throw FormatError("tables: " + std::string(f.name) + " has the wrong size");
         for (std::size_t i = 0; i < out.size(); ++i) out[i] = read_element(bytes, i, f.element);
     }
+    for (const auto& c : colour_tables()) {
+        const auto colours = exe.colours(span_name(c.name));
+        auto out = c.colours(t);
+        if (colours.size() != out.size()) throw FormatError("tables: " + std::string(c.name) + " has the wrong size");
+        std::copy(colours.begin(), colours.end(), out.begin());
+    }
     const auto windows = exe.get("tables.windows");
     for (int n = 0; n < kWindowCount; ++n) {
         const auto fields = window_fields(t.windows[std::size_t(n)]);
@@ -253,6 +293,16 @@ std::string write_tables_file(const Tables& tables, int import_version) {
              json_quote(address(f.segment, f.offset)) + ", \"values\": " + number_list(f.values(t)) + "}";
         first = false;
     }
+    s += "\n  },\n  \"colours\": {\n";
+    first = true;
+    for (const auto& c : colour_tables()) {
+        s += std::string(first ? "" : ",\n") + "    " + json_quote(c.name) + ": {\"address\": " +
+             json_quote(address(c.segment, c.offset)) + ", \"values\": [";
+        const auto colours = c.colours(t);
+        for (std::size_t i = 0; i < colours.size(); ++i) s += (i ? ", " : "") + json_quote(colour_text(colours[i]));
+        s += "]}";
+        first = false;
+    }
     s += "\n  },\n  \"windows\": {\"address\": " + json_quote(address(kScreenSegment, kWindowsAt)) + ", \"records\": [\n";
     for (int n = 0; n < kWindowCount; ++n) {
         const auto fields = window_fields(t.windows[std::size_t(n)]);
@@ -288,6 +338,13 @@ Tables read_tables_file(const std::string& text) {
                 throw FormatError("tables: a value of " + std::string(f.name) + " is out of range");
             out[i] = int(v);
         }
+    }
+    const Json& colours = member(root, "colours");
+    for (const auto& c : colour_tables()) {
+        const auto& a = member(member(colours, c.name), "values").array();
+        auto out = c.colours(t);
+        if (a.size() != out.size()) throw FormatError("tables: " + std::string(c.name) + " has the wrong length");
+        for (std::size_t i = 0; i < out.size(); ++i) out[i] = colour_of(a[i].string());
     }
     const auto& windows = member(member(root, "windows"), "records").array();
     if (windows.size() != std::size_t(kWindowCount)) throw FormatError("tables: windows needs 11 records");

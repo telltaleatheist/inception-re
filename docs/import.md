@@ -20,7 +20,7 @@ folder under an earlier name is moved to it once (docs/setup.md, "The player's f
 
 ## What it writes
 
-    import.json          {"import_version": 29, "source": "BTECH.EXE DOS 1.03", "exe_sha256": ...,
+    import.json          {"import_version": 33, "source": "BTECH.EXE DOS 1.03", "exe_sha256": ...,
                           "table_sha256": ...}
     text/english.json    {"texts": [{"id": ..., "address": "ssss:oooo", "text": ...}, ...]}
     font/font.txt        the font (docs/formats/font.md)

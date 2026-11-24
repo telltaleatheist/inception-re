@@ -88,7 +88,7 @@ TEST(ega_palette_colours) {
     CHECK((ega_200_line_colour(0x00) == Rgb{0, 0, 0}));
     CHECK((ega_200_line_colour(0x06) == Rgb{0xaa, 0x55, 0x00}));  // brown
     CHECK((ega_200_line_colour(0x17) == Rgb{0xff, 0xff, 0xff}));
-    const auto palette = standard_palette_ega(*tables);
+    const auto& palette = tables->palette;
     CHECK(palette[1] == palette[0]);                                // 1 is black
     CHECK((palette[5] == Rgb{0x55, 0x55, 0xff}));                   // light blue
     CHECK((palette[9] == Rgb{0x00, 0x00, 0xaa}));                   // blue
