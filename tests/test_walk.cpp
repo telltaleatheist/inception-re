@@ -323,9 +323,12 @@ TEST(map1_citadel_question) {
     CHECK(town->question_open());
     CHECK(town->position() == (MapPosition{0x0c45, 0xc015}));
     const auto& t = town->text();
-    CHECK(t.row_text(10).substr(14, 18) == "Will you enter the");
-    CHECK(t.row_text(11).substr(14, 8) == "Citadel?");
-    CHECK(t.row_text(12).substr(14, 6) == "Yes No");
+    const std::string ask = chrtest::shown(chrtest::interface_text("walk.enter_question"));
+    const std::string place = lookup(*m.texts, "map1.place.1") + chrtest::interface_text("walk.enter_question_end");
+    const std::string answer = chrtest::shown(chrtest::interface_text("ui.answer_yes_picked"));
+    CHECK(place.size() > 1 && t.row_text(10).substr(14, ask.size()) == ask);
+    CHECK(t.row_text(11).substr(14, place.size()) == place);
+    CHECK(t.row_text(12).substr(14, answer.size()) == answer);
     CHECK(t.cell(14, 12).bg == chr::game::TextColour::data(14) && t.cell(14, 12).fg == chr::game::TextColour::data(0));  // Yes picked: black on yellow
     CHECK(t.cell(18, 12).bg == chr::game::TextColour::data(0) && t.cell(18, 12).fg == chr::game::TextColour::data(15));
 }
@@ -364,8 +367,10 @@ TEST(map1_panel_lists_jason) {
     std::unique_ptr<Town> town;
     Map1 m;
     if (!play_map1("", town, m)) return;
-    CHECK(town->text().row_text(13).substr(9, 3) == "BDC");
-    CHECK(town->text().row_text(14).substr(1, 5) == "Jason");
+    const std::string heading = chrtest::interface_text("panel.party_heading");
+    const std::string name = lookup(*m.texts, "character.0");
+    CHECK(town->text().row_text(13).substr(9, heading.size()) == heading);
+    CHECK(!name.empty() && town->text().row_text(14).substr(1, name.size()) == name);
     CHECK(town->text().cell(0, 0).kind == TextCell::Kind::Frame);
 }
 
@@ -373,11 +378,11 @@ TEST(map1_question_in_another_language) {
     std::unique_ptr<Town> town;
     Map1 m;
     const auto german = TextTable::parse(R"({"texts": [
-        {"id": "walk.enter_question", "text": "Wollt ihr hinein in die\r"},
-        {"id": "map1.place.1", "text": "Zitadelle"}]})");
+        {"id": "walk.enter_question", "text": "Ein ganz anderer Satz:\r"},
+        {"id": "map1.place.1", "text": "Ortsname"}]})");
     if (!play_map1("up*5", town, m, &german)) return;
-    CHECK(town->text().row_text(10).substr(14, 23) == "Wollt ihr hinein in die");
-    CHECK(town->text().row_text(11).substr(14, 10) == "Zitadelle?");
+    CHECK(town->text().row_text(10).substr(14, 22) == "Ein ganz anderer Satz:");
+    CHECK(town->text().row_text(11).substr(14, 9) == "Ortsname" + chrtest::interface_text("walk.enter_question_end"));
 }
 
 TEST(map1_move_log_in_the_upper_box) {
@@ -387,15 +392,18 @@ TEST(map1_move_log_in_the_upper_box) {
     if (!play_map1("up*5", town, m)) return;
     const auto& t = town->text();
     CHECK(t.row_text(1).substr(1, 11) == "           ");  // each name starts with a new line
-    for (int row = 2; row <= 5; ++row) CHECK(t.row_text(row).substr(1, 6) == "North ");
+    const auto word = [](const char* id) { return chrtest::shown(chrtest::interface_text(id)); };
+    const std::string north = word("walk.direction.north") + ' ';
+    for (int row = 2; row <= 5; ++row) CHECK(t.row_text(row).substr(1, north.size()) == north);
     CHECK(t.row_text(6).substr(1, 5) == "     ");
 
     // A blocked step is logged too.
     std::unique_ptr<Town> town2;
     Map1 m2;
     if (!play_map1("down*3 pgup", town2, m2)) return;
-    CHECK(town2->text().row_text(4).substr(1, 5) == "South");
-    CHECK(town2->text().row_text(5).substr(1, 9) == "Northeast");
+    const std::string south = word("walk.direction.south"), northeast = word("walk.direction.northeast");
+    CHECK(town2->text().row_text(4).substr(1, south.size()) == south);
+    CHECK(town2->text().row_text(5).substr(1, northeast.size()) == northeast);
 }
 
 TEST(map1_game_ticks_and_money) {
@@ -407,7 +415,8 @@ TEST(map1_game_ticks_and_money) {
     CHECK(town->ticks() == 1);
     CHECK(town->animation_phase() == 1);
     CHECK(town->money().cbills == 35);
-    CHECK(town->text().row_text(22).substr(1, 8) == "C-Bills:");
+    const std::string label = chrtest::shown(chrtest::interface_text("panel.cbills_label"));
+    CHECK(town->text().row_text(22).substr(1, label.size()) == label);
     CHECK(town->text().row_text(23).substr(1, 3) == "35 ");
     CHECK(town->text().cell(1, 23).fg == chr::game::TextColour(chr::game::TextRole::Amount));
 
@@ -503,11 +512,12 @@ TEST(money_step) {
 
 TEST(map1_move_log_scrolls_a_line_at_a_time) {
     // Window 4 holds 11 lines; the 12th step scrolls it by one, with no
-    // blank lines between (each entry is "\rSouth": break, then the word).
+    // blank lines between (each entry is a break, then the word).
     std::unique_ptr<Town> town;
     Map1 m;
     if (!play_map1("left*13", town, m)) return;
-    for (int row = 1; row <= 11; ++row) CHECK(town->text().row_text(row).substr(1, 4) == "West");
+    const std::string west = chrtest::shown(chrtest::interface_text("walk.direction.west"));
+    for (int row = 1; row <= 11; ++row) CHECK(town->text().row_text(row).substr(1, west.size()) == west);
 }
 
 TEST(window_tile_wraps_to_the_next_row) {

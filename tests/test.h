@@ -27,6 +27,10 @@ void skip(const std::string& why);
 // the repo holds no values, so tests that need them skip.
 std::string imported_data_dir();
 const chr::formats::Tables* tables();
+// An interface text by ID, from the repo's data/text/interface.json ("" and a failure when it isn't there).
+std::string interface_text(const char* id);
+// A text as the printer shows it: its colour codes (0x02 n, 0x06 n) and line breaks left out.
+std::string shown(const std::string& text);
 
 struct Register {
     Register(const char* name, std::function<void()> body) {

@@ -5,6 +5,7 @@
 
 #include "formats/import.h"
 #include "formats/tables.h"
+#include "game/text_provider.h"
 #include "test.h"
 
 namespace chrtest {
@@ -33,6 +34,22 @@ std::string game_dir() {
         dir = CHR_DEFAULT_GAME_DIR;
     std::error_code ec;
     return std::filesystem::is_directory(dir, ec) ? dir : std::string();
+}
+
+std::string interface_text(const char* id) {
+    static const auto table = chr::game::TextTable::load(CHR_INTERFACE_TEXT);
+    if (const auto text = table.find(id)) return std::string(*text);
+    fail(__FILE__, __LINE__, std::string(id) + " is not in interface.json");
+    return "";
+}
+
+std::string shown(const std::string& text) {
+    std::string out;
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        if (text[i] == 0x02 || text[i] == 0x06) ++i;
+        else if (text[i] != '\r') out += text[i];
+    }
+    return out;
 }
 
 std::string imported_data_dir() {

@@ -55,9 +55,15 @@ TEST(printer_wraps_words) {
     TextScreen t(*tables);
     t.select_window(7);  // (14, 10) 25x5
     t.clear_window();
-    t.print("The water is too deep that way.");
-    CHECK(t.row_text(10).substr(14, 25) == "The water is too deep    ");
-    CHECK(t.row_text(11).substr(14, 25) == "that way.                ");
+    // Longer than the window's 25 columns: broken at the last space that fits.
+    const std::string text = chrtest::interface_text("walk.too_deep");
+    const std::size_t space = text.rfind(' ', 25);
+    CHECK(text.size() > 25 && space != std::string::npos && space > 0);
+    if (space == std::string::npos) return;
+    t.print(text);
+    const auto row = [](std::string s) { return s.resize(25, ' '), s; };
+    CHECK(t.row_text(10).substr(14, 25) == row(text.substr(0, space)));
+    CHECK(t.row_text(11).substr(14, 25) == row(text.substr(space + 1)));
 }
 
 TEST(printer_newline_and_colours) {
@@ -78,7 +84,7 @@ TEST(menu_bar_toggles) {
     const auto* tables = chrtest::tables();
     if (!tables) return chrtest::skip("no imported tables (set CHR_GAME_DIR)");
     TextScreen t(*tables);
-    t.put_text("Yes", 2, 3, chr::game::TextRole::Text, chr::game::TextRole::Background);
+    t.put_text("abc", 2, 3, chr::game::TextRole::Text, chr::game::TextRole::Background);
     t.menu_bar(2, 3, 3, 5);
     CHECK(t.cell(2, 3).bars[0] == 6 && t.cell(4, 3).bars[0] == 6 && t.cell(5, 3).bars[0] == 0);
     t.menu_bar(2, 3, 3, 0x28);
@@ -126,7 +132,7 @@ TEST(exe_unpacks_like_the_tool_and_has_the_font) {
     CHECK(unpacked.size() == formats::kDos103Layout.size);
     const auto exe = formats::OriginalExe::load(dir);
     CHECK(exe.get("font").size() == 1024);
-    CHECK(exe.text("walk.too_deep") == "The water is too deep that way.");
+    CHECK(exe.text("walk.too_deep") == chrtest::interface_text("walk.too_deep"));
 }
 
 namespace {
@@ -154,9 +160,10 @@ TEST(import_writes_text_and_font) {
     CHECK(!formats::ensure_imported(dir, data));  // nothing to do the second time
 
     const auto texts = TextTable::load(formats::imported_text_path(data));
-    CHECK(lookup(texts, "walk.too_deep") == "The water is too deep that way.");
-    CHECK(lookup(texts, "character.0") == "Jason");
-    CHECK(lookup(texts, "panel.party_heading") == "BDC");
+    for (const char* id : {"walk.too_deep", "panel.party_heading", "ui.answer_yes_picked"})
+        CHECK(lookup(texts, id) == chrtest::interface_text(id));
+    const auto exe = formats::OriginalExe::load(dir);
+    CHECK(!exe.text("character.0").empty() && lookup(texts, "character.0") == exe.text("character.0"));
     CHECK(lookup(texts, "ui.answer_yes_picked").substr(0, 5) == std::string("\r\x06\x00\x02\x0e", 5));
     // Each entry says where in the program it came from.
     const auto bytes = formats::read_file(formats::imported_text_path(data));
@@ -326,21 +333,21 @@ TEST(font_file_round_trip) {
 
 TEST(text_overrides_replace_ids) {
     const auto table = TextTable::parse(R"({"language": "de", "texts": [
-        {"id": "walk.too_deep", "text": "Das Wasser ist dort zu tief."},
-        {"id": "walk.enter_question", "text": "Wollt ihr hinein:\r"},
-        {"id": "ui.answer_yes_picked", "text": "\r\u0006\u0000\u0002\u000eJa\u0006\u000f\u0002\u0000 Nein"}
+        {"id": "walk.too_deep", "text": "Ein anderer Satz."},
+        {"id": "walk.enter_question", "text": "Noch ein Satz:\r"},
+        {"id": "ui.answer_yes_picked", "text": "\r\u0006\u0000\u0002\u000eAB\u0006\u000f\u0002\u0000 CDEF"}
     ]})");
     CHECK(table.size() == 3);
-    CHECK(lookup(table, "walk.too_deep") == "Das Wasser ist dort zu tief.");
-    CHECK(lookup(table, "walk.enter_question") == "Wollt ihr hinein:\r");
-    CHECK(lookup(table, "ui.answer_yes_picked") == std::string("\r\x06\x00\x02\x0eJa\x06\x0f\x02\x00 Nein", 16));
+    CHECK(lookup(table, "walk.too_deep") == "Ein anderer Satz.");
+    CHECK(lookup(table, "walk.enter_question") == "Noch ein Satz:\r");
+    CHECK(lookup(table, "ui.answer_yes_picked") == std::string("\r\x06\x00\x02\x0e" "AB\x06\x0f\x02\x00 CDEF", 16));
     // The first layer that has an ID wins.
     TextTable base;
     base.set("walk.too_deep", "original");
-    base.set("panel.party_heading", "BDC");
+    base.set("panel.party_heading", "below");
     const LayeredText layered({&table, &base});
-    CHECK(lookup(layered, "walk.too_deep") == "Das Wasser ist dort zu tief.");
-    CHECK(lookup(layered, "panel.party_heading") == "BDC");
+    CHECK(lookup(layered, "walk.too_deep") == "Ein anderer Satz.");
+    CHECK(lookup(layered, "panel.party_heading") == "below");
     bool threw = false;
     try {
         TextTable::parse(R"({"texts": [{"id": "x"}]})");
