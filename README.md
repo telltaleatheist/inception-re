@@ -18,18 +18,19 @@ exactly what it does, then write our own code that does the same thing. The
 aim is for the rebuild to play as the original did, and for its source and
 notes to document how the original worked, for preservation and research.
 
-**Status:** an early first release, chi-v0.1.0, is out for Windows, macOS
-and Linux on the [Releases page](https://github.com/telltaleatheist/inception-re/releases).
-It is checked against the original game, but more playtesting is still to
-come. You need your own copy of the DOS version 1.03 (below); the first start
-finds it or asks you where it is.
+**Status:** chi-v1.0.0 is out for Windows, macOS and Linux on the
+[Releases page](https://github.com/telltaleatheist/inception-re/releases). It is
+checked against the original DOS game; what is known to differ, and what no one
+has played yet, is in its notes. You need your own copy of the DOS version 1.03
+or the Amiga version 2.3 (below); the first start finds it or asks you where it is.
 
 ## You need your own copy of the game
 
 The rebuild contains none of the original's files. It reads the graphics,
 maps, animations and text from your own copy, so you need a copy of the game to
-play it. The release, 0.1.0, plays the DOS version 1.03, which is the reference.
-The source here also plays the Amiga version 2.3; that comes with the next release.
+play it: the DOS version 1.03, which is the reference, or the Amiga version 2.3.
+Commodore 64 and Apple II copies are named but not played
+([docs/versions.md](docs/versions.md)).
 
 ## The rules
 
@@ -52,17 +53,18 @@ sdl3`).
 environment variable, then where the setup put it (the folder remembered in
 its data folder's `settings.ini`, the folder given when it was built, the data
 folder's `install`). Without any of those, it opens the setup, which finds
-your copy (or lets you pick it, its folder or an archive it came in) and
+your copy (or lets you pick it, its folder, its disk image or an archive it came in) and
 copies it into the data folder; `chr --setup` opens it on purpose and
-`chr --status` prints what is found (docs/setup.md). For now it
-shows the title screen, or with `--map N` map N with the side panel (map 1 is
+`chr --status` prints what is found (docs/setup.md). It
+starts at the title screen, or with `--map N` on map N with the side panel (map 1 is
 the town a new game starts in). Walk with the arrow keys, and Home, PgUp, End
 and PgDn for the diagonals. `--script "up*5 y"` plays keys first and prints
 what each did; with `--screenshot FILE.bmp` it writes one frame and quits
 without opening a window.
 
-The font and some of the game's text live inside your own `BTECH.EXE`, which
-must be DOS version 1.03. The first time `chr` runs it imports them into its
+The font and some of the game's text live inside your own copy's program:
+`BTECH.EXE`, which must be DOS version 1.03, or the Amiga 2.3's, which has no
+font, so the rebuild shows its own. The first time `chr` runs it imports them into its
 data folder (`--data-dir DIR`, else `CHR_DATA_DIR`, else your
 application-data folder); `chr --import` does it again. `--text FILE` lays a
 translation or rewrite over the game's text (docs/import.md).

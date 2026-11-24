@@ -337,8 +337,8 @@ A disk whose recognising files all match but whose variant file matches none is 
 as changed from the copies we know. The C64 and Apple II copies are named and refused: their maps 1–11
 are the C64's own, not DOS's (formats/c64.md), and a DOS or Amiga copy is needed.
 
-DOS 1.03 and Amiga 2.3 play (docs/setup.md, "What counts as the game"); the release 0.1.0 plays
-DOS 1.03 alone. For the others `--status` answers `incomplete` for it, with `data` naming it
+DOS 1.03 and Amiga 2.3 play (docs/setup.md, "What counts as the game"); the releases before 1.0.0
+play DOS 1.03 alone. For the others `--status` answers `incomplete` for it, with `data` naming it
 ("Commodore 64"), `missing` naming a DOS 1.03 or Amiga 2.3 copy, and a note of why
 (the same the setup shows). The setup says the same instead of "no copy found", both for a scripted pick
 and on the setup screen (the kit's `recognise` hook, which the kit calls only when its own walk
