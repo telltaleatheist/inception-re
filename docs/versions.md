@@ -141,6 +141,24 @@ With these edits (`amiga_dos_edits` in src/formats/amiga_bld.cpp, `amiga_map` in
 src/formats/amiga_map.cpp) every Amiga script laid out in DOS form is DOS 1.03's byte for byte,
 apart from filler bytes no instruction reaches, and every map is DOS's byte for byte.
 
+**Rules follow DOS; look and sound follow the copy.** `amiga_rules` covers only what changes
+the game: the edits above. What the player sees and hears comes from the copy they bring,
+whatever the switch says: the Amiga's pictures, palettes and place-picture animations (frame
+lists, delays and speed included), and its sound samples. That includes the sounds some
+animations start at a set frame (docs/formats/amiga.md, "The place pictures"), which DOS doesn't
+play; a separate switch will silence just those, for DOS's quiet.
+
+**Animation timing changes no game state.** A place picture's frames and delays are waits that
+only show the picture (BTECH.EXE 1000:1afd, held by 273d:0006). They read no keys: keys pressed
+meanwhile wait in the buffer and are read afterwards, in order. They make no random draws: the
+one draw that decides whether a picture shows (1000:48b7) comes before its first frame. And they
+don't move the game tick, which counts the main loop's idle passes (1000:01f4, docs/random.md);
+those don't run while a picture plays. In the rebuild they are presentation events
+(docs/resuming.md). So an animation that is longer or shorter on the Amiga (O4, O5, O6, O9, O10,
+O13, O15) changes only how long the box animates. The one place that reads a picture's frame
+list for anything else, the 'Mech that won't start (19b8:16b2), uses O0, which the Amiga leaves
+as DOS has it. Sound lengths get the same check when `snd` is read.
+
 ## Commodore 64
 
 **Container.** Two standard 1541 disk images (35 tracks, 683 sectors), each with a normal
