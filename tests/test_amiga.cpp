@@ -261,20 +261,18 @@ TEST(amiga_maps_are_cut_out_in_dos_form) {
         }
         maps.insert(maps.end(), m.begin(), m.end());
     }
-    const Bytes three = amiga_map(maps, offsets, 3, false);
+    const Bytes three = amiga_map(maps, offsets, 3);
     CHECK(three.size() == 0x220 && three[0] == 3 && three[5] == 'a' + 3);
     CHECK(three[0x185] == 0x34 + 3 && three[0x186] == 0x12);  // now little-endian
     CHECK(three[0x204] == 3);                                 // the last word swapped is all 3s
-    CHECK(amiga_map(maps, offsets, 15, false) == Bytes(10, 15));
-    // Map 2's first name: the Amiga's own, or with DOS rules map 1's.
-    CHECK(amiga_map(maps, offsets, 2, false)[5] == 'a' + 2);
-    const Bytes dos_two = amiga_map(maps, offsets, 2, true);
-    CHECK(dos_two[5] == 'a' + 1 && dos_two[6] == 1 && dos_two[0] == 2);
-    CHECK(amiga_map(maps, offsets, 3, true) == three);
+    CHECK(amiga_map(maps, offsets, 15) == Bytes(10, 15));
+    // Map 2's first name is map 1's, as in DOS; the rest of map 2 is its own.
+    const Bytes two = amiga_map(maps, offsets, 2);
+    CHECK(two[5] == 'a' + 1 && two[6] == 1 && two[0] == 2);
 
     bool refused = false;
     try {
-        amiga_map(Bytes(maps.begin(), maps.end() - 20), offsets, 14, false);
+        amiga_map(Bytes(maps.begin(), maps.end() - 20), offsets, 14);
     } catch (const FormatError&) {
         refused = true;
     }

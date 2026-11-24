@@ -34,7 +34,7 @@ std::span<const std::uint8_t> stored(std::span<const std::uint8_t> maps, std::sp
 // Amiga battletech 0:21d12: seeks to table[number - 1] and reads the map's fields one after
 // another into place, the position words as the 68000 stores them.
 std::vector<std::uint8_t> amiga_map(std::span<const std::uint8_t> maps, std::span<const std::uint8_t> offsets,
-                                    int number, bool dos_rules) {
+                                    int number) {
     if (number < 1 || number > kAmigaMaps || offsets.size() < std::size_t(kAmigaMaps) * 4)
         throw FormatError("no Amiga map " + std::to_string(number));
     const auto bytes = stored(maps, offsets, number);
@@ -42,7 +42,7 @@ std::vector<std::uint8_t> amiga_map(std::span<const std::uint8_t> maps, std::spa
     if (number == kAmigaMaps) return map;  // map 15 has no header
     if (map.size() < kWordTablesEnd) throw FormatError("an Amiga map is shorter than its header");
     for (std::size_t w = kWordTables; w < kWordTablesEnd; w += 2) std::swap(map[w], map[w + 1]);
-    if (dos_rules && number == 2) {
+    if (number == 2) {
         const auto first = stored(maps, offsets, 1);
         if (first.size() < kNames + kNameBytes) throw FormatError("an Amiga map is shorter than its header");
         std::copy_n(first.begin() + kNames, kNameBytes, map.begin() + kNames);

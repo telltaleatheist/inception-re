@@ -13,10 +13,10 @@ inline constexpr int kAmigaMaps = 15;
 
 // Map `number` (1-15) from `maps` and the program's maps.offsets (amiga_program.h), as DOS's
 // MAPn.MTP: in maps 1-14 the four tables of 16 position words at 0x185, big-endian on the
-// Amiga, are turned little-endian. `dos_rules` also undoes the Amiga's one change to the maps'
-// contents (docs/versions.md, "Amiga rules"): map 2's first townsperson gets the name map 1's
-// first one has, as in DOS. Throws FormatError.
+// Amiga, are turned little-endian, and the Amiga's one change to the maps' contents is undone
+// (docs/versions.md, "Amiga rules"): map 2's first townsperson gets the name map 1's first one
+// has, as in DOS. Throws FormatError.
 std::vector<std::uint8_t> amiga_map(std::span<const std::uint8_t> maps, std::span<const std::uint8_t> offsets,
-                                    int number, bool dos_rules);
+                                    int number);
 
 }  // namespace chr::formats

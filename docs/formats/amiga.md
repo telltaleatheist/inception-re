@@ -116,8 +116,8 @@ differences from DOS:
 - In maps 1-14 the four tables of 16 position words at 0x185-0x204 (the entrances and the
   second table) are big-endian, the 68000's order. The reader swaps them back.
 - Map 2's first townsperson has a name of its own. In DOS, that slot repeats the name of map 1's
-  first townsperson, which the Amiga's map 1 still has. With `amiga_rules` off the reader
-  copies that slot over, so the map is DOS's (docs/versions.md, "Amiga rules").
+  first townsperson, which the Amiga's map 1 still has. The reader always copies that slot
+  over, so the map is DOS's (docs/versions.md, "Amiga rules").
 
 Checked offline in four of the copies: with the name copied, all 15 maps equal DOS 1.03's byte for
 byte; without it, 14 of 15 do.

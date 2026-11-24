@@ -41,7 +41,7 @@ struct ScriptEdit {
 };
 
 // The edits that make the Amiga 2.3 copy's script for `place` play as DOS 1.03's (docs/versions.md,
-// "Amiga rules"): what the rebuild applies unless amiga_rules is on. Empty for most places.
+// "Amiga rules"), always applied. Empty for most places.
 std::span<const ScriptEdit> amiga_dos_edits(int place);
 
 // The script in DOS form: decoded from its start to its end, one instruction after another (as

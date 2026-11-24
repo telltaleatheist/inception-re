@@ -122,12 +122,14 @@ own samples, an option beside the DOS speaker sound.
 
 ## Amiga rules
 
-Where the Amiga's game differs from DOS's, the rebuild plays DOS's by default, so a player
-with the Amiga copy plays the same game as one with the DOS copy. The setting `amiga_rules`
-(off by default) plays the Amiga copy's own instead. Each difference, matched by place and by
-its instruction's offset in the Amiga script:
+Every copy plays one game, DOS 1.03's. Where the Amiga's game differs, its readers put DOS's
+back, always: there is no option to play the Amiga's way. Version-specific code lives only in
+the readers (src/formats and the sources); the game, the renderer and the platform never ask
+which version a copy is. This table records what the Amiga copy differs in and how the reader
+corrects it, each script edit matched by place and by its instruction's offset in the Amiga
+script:
 
-| Where | Amiga | DOS (the default) |
+| Where | Amiga | DOS (what the reader gives) |
 |---|---|---|
 | JAIL, the sound at offset 2401 | effect 18 | effect 17 |
 | THEATER, the `pay` at offset 240 | charges the player | no charge there (the instruction is left out) |
@@ -141,12 +143,12 @@ With these edits (`amiga_dos_edits` in src/formats/amiga_bld.cpp, `amiga_map` in
 src/formats/amiga_map.cpp) every Amiga script laid out in DOS form is DOS 1.03's byte for byte,
 apart from filler bytes no instruction reaches, and every map is DOS's byte for byte.
 
-**Rules follow DOS; look and sound follow the copy.** `amiga_rules` covers only what changes
-the game: the edits above. What the player sees and hears comes from the copy they bring,
-whatever the switch says: the Amiga's pictures, palettes and place-picture animations (frame
-lists, delays and speed included), and its sound samples. That includes the sounds some
-animations start at a set frame (docs/formats/amiga.md, "The place pictures"), which DOS doesn't
-play; a separate switch will silence just those, for DOS's quiet.
+**Rules follow DOS; look and sound follow the copy.** The art can't be shipped, so what the
+player sees comes from the copy they bring, through the same asset IDs and `{"COLOUR", n}`: the
+Amiga's pictures, palettes and place-picture animations (frame lists, delays and speed
+included). An Amiga copy has no DOS speaker data, so it plays its own sound set, the sounds some
+animations start at a set frame included (docs/formats/amiga.md, "The place pictures"). Those
+are the only differences between copies, and only because they can't be avoided.
 
 **Animation timing changes no game state.** A place picture's frames and delays are waits that
 only show the picture (BTECH.EXE 1000:1afd, held by 273d:0006). They read no keys: keys pressed
@@ -172,7 +174,7 @@ readers do. `describe()` names the copy for messages.
 `DosGameSource` is the DOS copy: the only place a game file is looked up by name in a folder.
 The game logic (src/game) and the platform (src/platform) hold a source, never a path. An Amiga
 source will hand out the same forms from its own files (the readers in docs/formats/amiga.md),
-with `amiga_rules` deciding the edits, and its pictures will bring their own palettes as the
+with the edits above always applied, and its pictures will bring their own palettes as the
 copy's colours. The importer still reads BTECH.EXE and the .BLD files from the folder for the
 text and tables, as before.
 
