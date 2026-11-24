@@ -102,8 +102,8 @@ byte, the left pixel in the high nibble; the colour numbers index the file's own
 
 Checked against DOS 1.03 offline, with each Amiga colour matched to its most frequent DOS
 colour: `map.icn` is DOS's tiles 80-249 pixel for pixel; the other files agree as
-docs/versions.md lists (the town sheets and the title screen are redrawn). All 84 pictures in
-the six Amiga copies read.
+docs/versions.md lists (the town sheets and the title screen are redrawn). The 12 files read in
+each of the seven copies ("The copy as a source" below says which reads are tests).
 
 ## The maps, `maps`
 
@@ -119,7 +119,7 @@ differences from DOS:
   first townsperson, which the Amiga's map 1 still has. The reader always copies that slot
   over, so the map is DOS's (docs/versions.md, "Amiga rules").
 
-Checked offline in four of the copies: with the name copied, all 15 maps equal DOS 1.03's byte for
+Checked offline in all seven copies: with the name copied, all 15 maps equal DOS 1.03's byte for
 byte; without it, 14 of 15 do.
 
 ## The place pictures, `animation.anm`
@@ -133,8 +133,10 @@ byte, the 0 code's count big-endian as in DOS), and the delay of frame k is foun
 in DOS (0:12084). So formats/anm.h reads them as they are. The colour numbers are the Amiga's.
 
 Compared with DOS 1.03 offline (each Amiga colour matched to its most frequent DOS colour):
-every picture has its DOS frame count except O4, O5, O6, O9 and O15, and the last frames agree
-with DOS's from 24% to 100% (O15, O17, O19 and O21 100%), so some are retouched. Timing differs
+every picture has its DOS frame count except O4, O5, O6, O9 and O15. The last frames agree with
+DOS's from 24% to 100%: O17, O19 and O21, one frame each, 100% with the colours one-to-one; O15's
+last frame 79% (it has a seventh frame; the sixth, DOS's last, 100%, but with several Amiga
+colours to one DOS colour). So some are retouched. Timing differs
 in seven: O4, O5, O6, O9, O10, O13 and O15 have their own frame lists, delays or speed (O17-O19
 differ only in entry 0 of the list, which never takes effect).
 
@@ -147,8 +149,13 @@ number at which to start a sound during the animation (with more cases in the co
 Spans `windows` (1:1530, 11 records of 16 bytes) and `menus` (1:15c2, 41 records of 16 bytes):
 DOS's tables at 385b:0000 and 385b:0092 ([../scripts.md](../scripts.md), "Menus") in the same
 layout, the words big-endian. As in DOS, the last two window records overlap the first menu
-records. Every field the game reads is DOS's except the menus' highlight colour (word 5), the
-Amiga's own colour number in all 40 non-empty records: a colour, so it follows the copy.
+records, so menus 0 and 1's highlight colours (word 5) are also windows 9 and 10's starting
+columns. Windows 0-8 are DOS's byte for byte. All that differs is the menus' highlight colour,
+the Amiga's own colour number in all 40 non-empty records (a colour, so it follows the copy), and
+with it those two starting columns (3 where DOS has 14: a place on screen, so DOS's must stay).
+The two uses come from the same bytes but are to be handed out apart: the menus read from the
+`menus` span as stored (`amiga_menus` does), and the windows from a copy of the `windows` span
+with word 6 of records 9 and 10 set to DOS's 14 (not written yet: nothing reads that span).
 `amiga_menus` reads the menus as DOS's records; the scripts' menu instructions need their item
 counts to be laid out.
 
@@ -162,10 +169,38 @@ result is DOS's file byte for byte in all seven copies.
 ## The copy as a source
 
 src/formats/amiga_source.h, `AmigaGameSource`: the copy's files by name, the program read and
-checked once, and each piece through the readers above, always with the DOS edits. Checked
-offline in all seven copies against `DosGameSource`: every script is DOS's apart from unreached
-filler, every map and the demo are DOS's byte for byte, and every place picture, picture and tile
-sheet reads. There is no speaker tune (`title_tune()` is empty); the Amiga's music is in `snd`,
+checked once, and each piece through the readers above, always with the DOS edits.
+
+Compared offline with `DosGameSource` in all seven copies (a byte changed in the copy's file made
+each of these comparisons fail):
+
+- Scripts: 11 are DOS's byte for byte and 15 differ only in 16 bytes that no instruction walked
+  from offset 0 covers (two in TRAINING, one in each of the others).
+- Maps (15) and the demo: DOS's byte for byte.
+
+The art can't be compared byte for byte: the colour numbers are the Amiga's, and much of it is
+redrawn. Five pieces are DOS's drawing exactly once the colours are matched one-to-one (every
+Amiga colour one DOS colour and the other way round), in all seven copies:
+
+| Piece | Decoder it exercises | One-byte changes | Seen | Refused | Unnoticed |
+|---|---|---|---|---|---|
+| `infocom.cmp` | the run-length stream, column order | 150 | 120 | 30 | 0 |
+| `map.icn`, tiles 80-249 | the uncompressed tiles | 150 | 150 | 0 | 0 |
+| O17 | the XOR runs, one frame | 150 | 135 | 15 | 0 |
+| O19 | the same | 150 | 147 | 2 | 1 |
+| O21 | the same | 150 | 136 | 14 | 0 |
+
+(Each change is one byte of the piece's stored data, at a random place, changed at random: seen if
+the piece is then no longer exact, refused if the reader throws.) These are tests of the readers.
+(The changes were made in the plain copy; the art files are the same in all seven.) Nothing of the
+same strength covers the row-order pictures (type 1: the screen frame and the tiny land sheet), the
+compressed tile sheets or the place pictures of more than one frame: they have no exact piece, so
+a wrong pixel in them would not show. The other shares in
+docs/versions.md are similarity figures (each Amiga colour matched to its most frequent DOS
+colour, several Amiga colours often to one DOS colour): they say the art is DOS's drawing
+recoloured, not that it was read right.
+
+There is no speaker tune (`title_tune()` is empty); the Amiga's music is in `snd`,
 not read yet. The pictures keep the Amiga's colour numbers; their palettes are still to be
 handed to the renderer as the copy's colours.
 

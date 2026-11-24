@@ -70,9 +70,11 @@ turn. Its tiles are DOS `MAP.ICN`'s tiles 80–249 (DOS's first 80 are blank), p
 docs/formats/amiga.md has the details; src/formats/amiga_picture.h reads them.
 
 How close the art is to DOS, as the share of pixels that agree once each Amiga colour is
-matched to its most frequent DOS colour: the Infocom logo and the screen frame 100%, the
-tiny land sheet, the animated tiles and the stats screen 98–99%, the 'Mech shapes, the
-ending and the star league sheet 94–96%. So these are the DOS pictures in the Amiga's
+matched to its most frequent DOS colour: the Infocom logo 100%, the screen frame 99.98% (14
+pixels differ), the tiny land sheet 99.5%, the animated tiles 99.1%, the stats screen 98.2%, the
+'Mech shapes 96%, the star league sheet 96% and the ending 94%. Only the logo, and
+`map.icn`, are exact, so only they test the reader; the others are similarity figures
+(docs/formats/amiga.md, "The copy as a source"). So these are the DOS pictures in the Amiga's
 colours. The title screen (38%) is redrawn. The town and destroyed-town tile sheets
 (`bttltech.icn` 64%, `destruct.icn` 56%) keep the DOS tile numbering and layout (250 tiles of
 16x16, tile n at plane offset n x 32) but are shaded with more colours, so several Amiga
