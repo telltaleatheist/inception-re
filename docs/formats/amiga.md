@@ -236,12 +236,12 @@ keeping the low three bits of each component and doubling them: a component is 0
 Amiga's 0-15 scale. No word in the files has a component over 7. So its white is 0xee.
 
 **Which palette is on screen.** A picture file's 16 words are only read into a buffer (1:70a0) by
-the loader (0:1b3f8); the program sets the screen's colours from:
+the loader (0:1b3f8); the program sets the screen's colours (each place: docs/screen_colours.md) from:
 
-- 1:1c1e, the game's palette, after the title and after a load (0:218e2, 0:2271e): the towns, the
+- 1:1c1e, the game's palette, after the title and after a load outside the cache (0:2271e, 0:218e2): the towns, the
   wilderness, the fights, the places and the text. `tables.palette`. It differs from the palettes
   of BTTLTECH.ICN and BTSTATS.CMP in one colour (Amiga 9).
-- 1:07a0, the stats screen's, the same 16 words as the game's, set every 16th pass (0:02c4a), with
+- 1:07a0, the stats screen's, the same 16 words as the game's, set every 16th pass (0:02c4a) and on leaving, with
   its colour 2 alternating between the two words at 1:07c0. `tables.stats_palette` and
   `tables.stats_pulse`: DOS's pulse has four steps (docs/town_loop.md), so the two alternate over
   them.
@@ -259,6 +259,7 @@ Open:
 
 - In the Amiga cache the whole screen is under STARLEAG.ICN's palette, not only the tiles: the
   frame, the text and the figures. Only the tiles have it here; the rest keep the game's colours.
+  Proposed: docs/screen_colours.md.
 - XORs work on colour numbers: the menus' highlight bar (docs/text.md) and the boxes over the map
   (docs/combat.md 2.6). On DOS's numbers they needn't give what they would on the Amiga's. The
   Amiga's code for both is not read, so what it shows there is unknown.

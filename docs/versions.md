@@ -177,9 +177,7 @@ are the only differences between copies, and only because they can't be avoided.
 imports and plays:
 
 - In the Amiga's cache the whole screen is under STARLEAG.ICN's palette. The rebuild gives only the
-  cache's tiles those colours. Proposed: an event in game terms, "the screen's colours are now set
-  S" (the game's, or the cache's), sent on entering and leaving for every copy; the renderer asks
-  the asset provider for set S's 16 colours, which for DOS are the game's for both.
+  cache's tiles those colours. A proposal, not built: docs/screen_colours.md.
 - The menus' highlight bar and the boxes over the map XOR colour numbers. What the Amiga shows there
   has not been read.
 
