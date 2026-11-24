@@ -72,6 +72,20 @@ focus: no mouse lock, no middle-button unlock or clipboard button, no menu bar, 
 error, normal priority, no quit dialog, and no DOS mouse driver (BTECH.EXE makes no INT 33h call). A run to the town takes about 7 seconds.
 Key names are as for `chr --script`, plus `esc`, digits and `@snap:NAME`.
 
+On macOS even a windowless DOSBox-X registers as a foreground app, through its own Cocoa code, and
+takes the focus. So `run.py` starts a background copy (`background_app`): an app bundle in
+`CHR_SCRATCH` (else the temp folder), under `chr-background-apps/<hash of the stock binary>`, made
+once and used by every run. Its Info.plist is the stock one with `LSBackgroundOnly` set and an
+identifier of its own; `Resources` and the libraries beside the binary (`MacOS/x86_64`, `arm64`)
+are links to the stock app's. It is signed ad hoc, since the plist is part of the signature, so
+the copy's binary is the stock one but for its signature. The cache key still hashes the stock
+binary, so cached captures stay valid.
+
+Proven: one DOSBox-X at a time, on the stock binary. The system lists it as BackgroundOnly, and a
+watcher driven by the system's own app-activation notifications saw no change of front app during
+a run whose cases all matched. Not proven: several at once, `--sound` (the patched build), and a
+stop by SIGTERM.
+
     tools/reference/compare.py OUT/NAME.bin chr-screenshot.bmp --diff diff.png
     tools/reference/check.py --chr build/chr --game-dir DIR --data-dir DIR --work DIR
 

@@ -7,6 +7,8 @@ It builds a scratch C: drive from the player's own game folder (copied, never
 changed, never into the repo), adds SNAP.COM (tools/capture/snap.asm, built
 here with nasm) and KEYS.BIN, and runs DOSBox-X with -silent, no sound, no
 PC speaker and SDL's dummy video driver: no window opens and nothing plays.
+On macOS it runs from a background-only copy (background_app) to keep it from
+taking the focus (docs/reference.md says what is proven).
 The scratch drive goes in CHR_SCRATCH (else the system's temp folder) and is
 deleted afterwards. SNAP feeds each key only
 when the game is waiting for one (docs/reference.md), so runs do not race
@@ -20,7 +22,9 @@ Script tokens, separated by spaces or commas, "*N" repeats:
 Exit status: 0 when the whole script ran, 1 on a timeout or error.
 """
 import argparse
+import hashlib
 import os
+import plistlib
 import shutil
 import signal
 import struct
@@ -148,6 +152,67 @@ def text_screen(data):
     return "\n".join(rows).rstrip("\n") + "\n"
 
 
+_background_lock = threading.Lock()
+
+
+def background_app(binary):
+    """The DOSBox-X to launch: on macOS, a rig-only app bundle around a copy
+    of `binary` whose Info.plist sets LSBackgroundOnly, which asks the system
+    not to make it the frontmost app or give it a Dock icon (its own Cocoa
+    code would, even with the dummy video driver). Elsewhere, `binary` itself.
+    The copy is signed ad hoc, as its Info.plist is part of the signature;
+    the cache key hashes `binary`, not the copy. Kept under CHR_SCRATCH (else
+    the temp folder) by the binary's hash, made once for every run."""
+    if sys.platform != "darwin":
+        return binary
+    with _background_lock:
+        return _background_app(binary)
+
+
+def _background_app(binary):
+    h = hashlib.sha256()
+    with open(binary, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    root = os.path.join(os.environ.get("CHR_SCRATCH") or tempfile.gettempdir(), "chr-background-apps")
+    name = os.path.basename(binary)
+    app = os.path.join(root, h.hexdigest()[:16], name + ".app")
+    exe = os.path.join(app, "Contents", "MacOS", name)
+    if os.path.exists(exe):
+        return exe
+    os.makedirs(os.path.dirname(app), exist_ok=True)
+    temp = tempfile.mkdtemp(prefix="making-", suffix=".app", dir=os.path.dirname(app))
+    contents = os.path.join(temp, "Contents")
+    macos = os.path.join(contents, "MacOS")
+    os.makedirs(macos)
+    shutil.copy(binary, os.path.join(macos, name))
+    here = os.path.dirname(os.path.abspath(binary))
+    source = os.path.dirname(here)
+    info = {}
+    if os.path.basename(source) == "Contents" and os.path.exists(os.path.join(source, "Info.plist")):
+        with open(os.path.join(source, "Info.plist"), "rb") as f:
+            info = plistlib.load(f)
+        if os.path.isdir(os.path.join(source, "Resources")):
+            os.symlink(os.path.join(source, "Resources"), os.path.join(contents, "Resources"))
+        # The libraries the binary loads from @executable_path/<arch>.
+        for arch in ("x86_64", "arm64"):
+            if os.path.isdir(os.path.join(here, arch)):
+                os.symlink(os.path.join(here, arch), os.path.join(macos, arch))
+    info.update({"CFBundleExecutable": name, "CFBundlePackageType": "APPL",
+                 "CFBundleIdentifier": "local.inception-rig." + name, "LSBackgroundOnly": True})
+    with open(os.path.join(contents, "Info.plist"), "wb") as f:
+        plistlib.dump(info, f)
+    signed = subprocess.run(["codesign", "--force", "--sign", "-", temp], capture_output=True, text=True)
+    if signed.returncode:
+        shutil.rmtree(temp, ignore_errors=True)
+        raise RuntimeError("run.py: signing the background DOSBox-X failed: " + signed.stderr.strip())
+    try:
+        os.rename(temp, app)
+    except OSError:  # another run made it first
+        shutil.rmtree(temp, ignore_errors=True)
+    return exe
+
+
 def build_snap(dest):
     src = os.path.join(TOOLS, "capture", "snap.asm")
     subprocess.run(["nasm", "-f", "bin", "-o", dest, src], check=True)
@@ -241,7 +306,7 @@ def run(game_dir, script, out_dir, timeout=120, keep=False, log_to=None, seed=()
             f.write(RUN_CONF)
         child_env = dict(os.environ, **(env or {}), SDL_AUDIODRIVER="dummy", SDL_VIDEODRIVER="dummy")
         log = open(os.path.join(work, "dosbox.log"), "w")
-        proc = subprocess.Popen([DOSBOX, "-silent", "-conf", conf], cwd=work, env=child_env,
+        proc = subprocess.Popen([background_app(DOSBOX), "-silent", "-conf", conf], cwd=work, env=child_env,
                                 stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         with _running_lock:
             _running.add(proc.pid)
