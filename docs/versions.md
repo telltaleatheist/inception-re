@@ -62,10 +62,12 @@ palette in front:
 
 The run-length code is the DOS one (docs/formats/cmp.md), with the 0 code's 16-bit count
 big-endian. Every stream unpacks to exactly 32,000 bytes and ends at the file's end, as the
-DOS ones do; `map.icn` is type 0, stored without compression (21,760 bytes, 170 tiles). The
-32,000 bytes are four bit planes of 8,000 bytes, one after the other (the Amiga's own
-display form), not the DOS two-pixels-a-byte form. Type 1 is row order within each plane;
-type 2 is column order, as in DOS.
+DOS ones do. The 32,000 bytes are four bit planes of 8,000 bytes, one after the other (the
+Amiga's own display form), not the DOS two-pixels-a-byte form. Type 1 is row order within
+each plane; type 2 is column order, as in DOS. `map.icn` is the exception: no type byte and
+no compression, just 170 tiles of 128 bytes (21,760), each row its four planes' 2 bytes in
+turn. Its tiles are DOS `MAP.ICN`'s tiles 80–249 (DOS's first 80 are blank), pixel for pixel.
+docs/formats/amiga.md has the details; src/formats/amiga_picture.h reads them.
 
 How close the art is to DOS, as the share of pixels that agree once each Amiga colour is
 matched to its most frequent DOS colour: the Infocom logo and the screen frame 100%, the

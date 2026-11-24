@@ -1,11 +1,13 @@
 // The Amiga readers (formats/amiga_program.h, formats/amiga_bld.h) on data made here, byte by
-// byte: a load file, a scripts bundle, letter-pair tables and a script. No game files.
+// byte: a load file, a scripts bundle, letter-pair tables, a script, pictures and tile sheets.
+// No game files.
 #include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 #include "formats/amiga_bld.h"
+#include "formats/amiga_picture.h"
 #include "formats/amiga_program.h"
 #include "formats/cmp.h"
 #include "test.h"
@@ -167,4 +169,78 @@ TEST(amiga_script_is_laid_out_in_dos_form) {
         }
         CHECK(refused);
     }
+}
+
+namespace {
+
+// A picture file: a palette (colour 1 is 0x0F00, written with a stray top nibble), the
+// big-endian length, then `body` (type byte and stream, or map.icn's tiles).
+Bytes amiga_picture_file(const Bytes& body) {
+    Bytes b(32, 0);
+    b[2] = 0xFF, b[3] = 0x00;
+    b.push_back(std::uint8_t(body.size() >> 8)), b.push_back(std::uint8_t(body.size()));
+    b.insert(b.end(), body.begin(), body.end());
+    return b;
+}
+
+// A stream of four planes, each 8,000 bytes: `first` is plane `plane`'s first bytes, the rest 0.
+Bytes amiga_planes(std::uint8_t type, int plane, const Bytes& first) {
+    Bytes s{type};
+    auto zeros = [&](std::size_t n) { s.insert(s.end(), {0x00, std::uint8_t(n >> 8), std::uint8_t(n), 0x00}); };
+    if (plane > 0) zeros(std::size_t(plane) * 8000);
+    s.push_back(std::uint8_t(first.size()));
+    s.insert(s.end(), first.begin(), first.end());
+    zeros(32000 - std::size_t(plane) * 8000 - first.size());
+    return s;
+}
+
+}  // namespace
+
+TEST(amiga_pictures_come_out_in_dos_form) {
+    // Row order: plane 1's second byte is row 0, pixels 8-15; 0x40 lights pixel 9 (colour 2).
+    const AmigaPicture rows = decode_amiga_cmp(amiga_picture_file(amiga_planes(1, 1, {0x00, 0x40})));
+    CHECK(rows.palette[1] == 0x0F00 && rows.palette[0] == 0);
+    CHECK(rows.picture.order == CmpOrder::Rows);
+    CHECK(rows.picture.packed.size() == kCmpPackedSize);
+    CHECK(rows.picture.packed[4] == 0x02 && rows.picture.packed[0] == 0);
+    // Column order: plane 0's second byte is row 1, pixels 0-7; 0x80 lights pixel 0 (colour 1).
+    const AmigaPicture cols = decode_amiga_cmp(amiga_picture_file(amiga_planes(2, 0, {0x00, 0x80})));
+    CHECK(cols.picture.order == CmpOrder::Columns);
+    CHECK(cols.picture.packed[kCmpRowBytes] == 0x10 && cols.picture.packed[0] == 0);
+}
+
+TEST(amiga_tile_sheets_come_out_in_dos_form) {
+    // Plane 3's byte 0 is tile 0, row 0, pixels 0-7 (colour 8); byte 37 is tile 1, row 2,
+    // pixels 8-15.
+    Bytes first(38, 0);
+    first[0] = 0x80, first[37] = 0x01;
+    const AmigaTileSheet sheet = decode_amiga_icn(amiga_picture_file(amiga_planes(1, 3, first)));
+    CHECK(sheet.sheet.packed[0] == 0x80);
+    CHECK(sheet.sheet.packed[std::size_t(kTileBytes) + 2 * 8 + 7] == 0x08);
+
+    // map.icn: tiles stored as they are, row by row, each row four planes of 2 bytes; its tile 0
+    // is DOS tile 80. Plane 2's left byte of tile 0, row 1 lights pixel 0 (colour 4).
+    Bytes tiles(170 * 128, 0);
+    tiles[8 + 2 * 2] = 0x80;
+    const AmigaTileSheet map = decode_amiga_map_icn(amiga_picture_file(tiles));
+    CHECK(map.palette[1] == 0x0F00);
+    CHECK(map.sheet.packed[std::size_t(kAmigaMapIcnFirstTile) * kTileBytes + 8] == 0x40);
+    CHECK(map.sheet.packed[0] == 0 && map.sheet.packed[8] == 0);
+
+    bool refused = false;
+    try {
+        decode_amiga_map_icn(amiga_picture_file(Bytes(100, 0)));
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
+    refused = false;
+    try {
+        Bytes cut = amiga_picture_file(amiga_planes(1, 0, {0x01}));
+        cut.resize(cut.size() - 3);  // the length now runs past the end
+        decode_amiga_icn(cut);
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
 }

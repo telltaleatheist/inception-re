@@ -53,6 +53,7 @@ endif()
 add_library(chrformats STATIC
   src/formats/adf.cpp
   src/formats/amiga_bld.cpp
+  src/formats/amiga_picture.cpp
   src/formats/amiga_program.cpp
   src/formats/anm.cpp
   src/formats/bld.cpp

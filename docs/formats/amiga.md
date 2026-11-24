@@ -73,3 +73,35 @@ Compared with DOS 1.03, laid out this way:
   leaves out four of DOS's sound instructions later in the script. Its text is DOS's.
 
 docs/versions.md, "Amiga rules", says how the rebuild plays these.
+
+## Pictures and tile sheets, the .cmp and .icn files
+
+src/formats/amiga_picture.h. Every one starts with the picture's own palette:
+
+    +0   16 words, big-endian: colours 0-15, each 0x0RGB (4 bits a component)
+    +32  word, big-endian: the length of what follows
+    +34  that many bytes
+
+The loader (Amiga battletech 0:1b3f8) reads the palette, the length and the bytes, nothing
+more. What the bytes are depends on the file:
+
+- **Full-screen pictures and the compressed tile sheets** (every .cmp; `bttltech.icn`,
+  `destruct.icn`, `starleag.icn`, `animate.icn`): the DOS container after its length
+  ([cmp.md](cmp.md)), a type byte and the run-length stream, with the 0 code's 16-bit count
+  big-endian. The stream unpacks to 32,000 bytes: four bit planes of 8,000, plane 0 first.
+  Within a plane, type 1 is row order (byte y × 40 + x/8) and type 2 column order (byte
+  x/8 × 200 + y), the two orders of DOS. In a tile sheet, tile n's row y is the 2 bytes at
+  n × 32 + y × 2 of each plane, so a plane holds 250 tiles of 16 × 16.
+- **`map.icn`**: no type byte and no stream. 170 tiles of 128 bytes, stored as they are: tile
+  n, row y, plane p is the 2 bytes at n × 128 + y × 8 + p × 2. Tile n is DOS `MAP.ICN`'s tile
+  n + 80; DOS's tiles 0-79 are blank and the reader leaves them blank.
+
+In each byte bit 7 is the leftmost pixel, and plane p gives bit p of the colour number. The
+reader writes the DOS working forms (cmp.md, [icn.md](icn.md)): 32,000 bytes, two pixels a
+byte, the left pixel in the high nibble; the colour numbers index the file's own palette.
+
+Checked against DOS 1.03 offline, with each Amiga colour matched to its most frequent DOS
+colour: `map.icn` is DOS's tiles 80-249 pixel for pixel; the other files agree as
+docs/versions.md lists (the town sheets and the title screen are redrawn). All 84 pictures in
+the six Amiga copies read.
+
