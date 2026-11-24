@@ -1,0 +1,3 @@
+# cmd.exe looks labels up reliably only in a CRLF batch file.
+*.cmd text eol=crlf
+*.bat text eol=crlf
