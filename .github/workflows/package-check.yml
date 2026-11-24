@@ -58,6 +58,7 @@ jobs:
         with:
           name: package-check-linux
           if-no-files-found: error
+          retention-days: 7
           path: |
             dist/*.tar.gz
             dist/*.sha256
@@ -92,6 +93,7 @@ jobs:
         with:
           name: package-check-windows
           if-no-files-found: error
+          retention-days: 7
           path: |
             dist/*.zip
             dist/*.exe
@@ -124,6 +126,7 @@ jobs:
         with:
           name: package-check-mac
           if-no-files-found: error
+          retention-days: 7
           path: |
             dist/*.dmg
             dist/*.sha256
