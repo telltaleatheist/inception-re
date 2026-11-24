@@ -11,8 +11,9 @@ updates the player's state (`SoundState`, src/game/sound.h). With sound on, it a
 what the effect sounds like in plain terms: square-wave tones in Hz and silences, each with a
 length in ms on a chosen machine (`ShownEvent::segments`). The platform holds the event for that
 length, which stands in for the busy-wait. Nothing in the rebuild models the timer chip, port 61
-or the speaker: the hardware is replaced, not emulated (CLAUDE.md, goal 2). The platform plays
-the segments, or a mod's file in place of any effect ("Playing it", below).
+or the speaker: the hardware is replaced, not emulated (docs/rules.md, "How the rebuild is
+built"). The platform plays the segments, or a mod's file in place of any effect ("Playing it",
+below).
 
 ## Sound on and off
 
@@ -316,7 +317,8 @@ The whole tune is not run, since its end starts the demo.
 - The title music as Tandy owners heard it: a possible later option, not to be built now. On
   Tandy graphics (`284b:02e4`) each step of 20 ticks (68.6 ms) reads four bytes: three for the
   sound chip's tone voices and one for the speaker. In game terms that would be three tone
-  streams plus the speaker's, mixed by the platform, with no chip emulated (CLAUDE.md, goal 2).
+  streams plus the speaker's, mixed by the platform, with no chip emulated (docs/rules.md, "How
+  the rebuild is built").
   The voices' pitches come from their own table (284b:019e, 12 words, to be imported like
   `music_note_hz`). The octave shifts the table's divisor right by the octave less 2
   (`284b:01b8`), and all three are set to attenuation 3 (of 15) at the start (`284b:020b`). A rest byte

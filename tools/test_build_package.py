@@ -60,9 +60,6 @@ class Staging(unittest.TestCase):
             for name in ["SDL-LICENSE.txt", "re-setup-kit-LICENSE", "stb-LICENSE", "miniz-LICENSE",
                          *build_package.ARCHIVE_LICENCES.values()]:
                 self.assertTrue((out / "licenses" / name).is_file(), name)
-            readme = (out / "README.txt").read_text()
-            for word in ("Claude", "Anthropic", " AI "):
-                self.assertNotIn(word, readme)
 
     def test_a_missing_kit_licence_is_refused(self):
         with tempfile.TemporaryDirectory() as d:

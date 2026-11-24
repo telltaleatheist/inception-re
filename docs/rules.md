@@ -33,3 +33,12 @@ it on the right side of that line. Every change is checked against them.
    links.
 6. **If a rights holder asks, we comply.** If anyone holding rights in the game
    objects, we take down what they object to and talk to them.
+
+## How the rebuild is built
+
+The original's hardware is replaced, not emulated. Its graphics drivers, its
+speaker and sound-chip code, and its BIOS and DOS calls give way to SDL3 for
+the window, drawing, sound, input and files. Nothing in the rebuild models a
+chip, a port or a timer of the old machines; where the original drove the
+hardware, a note beside the function that stands in for it says what the
+original did.
