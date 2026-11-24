@@ -15,10 +15,10 @@ it on the right side of that line. Every change is checked against them.
    descriptions and every .BLD text stay imported from your own copy only.
    You supply your own copy of the game, and the rebuild reads it from your
    disk.
-   The other exception: a few small screenshots of the rebuild running
-   (docs/screenshots/), to show
-   what it is. They show no story text and no logos, and come down if a
-   rights holder objects.
+   The other is a few small screenshots of the rebuild running
+   (docs/screenshots/), to show what it is.
+   This rule can bend where the situation calls for it. The project's owner
+   decides each case.
 2. **No decompiled code in the repository.** We study the original program to
    understand what it does, then write our own C++ that does the same thing.
    Comments may name the original function's address and the name the
