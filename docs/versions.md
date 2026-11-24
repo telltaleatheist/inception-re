@@ -271,23 +271,46 @@ holds 42 files, disk 2 80, and the files fill both disks.
 bytes), `CBT0`–`CBT4` (combat code), `I0`–`I3` and `SET1` (tile and icon art), `TITLE` (the
 title picture), `TRADEM`, `LAM`, and the boot files.
 
-**Compared with the C64.** Most script files have exactly the C64's sizes (four of the 25
-differ by a few to a few hundred bytes), and the map pages are all 1,024 bytes; but almost every byte differs, with no
-one-to-one byte mapping between the two. So each machine stores the same records in its own
-encoding (text in each machine's character code, tiles in each machine's numbering), or
-with a different key. One small file, `TL`, is identical on both. Of the four map pages that
-match DOS on the C64, the Apple II's matches only partly (68% for one quarter): its maps are
-encoded differently too.
+**Compared with the C64** (with the sectors in RDOS's order, formats/rdos.md): the same data, not
+an encoding of it.
+
+- Maps: 26,505 of the 26,624 cells of the 26 pages are the C64's. 21 pages are the same file;
+  `MB`, `MD`, `MF`, `MH` and `MQ` differ in 14, 16, 2, 18 and 69 cells. `MV`–`MY` are the C64's exactly,
+  so they are DOS's map 14 in the same 4,045 of 4,096 cells.
+- Entrances, people and scripts: 8 of the 12 `T` files are the C64's. `TG` and `TI` differ in one
+  header byte (`TI`'s is an entrance's x position), `TF` in one townsperson's name, `TM` by a missing
+  last byte. Of 78 entrances none is at DOS's position and six are within a cell, as on the C64.
+- Place scripts: 20 of the 25 `B` files are the C64's byte for byte (after its load address).
+  `BF` and `BM` are the C64's and more bytes at the end (1 and 11); `BQ`, `BV` and `BZ` differ.
+
+| Map | Cells | Apple II same as DOS | C64 same as DOS | Apple II same as C64 |
+|---|---|---|---|---|
+| 1 | 4,096 | 113 | 113 | 4,066 |
+| 2 | 4,096 | 106 | 106 | 4,096 |
+| 3 | 1,024 | 43 | 43 | 1,024 |
+| 4 | 1,024 | 52 | 52 | 1,024 |
+| 5 | 1,024 | 70 | 70 | 1,024 |
+| 6 | 1,024 | 81 | 81 | 1,024 |
+| 7 | 1,024 | 68 | 73 | 955 |
+| 8 | 1,024 | 68 | 68 | 1,024 |
+| 9 | 1,024 | 40 | 40 | 1,024 |
+| 10 | 1,024 | 36 | 36 | 1,024 |
+| 11 | 4,096 | 123 | 123 | 4,076 |
+| 14 | 4,096 | 4,045 | 4,045 | 4,096 |
+
+These counts are of equal tile numbers. The five pages that aren't the C64's were also put through
+the test that allows any renumbering (formats/c64.md, "Compared with DOS"), with the same result:
+no DOS page stands out.
 
 **Tiles.** Its own hi-res art (the `I` and `SET1` files), coarser again.
 
 **Dialogue and text.** None of the 151 interface texts appears letter for letter, in plain
-or high-bit ASCII. Text and scripts are compressed or encoded, as on the C64.
+or high-bit ASCII (searched with the sectors in the image's order, so a text across a sector's end
+would be missed; to be searched again). The scripts are the C64's, so packed as they are.
 
-**The variants.** Disk 1 [cr] changes three boot files (`HELLO`, `BOOT0`, `LAM`) and nothing
-else. Disk 2 [a] differs from the plain disk 2 in `VIEW` and four players' saves (`G0`–`G3`).
-Disk 2 [cr] holds exactly the plain disk's files. So every variant carries the same game
-data.
+**The variants** (sectors in RDOS's order). Disk 1 [cr] changes two boot files (`HELLO`, `BOOT0`) and
+nothing else. Disk 2 [a] differs from the plain disk 2 in four players' saves (`G0`–`G3`), and disk 2
+[cr] in `LC`. What `LC` is is not read.
 
 **What the Apple II can fill.** As the C64, with its own art.
 
@@ -305,8 +328,8 @@ hashes, nothing else:
 | Amiga 2.3 (one disk) | all 17 game data files in `Battletech` | the program `battletech`: the plain build (five disks), [a4]'s and [h Madwand]'s |
 | C64, side 1 | three game files found only on side 1 | (one release known) |
 | C64, side 2 | three game files found only on side 2 | |
-| Apple II, disk 1 | the program and two art files | the boot file `HELLO`: plain or [cr] (which also changes two other boot files) |
-| Apple II, disk 2 | three game files | `VIEW`: plain or [a] (which also carries four players' saves); disk 2 [cr] has the plain disk's files |
+| Apple II, disk 1 | the program and two art files | the boot file `HELLO`: plain or [cr] (which also changes `BOOT0`) |
+| Apple II, disk 2 | three game files | `VIEW` as the reader takes it, sectors shuffled (formats/rdos.md, "Known fault"): plain or [a]; in RDOS's order [a] differs only in its saves |
 
 A disk whose recognising files all match but whose variant file matches none is still named,
 as changed from the copies we know. A version with a disk missing is named with the disk
@@ -331,8 +354,8 @@ check makes up a C64 disk image and lists it there.
 | Full-screen pictures (logo, title, stats, ending, frame) | 7 .CMP | 7, DOS container with a palette, bit planes | title and ending as multicolour bitmaps; the others not seen as files | `TITLE`; others not seen as files |
 | Tile sheets | 5 .ICN | 5, same container, same tile numbering | its own character-set tiles | its own hi-res tiles |
 | Place pictures | O0–O21.ANM | inside `animation.anm` | OA–OV.ANM (22) | 21: no OB.ANM |
-| Place scripts and dialogue | 26 .BLD, enciphered | inside `builds.bld`, enciphered, text in letter pairs | 25 `B` files, encoded | 25 `B` files, encoded |
-| Maps | 15 .MTP | `maps`: the same 15, three tables big-endian | 26 pages of 32x32, the C64's own layouts but for map 14; names and entrances in `T` files | as the C64, encoded differently |
+| Place scripts and dialogue | 26 .BLD, enciphered | inside `builds.bld`, enciphered, text in letter pairs | 25 `B` files, encoded | 25 `B` files, 20 of them the C64's |
+| Maps | 15 .MTP | `maps`: the same 15, three tables big-endian | 26 pages of 32x32, the C64's own layouts but for map 14; names and entrances in `T` files | the C64's 26 pages but for 119 cells |
 | Interface text | BTECH.EXE | the 68000 program, 145/151 plain | code overlays, encoded | code overlays, encoded |
 | Font | BTECH.EXE | not in the copy: ours | the C64's own characters | the Apple's own |
 | Tables ('Mechs, combat, prices) | BTECH.EXE | the program's data hunk | `MECHS` and the overlays | `MECHS` and the overlays |

@@ -1,13 +1,25 @@
 # RDOS .dsk: the Apple II floppy
 
 The Apple II version comes on two 140K disks, saved as .dsk images: 35 tracks of 16 sectors
-of 256 bytes (143,360 bytes), in DOS 3.3's sector order. The disks don't use DOS 3.3's file
+of 256 bytes (143,360 bytes), stored in DOS 3.3's sector order. The disks don't use DOS 3.3's file
 system but RDOS 3.3, a small one of their own. `src/formats/rdos.cpp` lists their files
 (`read_rdos`). docs/versions.md says which files the game keeps there.
 
 ## The layout
 
 Sectors are numbered across the disk, 0 to 559 (track × 16 + sector).
+
+**RDOS doesn't use DOS 3.3's order.** Its sector k of a track is at the image's sector 15 − k of
+that track; sectors 0 and 15 stay where they are. With it, every catalog's start sectors
+ascend from first entry to last on all five disks, and the maps and most scripts are the C64's
+byte for byte (docs/versions.md, "Apple II").
+
+**Known fault:** `read_rdos` doesn't reorder the sectors yet. It takes the image's order, so a file of
+more than one sector comes out with other sectors in it. The catalog's entries are read
+in shuffled order too, but all of them. The hashes in `known_disks()` are of files read that way:
+the copies we know are recognised, but `VIEW`'s hash covers sectors of other files (the saves'
+among them), so a disk a player has saved on may be named as changed. The made-up disk in
+tests/test_disk_images.cpp is written in the same order as the reader reads, so it can't show it.
 
 - **Track 1** is the catalog. It starts with a 32-byte header whose first characters,
   high-bit ASCII, are `RDOS`.
