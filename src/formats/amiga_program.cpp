@@ -33,13 +33,15 @@ struct Reader {
 };
 
 // The program's spans. Hunk 0 is the code, hunk 1 the data.
-constexpr std::array<AmigaSpan, 3> kSpans{{
+constexpr std::array<AmigaSpan, 4> kSpans{{
     // 0:5fba reads place n's script from builds.bld at the n-th of these 26 offsets (big-endian).
     {"bld.offsets", 1, 0x07d6, 26 * 4},
     // 0:a81e, the text printer: a text byte with its top bit set stands for two letters, the
     // first from this table by bits 3-6, the second from the next by bits 0-6.
     {"text.pair_first", 1, 0x148a, 16},
     {"text.pair_second", 1, 0x149a, 128},
+    // 0:21d12, the map loader: where each of the 15 maps starts in `maps`, big-endian longs.
+    {"maps.offsets", 1, 0x1b8e, 15 * 4},
 }};
 
 }  // namespace

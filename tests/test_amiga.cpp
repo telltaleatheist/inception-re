@@ -1,5 +1,5 @@
 // The Amiga readers (formats/amiga_program.h, formats/amiga_bld.h) on data made here, byte by
-// byte: a load file, a scripts bundle, letter-pair tables, a script, pictures and tile sheets.
+// byte: a load file, a scripts bundle, letter-pair tables, a script, pictures, tile sheets and maps.
 // No game files.
 #include <array>
 #include <cstdint>
@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "formats/amiga_bld.h"
+#include "formats/amiga_map.h"
 #include "formats/amiga_picture.h"
 #include "formats/amiga_program.h"
 #include "formats/cmp.h"
@@ -239,6 +240,39 @@ TEST(amiga_tile_sheets_come_out_in_dos_form) {
         Bytes cut = amiga_picture_file(amiga_planes(1, 0, {0x01}));
         cut.resize(cut.size() - 3);  // the length now runs past the end
         decode_amiga_icn(cut);
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
+}
+
+TEST(amiga_maps_are_cut_out_in_dos_form) {
+    // Fifteen made-up maps: 1-14 of 0x220 bytes each (a header and a little more), 15 of 10.
+    // Map n's first name byte is 'a' + n; its first entrance x word is 0x1234 + n, big-endian.
+    Bytes maps, offsets;
+    for (int n = 1; n <= 15; ++n) {
+        put32(offsets, std::uint32_t(maps.size()));
+        Bytes m(n == 15 ? 10 : 0x220, std::uint8_t(n));
+        if (n < 15) {
+            m[5] = std::uint8_t('a' + n);
+            m[0x185] = 0x12, m[0x186] = std::uint8_t(0x34 + n);
+        }
+        maps.insert(maps.end(), m.begin(), m.end());
+    }
+    const Bytes three = amiga_map(maps, offsets, 3, false);
+    CHECK(three.size() == 0x220 && three[0] == 3 && three[5] == 'a' + 3);
+    CHECK(three[0x185] == 0x34 + 3 && three[0x186] == 0x12);  // now little-endian
+    CHECK(three[0x204] == 3);                                 // the last word swapped is all 3s
+    CHECK(amiga_map(maps, offsets, 15, false) == Bytes(10, 15));
+    // Map 2's first name: the Amiga's own, or with DOS rules map 1's.
+    CHECK(amiga_map(maps, offsets, 2, false)[5] == 'a' + 2);
+    const Bytes dos_two = amiga_map(maps, offsets, 2, true);
+    CHECK(dos_two[5] == 'a' + 1 && dos_two[6] == 1 && dos_two[0] == 2);
+    CHECK(amiga_map(maps, offsets, 3, true) == three);
+
+    bool refused = false;
+    try {
+        amiga_map(Bytes(maps.begin(), maps.end() - 20), offsets, 14, false);
     } catch (const FormatError&) {
         refused = true;
     }

@@ -105,3 +105,20 @@ colour: `map.icn` is DOS's tiles 80-249 pixel for pixel; the other files agree a
 docs/versions.md lists (the town sheets and the title screen are redrawn). All 84 pictures in
 the six Amiga copies read.
 
+## The maps, `maps`
+
+src/formats/amiga_map.h. DOS's MAP1-MAP15.MTP ([mtp.md](mtp.md)) one after another, 33,046
+bytes. The loader (Amiga battletech 0:21d12) seeks to the map's entry in a table of 15
+big-endian longs at 1:1b8e (span `maps.offsets`) and reads the fields one after another, as
+DOS does. Map n runs from its offset to the next map's; map 15, to the file's end. The only
+differences from DOS:
+
+- In maps 1-14 the four tables of 16 position words at 0x185-0x204 (the entrances and the
+  second table) are big-endian, the 68000's order. The reader swaps them back.
+- Map 2's first townsperson has a name of its own. In DOS, that slot repeats the name of map 1's
+  first townsperson, which the Amiga's map 1 still has. With `amiga_rules` off the reader
+  copies that slot over, so the map is DOS's (docs/versions.md, "Amiga rules").
+
+Checked offline in four of the copies: with the name copied, all 15 maps equal DOS 1.03's byte for
+byte; without it, 14 of 15 do.
+

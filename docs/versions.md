@@ -81,7 +81,8 @@ colours stand for one DOS colour: the Amiga's own tile art.
 **The maps.** `maps` is MAP1–MAP15.MTP concatenated, in DOS order and sizes. The only
 differences: in maps 1–14 the four tables of 16 words at 0x185–0x204 (the entrances'
 positions) are big-endian, and one people's name field in map 2 differs. Every cell byte is
-the same as DOS. So the maps fill fully.
+the same as DOS. So the maps fill fully. The program finds each map by a table of 15
+offsets (docs/formats/amiga.md, "The maps").
 
 **Dialogue and text.** The interface text is in the program file, uncompressed: 145 of the
 151 interface texts in data/text/interface.json appear in `battletech` letter for letter.
@@ -134,9 +135,11 @@ its instruction's offset in the Amiga script:
 | THEATER, before the print at offset 441 | nothing | a sound, effect 12 |
 | THEATER, before the key wait at offset 634 | nothing | two sounds, effects 2 then 1 |
 | THEATER, before the key wait at offset 676 | nothing | a sound, effect 1 |
+| map 2, the first townsperson's name | a name of its own | the name of map 1's first townsperson, copied from the Amiga's map 1 |
 
-With these edits (`amiga_dos_edits` in src/formats/amiga_bld.cpp) every Amiga script laid out
-in DOS form is DOS 1.03's byte for byte, apart from filler bytes no instruction reaches.
+With these edits (`amiga_dos_edits` in src/formats/amiga_bld.cpp, `amiga_map` in
+src/formats/amiga_map.cpp) every Amiga script laid out in DOS form is DOS 1.03's byte for byte,
+apart from filler bytes no instruction reaches, and every map is DOS's byte for byte.
 
 ## Commodore 64
 
