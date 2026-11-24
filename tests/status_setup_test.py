@@ -11,6 +11,7 @@ dummy drivers; nothing of the game is kept. Prints names and counts only.
     status_setup_test.py --program build/chr --work build/status_setup_work [--game DIR]
 """
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -100,6 +101,42 @@ def main():
     check("setup: header INCEPTION REBUILD" in out, "the screen's log: the rebuild's header")
     check(not any(l.startswith("setup: screen confirm") for l in out), "break: not the game, not offered")
     check(not os.path.exists(os.path.join(user, "install")), "break: nothing installed from the screen either")
+
+    # Another version's copy, made up here: a C64 disk image holding one made-up file that the
+    # checks' extra table (CHR_EXTRA_KNOWN_DISKS) names as disk 1 of 2. Picked by the scripted pick
+    # and on the screen, it is named, not "No copy".
+    d64 = bytearray(174848)
+    def at(t, sec):
+        return (sum(21 if i <= 17 else 19 if i <= 24 else 18 if i <= 30 else 17 for i in range(1, t)) + sec) * 256
+    d64[at(18, 0)], d64[at(18, 0) + 1] = 18, 1
+    d64[at(18, 1) + 1] = 0xFF
+    body = b"a made-up file, not the game's"
+    e = at(18, 1)
+    d64[e + 2], d64[e + 3], d64[e + 4] = 0x82, 1, 0
+    d64[e + 5:e + 21] = b"FIXA".ljust(16, b"\xa0")
+    d64[at(1, 0)], d64[at(1, 0) + 1] = 0, len(body) + 1
+    d64[at(1, 0) + 2:at(1, 0) + 2 + len(body)] = body
+    other = os.path.join(work, "other")
+    os.makedirs(other)
+    disk = os.path.join(other, "made-up.d64")
+    open(disk, "wb").write(bytes(d64))
+    extra = os.path.join(work, "extra-known.txt")
+    open(extra, "w").write("c64 1 2 FIXA %d %s\n" % (len(body), hashlib.sha256(body).hexdigest()))
+    named = ("Disk 1 of 2 of the Commodore 64 version was found (disk 2 of 2 is missing), "
+             "but the rebuild can't play it yet: it plays the DOS version 1.03 for now.")
+    known = dict(env, CHR_EXTRA_KNOWN_DISKS=extra)
+    p, _ = run(a.program, ["--setup"], dict(known, CHR_SETUP_PICK=disk))
+    check(p.returncode == 2 and json.dumps(named)[1:-1] in p.stdout, "another version's disk, picked: named in the error")
+    p, _ = run(a.program, ["--setup"], dict(known, REKIT_SETUP_FRAMES="200", REKIT_SETUP_FIND="1", REKIT_SETUP_GO="1",
+                                            REKIT_SETUP_PICKER="path:" + disk))
+    out = p.stdout.splitlines()
+    check(p.returncode == 1 and "setup: " + named in out, "another version's disk, picked on the screen: our sentence")
+    check(not any("No copy of" in l for l in out), "break: not the kit's no-copy sentence")
+    p, _ = run(a.program, ["--setup"], dict(env, REKIT_SETUP_FRAMES="200", REKIT_SETUP_FIND="1", REKIT_SETUP_GO="1",
+                                            REKIT_SETUP_PICKER="path:" + disk))
+    check(any(l.startswith("setup: No copy of") for l in p.stdout.splitlines()),
+          "break: unknown to the table, the kit's sentence as before")
+    check(not os.path.exists(os.path.join(user, "install")), "break: nothing installed from another version")
 
     if a.game and os.path.isdir(a.game):
         pick = os.path.join(work, "pick", "BTECH")

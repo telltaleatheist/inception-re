@@ -236,8 +236,13 @@ told disk 2 of 2 is missing.
 
 Until a version plays, `--status` answers `incomplete` for it, with `data` naming it ("Amiga
 2.3"), `missing` listing the missing disks and the rebuild's support for that version, and a
-one-line note. The setup's pick says the same instead of "no copy found". The DOS copy, in a
-folder or a zip, is recognised as before, by its BTECH.EXE.
+one-line note. The setup says the same instead of "no copy found", both for a scripted pick
+and on the setup screen (the kit's `recognise` hook, which the kit calls only when its own walk
+finds no copy). The DOS copy, in a folder or a zip, is recognised as before, by its BTECH.EXE.
+
+The checks can't use the real table without the real disks, so `CHR_EXTRA_KNOWN_DISKS` may
+name a file of extra entries, one disk a line (`src/setup/versions.h`); the status and setup
+check makes up a C64 disk image and lists it there.
 
 ## Asset and text families by version
 

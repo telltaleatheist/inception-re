@@ -84,6 +84,15 @@ std::string run_screen(bool setup_only, bool scripted, const std::string& found,
         return setup::find_install({}, user, pdir, &s);
     };
     g.describe = describe;
+    // Another version's copy (an Amiga, C64 or Apple II one): named, in place of the kit's "No copy".
+    g.recognise = [](const std::string& path) {
+        try {
+            setup::OtherCopy other;
+            if (setup::find_other_copy(path, &other)) return other.note();
+        } catch (...) {
+        }
+        return std::string();
+    };
     g.install = [](const rekit::Found& f, const std::string& out, const std::string&,
                    const rekit::sdl::ProgressFn& progress) {
         const setup::Installed r = setup::install(f, out, [&](double at, const std::string& file) {

@@ -36,6 +36,11 @@ struct KnownDisk {
 
 const std::vector<KnownDisk>& known_disks();
 
+// The checks' own entries, from the file CHR_EXTRA_KNOWN_DISKS names (none when unset): one disk
+// a line, "<amiga|c64|apple2> <disk> <of disks> <file name> <size> <sha256>". The checks make up
+// a disk image and name it here, since the real table holds only the real copies' hashes.
+std::vector<KnownDisk> extra_known_disks();
+
 // A file seen in what was picked, by name (lower case, without its folder), size and hash.
 struct SeenFile {
     std::string name;
@@ -68,7 +73,8 @@ struct OtherCopy {
 std::vector<OtherCopy> recognise(const std::vector<SeenFile>& seen);
 std::vector<OtherCopy> recognise(const std::vector<SeenFile>& seen, const std::vector<KnownDisk>& disks);
 
-// seen_files then recognise: the best find (most disks, then the Amiga first), or none.
+// seen_files then recognise, against known_disks() and extra_known_disks(): the best find (most
+// disks, then the Amiga first), or none.
 bool find_other_copy(const std::string& path, OtherCopy* out, std::string* detail = nullptr);
 
 }  // namespace chr::setup

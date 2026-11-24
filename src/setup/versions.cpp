@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -309,8 +311,29 @@ std::vector<OtherCopy> recognise(const std::vector<SeenFile>& seen, const std::v
     return out;
 }
 
+std::vector<KnownDisk> extra_known_disks() {
+    std::vector<KnownDisk> out;
+    const char* file = std::getenv("CHR_EXTRA_KNOWN_DISKS");
+    if (!file || !*file) return out;
+    static std::deque<std::string> words;  // the entries' names and hashes, kept for their pointers
+    std::ifstream in(file);
+    std::string machine, name, sha;
+    int disk = 0, disks = 0;
+    std::uint64_t size = 0;
+    while (in >> machine >> disk >> disks >> name >> size >> sha) {
+        const Machine m = machine == "c64" ? Machine::C64 : machine == "apple2" ? Machine::AppleII : Machine::Amiga;
+        words.push_back(lower(name));
+        const char* n = words.back().c_str();
+        words.push_back(lower(sha));
+        out.push_back({m, "", disk, disks, {{n, size, words.back().c_str()}}, {}});
+    }
+    return out;
+}
+
 bool find_other_copy(const std::string& path, OtherCopy* out, std::string* detail) {
-    const auto copies = recognise(seen_files(path, detail));
+    std::vector<KnownDisk> table = known_disks();
+    for (KnownDisk& k : extra_known_disks()) table.push_back(std::move(k));
+    const auto copies = recognise(seen_files(path, table, detail), table);
     if (copies.empty()) return false;
     if (out) *out = copies.front();
     return true;
