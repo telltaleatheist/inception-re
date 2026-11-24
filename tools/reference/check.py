@@ -2931,10 +2931,10 @@ DEMO_CASES = [dict(CASES[0], name="demo_infocom", compare=False),
 # chain into --full.
 KNOWN_OPEN = set()
 
-# Sequences written and checked on chr's side whose original runs wait for
-# the rig's DOSBox-X to be trusted again (docs/reference.md, "Waiting"):
-# like KNOWN_OPEN, in neither tier and run by name only.
-WAITING = {"rumour", "speed5", "demo"}
+# Sequences written and checked on chr's side whose comparison with the
+# original is not settled (docs/reference.md, "Waiting"): like KNOWN_OPEN, in
+# neither tier and run by name only.
+WAITING = {"demo"}
 
 SEQUENCES = [("town", CASES, FULL_CASES, []), ("training", TRAINING_CASES, [], []),
              ("quiz", QUIZ_CASES, [], ["--show-quiz"]), ("mission", MISSION_CASES, MISSION_FULL_CASES, []),
@@ -3504,7 +3504,7 @@ def run_sound_sequence(a, sequence, cases):
 # change outside these folders, runs everything; docs and unit tests run
 # nothing. ALL is every sequence of the --full and --campaign tiers.
 ALL = "all"
-_NO_FIGHT = {"town", "quiz", "settings", "shops", "comstar"}
+_NO_FIGHT = {"town", "quiz", "settings", "shops", "comstar", "rumour"}
 _FIGHTS = {sequence for sequence, *_ in SEQUENCES} - _NO_FIGHT - KNOWN_OPEN - WAITING
 AFFECTED = [
     ("docs/*", set()), ("*.md", set()), ("tests/*", set()), (".gitignore", set()),

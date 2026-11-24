@@ -210,24 +210,27 @@ The routine: per commit, ctest and `--affected`; then the full campaign from the
 anyway), or one night a week.
 
 **Waiting.** `WAITING` holds sequences that are written, and checked on chr's side, but whose
-original runs wait until the rig's DOSBox-X is trusted again. Like `KNOWN_OPEN` they are in
-neither tier and run only by `--only`:
+comparison with the original is not settled. Like `KNOWN_OPEN` they are in neither tier and run
+only by `--only`. Of the three once there, `rumour` and `speed5` matched the original and are in
+the `--full` tier, and `demo` is still waiting:
 
-- `rumour` talks to a person outdoors. The town runs as far as `walk_east`, then walks to the
-  Weapons Shop's door and waits 400 passes, by which the fourth townsperson is inside. Flag 04
-  is poked on the step onto the door. The talk item then shows one of the eight rumours at
-  DGROUP:4e5e (docs/scripts.md). chr's last capture changes when the rumours are blanked
-  with `--text`.
-- `speed5` sets message speed 5 (the speed menu starts on its first item, so `down*5`) and
-  fights training mission 2 with messages, the computer in control. The first shot comes in
-  round 6. From there each shot's pause (`1e31:1dcc`) waits for a key, and the sequence
-  captures five of them.
-- `demo` holds the title past its tune, then captures every 60 polls while DEMOFILE plays
-  (docs/startup.md). The original holds with idle passes. chr holds with its script item
-  `tune-end`, which goes to chr only as `chr:tune-end`. A `chr:KEY` is the reverse of
-  `orig:KEY`. The demo's passes and chr's frames don't line up, so a case marked `demo_to`
-  passes `--demo-to N` to chr. N is the number of DEMOFILE bytes whose keys the original had
-  acted on at its capture (`state demo`).
+- `rumour` (6 cases compared, 21 set-up steps not) talks to a person outdoors. The town runs as
+  far as `walk_east`, then walks to the Weapons Shop's door and waits 400 passes, by which the
+  fourth townsperson is inside. Flag 04 is poked on the step onto the door. The talk item then
+  shows one of the eight rumours at DGROUP:4e5e (docs/scripts.md). chr's last capture changes when
+  the rumours are blanked with `--text`.
+- `speed5` (14 cases compared, 9 set-up steps not) sets message speed 5 (the speed menu starts on
+  its first item, so `down*5`) and fights training mission 2 with messages, the computer in
+  control. The first shot comes in round 6. From there each shot's pause (`1e31:1dcc`) waits for a
+  key, and the sequence captures five of them.
+- `demo` (19 compared of 21) still waits: in the original run the demo had not started at
+  `demo_01` and `demo_02` (both captures are the held title; by `demo_03` it was playing), so
+  those two fail and the other 17 match. It holds the title past its tune, then captures every 60
+  polls while DEMOFILE plays (docs/startup.md). The original holds with idle passes. chr holds
+  with its script item `tune-end`, which goes to chr only as `chr:tune-end`. A `chr:KEY` is the
+  reverse of `orig:KEY`. The demo's passes and chr's frames don't line up, so a case marked
+  `demo_to` passes `--demo-to N` to chr. N is the number of DEMOFILE bytes whose keys the original
+  had acted on at its capture (`state demo`).
 
   Under the demo the original asks DOS whether a key is waiting twice a pass: at the main
   loop's poll (`273d:002f`) and inside the key read (`273d:0259`), after the read has taken the
