@@ -12,6 +12,7 @@
 #include "formats/amiga_map.h"
 #include "formats/amiga_picture.h"
 #include "formats/amiga_program.h"
+#include "formats/amiga_source.h"
 #include "formats/cmp.h"
 #include "test.h"
 
@@ -305,4 +306,25 @@ TEST(amiga_place_pictures_are_cut_out) {
         refused = true;
     }
     CHECK(refused);
+}
+
+TEST(amiga_menus_and_demo_keys_come_out_in_dos_form) {
+    // Menu m: words 0-7 big-endian; the record keeps words 0, 1, 2, 4 and 5.
+    Bytes menus;
+    for (int m = 0; m < kMenuCount; ++m)
+        for (int w = 0; w < 8; ++w) menus.push_back(0), menus.push_back(std::uint8_t(m + w));
+    const auto records = amiga_menus(menus);
+    CHECK((records[0] == MenuRecord{0, 1, 2, 4, 5}));
+    CHECK((records[40] == MenuRecord{40, 41, 42, 44, 45}));
+    bool refused = false;
+    try {
+        amiga_menus(Bytes(10, 0));
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
+
+    // The number pad's 8 2 4 6 3 become DOS's codes; every other byte stays.
+    const Bytes demo{0x38, 0x32, 0x34, 0x36, 0x33, 0x48, 0x35, 0x00, 0xb8};
+    CHECK(amiga_demo_keys(demo) == Bytes({0xb8, 0xb0, 0xb5, 0xb3, 0xaf, 0x48, 0x35, 0x00, 0xb8}));
 }

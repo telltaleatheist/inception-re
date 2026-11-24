@@ -4,10 +4,13 @@
 // finds a span by its ID, as formats::OriginalExe does for BTECH.EXE.
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <span>
 #include <string_view>
 #include <vector>
+
+#include "formats/tables.h"
 
 namespace chr::formats {
 
@@ -40,6 +43,10 @@ public:
 private:
     std::vector<AmigaHunk> hunks_;
 };
+
+// The menu table (span "menus") as DOS's records (formats/tables.h MenuRecord): the same fields
+// in big-endian words. The highlight colour is the Amiga's own colour number.
+std::array<MenuRecord, kMenuCount> amiga_menus(std::span<const std::uint8_t> menus);
 
 // The SHA-256 of version 2.3's data hunk, as stored: the same in all three known builds.
 inline constexpr std::string_view kAmigaDataHunkSha256 =

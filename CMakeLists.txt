@@ -57,6 +57,7 @@ add_library(chrformats STATIC
   src/formats/amiga_map.cpp
   src/formats/amiga_picture.cpp
   src/formats/amiga_program.cpp
+  src/formats/amiga_source.cpp
   src/formats/game_source.cpp
   src/formats/anm.cpp
   src/formats/bld.cpp

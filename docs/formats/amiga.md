@@ -142,3 +142,30 @@ A table of 22 longs at 1:1c98 follows the offsets; the loader reads its first wo
 number at which to start a sound during the animation (with more cases in the code for places 1,
 3, 4 and 8). DOS plays no sound there. Not read yet.
 
+## The windows and the menus
+
+Spans `windows` (1:1530, 11 records of 16 bytes) and `menus` (1:15c2, 41 records of 16 bytes):
+DOS's tables at 385b:0000 and 385b:0092 ([../scripts.md](../scripts.md), "Menus") in the same
+layout, the words big-endian. As in DOS, the last two window records overlap the first menu
+records. Every field the game reads is DOS's except the menus' highlight colour (word 5), the
+Amiga's own colour number in all 40 non-empty records: a colour, so it follows the copy.
+`amiga_menus` reads the menus as DOS's records; the scripts' menu instructions need their item
+counts to be laid out.
+
+## The demo, `demofile`
+
+The same 1,023 bytes as DOS's DEMOFILE (docs/startup.md, "The demo") except the movement keys:
+the Amiga records them as the number pad's digits 8, 2, 4, 6 and 3 where DOS has its own key
+codes. `amiga_demo_keys` puts DOS's codes back; no other byte holds those values, and the
+result is DOS's file byte for byte in all seven copies.
+
+## The copy as a source
+
+src/formats/amiga_source.h, `AmigaGameSource`: the copy's files by name, the program read and
+checked once, and each piece through the readers above, always with the DOS edits. Checked
+offline in all seven copies against `DosGameSource`: every script is DOS's apart from unreached
+filler, every map and the demo are DOS's byte for byte, and every place picture, picture and tile
+sheet reads. There is no speaker tune (`title_tune()` is empty); the Amiga's music is in `snd`,
+not read yet. The pictures keep the Amiga's colour numbers; their palettes are still to be
+handed to the renderer as the copy's colours.
+

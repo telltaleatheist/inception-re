@@ -33,7 +33,7 @@ struct Reader {
 };
 
 // The program's spans. Hunk 0 is the code, hunk 1 the data.
-constexpr std::array<AmigaSpan, 5> kSpans{{
+constexpr std::array<AmigaSpan, 7> kSpans{{
     // 0:5fba reads place n's script from builds.bld at the n-th of these 26 offsets (big-endian).
     {"bld.offsets", 1, 0x07d6, 26 * 4},
     // 0:a81e, the text printer: a text byte with its top bit set stands for two letters, the
@@ -44,6 +44,10 @@ constexpr std::array<AmigaSpan, 5> kSpans{{
     {"maps.offsets", 1, 0x1b8e, 15 * 4},
     // 0:23f7a, the place picture loader: where each of the 22 starts in `animation.anm`.
     {"anm.offsets", 1, 0x1c40, 22 * 4},
+    // The text windows and the menus, DOS's 385b:0000 and 385b:0092 in the same layout with
+    // big-endian words (the last two windows overlap the first menus, as in DOS).
+    {"windows", 1, 0x1530, 11 * 16},
+    {"menus", 1, 0x15c2, 41 * 16},
 }};
 
 }  // namespace
@@ -108,6 +112,22 @@ std::span<const std::uint8_t> AmigaProgram::span(std::string_view id) const {
         return std::span<const std::uint8_t>(h.bytes).subspan(s.offset, s.length);
     }
     throw FormatError("no Amiga span " + std::string(id));
+}
+
+std::array<MenuRecord, kMenuCount> amiga_menus(std::span<const std::uint8_t> menus) {
+    if (menus.size() < std::size_t(kMenuCount) * 16) throw FormatError("the Amiga menu table is short");
+    // Words 0, 1, 2, 4 and 5 of each 8-word record, as formats/tables.cpp reads DOS's.
+    constexpr std::array<int, 5> kWords = {0, 1, 2, 4, 5};
+    std::array<MenuRecord, kMenuCount> out{};
+    for (std::size_t m = 0; m < out.size(); ++m) {
+        int v[5];
+        for (std::size_t k = 0; k < 5; ++k) {
+            const std::size_t at = m * 16 + std::size_t(kWords[k]) * 2;
+            v[k] = std::int16_t(std::uint16_t(menus[at] << 8 | menus[at + 1]));
+        }
+        out[m] = {v[0], v[1], v[2], v[3], v[4]};
+    }
+    return out;
 }
 
 }  // namespace chr::formats
