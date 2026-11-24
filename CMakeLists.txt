@@ -52,6 +52,7 @@ endif()
 # Readers for the original's files, documented in docs/formats/. Standard C++ only.
 add_library(chrformats STATIC
   src/formats/adf.cpp
+  src/formats/amiga_anm.cpp
   src/formats/amiga_bld.cpp
   src/formats/amiga_map.cpp
   src/formats/amiga_picture.cpp

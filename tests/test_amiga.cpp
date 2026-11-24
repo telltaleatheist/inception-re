@@ -1,11 +1,13 @@
 // The Amiga readers (formats/amiga_program.h, formats/amiga_bld.h) on data made here, byte by
-// byte: a load file, a scripts bundle, letter-pair tables, a script, pictures, tile sheets and maps.
+// byte: a load file, a scripts bundle, letter-pair tables, a script, pictures, tile sheets, maps
+// and place pictures.
 // No game files.
 #include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+#include "formats/amiga_anm.h"
 #include "formats/amiga_bld.h"
 #include "formats/amiga_map.h"
 #include "formats/amiga_picture.h"
@@ -273,6 +275,34 @@ TEST(amiga_maps_are_cut_out_in_dos_form) {
     bool refused = false;
     try {
         amiga_map(Bytes(maps.begin(), maps.end() - 20), offsets, 14, false);
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
+}
+
+TEST(amiga_place_pictures_are_cut_out) {
+    // 22 made-up pictures, picture n being n + 1 bytes of n.
+    Bytes anm, offsets;
+    for (int n = 0; n < 22; ++n) {
+        put32(offsets, std::uint32_t(anm.size()));
+        anm.insert(anm.end(), std::size_t(n + 1), std::uint8_t(n));
+    }
+    CHECK(amiga_place_picture(anm, offsets, 0) == Bytes(1, 0));
+    CHECK(amiga_place_picture(anm, offsets, 7) == Bytes(8, 7));
+    CHECK(amiga_place_picture(anm, offsets, 21) == Bytes(22, 21));
+    for (int bad : {-1, 22}) {
+        bool refused = false;
+        try {
+            amiga_place_picture(anm, offsets, bad);
+        } catch (const FormatError&) {
+            refused = true;
+        }
+        CHECK(refused);
+    }
+    bool refused = false;
+    try {
+        amiga_place_picture(Bytes(anm.begin(), anm.begin() + 30), offsets, 10);
     } catch (const FormatError&) {
         refused = true;
     }

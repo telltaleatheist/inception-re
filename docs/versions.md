@@ -47,7 +47,7 @@ needs to boot (a start-up script and two small system commands).
 |---|---|---|---|
 | `infocom.cmp`, `bttitle.cmp`, `BTBORDER.CMP`, `tinyland.cmp`, `mechshap.cmp`, `btstats.cmp`, `endmech.cmp` | 0.3–24K | the seven .CMP | Amiga form of the DOS picture (below) |
 | `bttltech.icn`, `destruct.icn`, `starleag.icn`, `map.icn`, `animate.icn` | 3–28K | the five .ICN | Amiga form of the DOS tile sheet (below) |
-| `animation.anm` | 134,378 | O0–O21.ANM (22 files, 129,536 bytes together) | one bundle; the place pictures inside it are not read yet |
+| `animation.anm` | 134,378 | O0–O21.ANM (22 files, 129,536 bytes together) | one bundle of the 22 place pictures in DOS form (docs/formats/amiga.md) |
 | `builds.bld` | 55,861 | the 26 .BLD (85,379 bytes together) | the 26 scripts in one file, DOS's cipher, the text packed in letter pairs (docs/formats/amiga.md) |
 | `maps` | 33,046 | MAP1–MAP15.MTP | the 15 DOS maps one after the other, the same total size (below) |
 | `demofile` | 1,023 | DEMOFILE | same size; about two thirds of the bytes differ, so recorded differently or in another order; not read yet |

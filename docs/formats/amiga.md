@@ -122,3 +122,23 @@ differences from DOS:
 Checked offline in four of the copies: with the name copied, all 15 maps equal DOS 1.03's byte for
 byte; without it, 14 of 15 do.
 
+## The place pictures, `animation.anm`
+
+src/formats/amiga_anm.h. DOS's O0-O21.ANM ([anm.md](anm.md)) one after another. The loader
+(Amiga battletech 0:23f7a) seeks to the place's entry in a table of 22 big-endian longs at
+1:1c40 (span `anm.offsets`) and reads at most 22,000 bytes. Picture n runs from its offset to
+the next one's; picture 21, to the file's end. Each is in DOS's own form: frame list, delays,
+speed, then frames of XOR runs (0:1ad54 unpacks them with a size of 3,872 bytes, two pixels a
+byte, the 0 code's count big-endian as in DOS), and the delay of frame k is found and scaled as
+in DOS (0:12084). So formats/anm.h reads them as they are. The colour numbers are the Amiga's.
+
+Compared with DOS 1.03 offline (each Amiga colour matched to its most frequent DOS colour):
+every picture has its DOS frame count except O4, O5, O6, O9 and O15, and the last frames agree
+with DOS's from 24% to 100% (O15, O17, O19 and O21 100%), so some are retouched. Timing differs
+in seven: O4, O5, O6, O9, O10, O13 and O15 have their own frame lists, delays or speed (O17-O19
+differ only in entry 0 of the list, which never takes effect).
+
+A table of 22 longs at 1:1c98 follows the offsets; the loader reads its first word as a frame
+number at which to start a sound during the animation (with more cases in the code for places 1,
+3, 4 and 8). DOS plays no sound there. Not read yet.
+
