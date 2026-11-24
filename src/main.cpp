@@ -387,6 +387,9 @@ int main(int argc, char** argv) {
         return chr::platform::print_setup_status(options.game_dir.string(), CHR_DEFAULT_GAME_DIR,
                                                  options.data_dir.string());
 
+    if (options.setup || options.game_dir.empty()) {
+        if (!chr::platform::setup_hooks_allowed(options.setup)) return options.setup ? 2 : 1;
+    }
     if (options.data_dir.empty()) {
         if (const char* env = std::getenv("CHR_DATA_DIR"); env && *env) {
             options.data_dir = env;

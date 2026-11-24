@@ -20,7 +20,8 @@ finds it or asks you where it is.
 
 The rebuild contains none of the original's files. It reads the graphics,
 maps, animations and text from your own copy, so you need a copy of the game to
-play it: the DOS version 1.03, which is the reference, or the Amiga version 2.3.
+play it. The release, 0.1.0, plays the DOS version 1.03, which is the reference.
+The source here also plays the Amiga version 2.3; that comes with the next release.
 
 ## The rules
 

@@ -156,6 +156,18 @@ bool setup_unattended(bool scripted) {
     return driver && (!std::strcmp(driver, "offscreen") || !std::strcmp(driver, "dummy"));
 }
 
+bool setup_hooks_allowed(bool setup_only) {
+    const char* own = std::getenv("CHR_DATA_DIR");
+    if (own && *own) return true;
+    for (const char* hook : {"CHR_SETUP_PICK", "REKIT_SETUP_GO"})
+        if (const char* v = std::getenv(hook); v && *v) {
+            say_error(setup_only, std::string(hook) + " is a test's: it copies a game into the player's folder, so it "
+                                  "needs CHR_DATA_DIR to name the test's own (docs/setup.md). Nothing was done.");
+            return false;
+        }
+    return true;
+}
+
 int print_setup_status(const std::string& given, const std::string& builtin, const std::string& data_dir) {
     // Anything else printed while answering goes to stderr: stdout carries the one JSON line.
     std::fflush(stdout);

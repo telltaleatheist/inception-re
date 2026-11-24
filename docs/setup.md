@@ -132,4 +132,17 @@ and in a folder dropped beside the program.
   `game=chi` mark. With `--amiga` or `CHR_AMIGA_COPY`, it also installs that
   copy, imports it and draws a frame from it.
 
-Both remove their work folders. They print names and counts only.
+**Running the setup by hand, or in a new test.** The setup's test hooks copy a
+game into the player's folder, so a run that uses one must name a folder of its
+own in `CHR_DATA_DIR`. That is how `status_setup` and the package smoke test
+(tools/build_package.py) get theirs. Setting only `HOME` is not enough: on
+macOS, SDL asks the system for the per-user folder, not `HOME`, so the run
+would write to the real player's. A safe run:
+
+    CHR_DATA_DIR=<an empty folder> CHR_HIDDEN=1 SDL_VIDEO_DRIVER=dummy SDL_AUDIO_DRIVER=dummy \
+        CHR_SETUP_PICK=<a copy> chr --setup
+
+With `CHR_SETUP_PICK` or `REKIT_SETUP_GO` set and `CHR_DATA_DIR` not, the
+program refuses and makes nothing (exit 2 from `--setup`, 1 from a start).
+
+Both checks remove their work folders. They print names and counts only.

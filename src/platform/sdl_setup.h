@@ -25,6 +25,12 @@ int print_setup_status(const std::string& given, const std::string& builtin, con
 // "" when SDL has none.
 std::string settled_user_folder();
 
+// Whether this run may go on to the setup; why not is said as resolve_game says it. The setup's
+// test hooks (CHR_SETUP_PICK, REKIT_SETUP_GO) copy a game into the player's folder with no player at the run, so they need
+// CHR_DATA_DIR to name that folder: HOME doesn't move it on every system (on macOS SDL asks the
+// system, not HOME). To be asked before settled_user_folder, which makes the folder.
+bool setup_hooks_allowed(bool setup_only);
+
 // The game folder a start plays from, into `folder`: the one remembered in
 // `user`'s settings.ini or `builtin` (a build's own default, may be "") while
 // still the game, the player's own install, else the setup (a find offered,

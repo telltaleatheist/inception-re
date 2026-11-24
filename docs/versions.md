@@ -316,12 +316,12 @@ as changed from the copies we know. A version with a disk missing is named with 
 it lacks: the archive's Apple II item is disk 1 alone, so a player with only that file is
 told disk 2 of 2 is missing.
 
-DOS 1.03 and Amiga 2.3 play (docs/setup.md, "What counts as the game"). For the others `--status`
-answers `incomplete` for it, with `data` naming it ("Commodore 64"), `missing` listing the missing
-disks and the rebuild's support for that version, and a one-line note. The setup says the same
-instead of "no copy found", both for a scripted pick and on the setup screen (the kit's
-`recognise` hook, which the kit calls only when its own walk finds no copy). The DOS copy, in a
-folder or a zip, is recognised as before, by its BTECH.EXE.
+DOS 1.03 and Amiga 2.3 play (docs/setup.md, "What counts as the game"); the release 0.1.0 plays
+DOS 1.03 alone. For the others `--status` answers `incomplete` for it, with `data` naming it
+("Commodore 64"), `missing` listing the missing disks and the rebuild's support for that version,
+and a one-line note. The setup says the same instead of "no copy found", both for a scripted pick
+and on the setup screen (the kit's `recognise` hook, which the kit calls only when its own walk
+finds no copy). The DOS copy, in a folder or a zip, is recognised as before, by its BTECH.EXE.
 
 The checks can't use the real table without the real disks, so `CHR_EXTRA_KNOWN_DISKS` may
 name a file of extra entries, one disk a line (`src/setup/versions.h`); the status and setup

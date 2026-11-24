@@ -94,6 +94,18 @@ def main():
     check(p.returncode == 2 and '{"error": ' in p.stdout, "break: a pick that is not the game exits 2")
     check(not os.path.exists(os.path.join(user, "install")), "break: nothing installed from it")
 
+    # A test hook without the test's own player folder (HOME alone doesn't move the real one on a
+    # Mac): refused before anything is made. The picks here hold no game, so a failure copies nothing.
+    for hook, extra in (("CHR_SETUP_PICK", {"CHR_SETUP_PICK": notgame}),
+                        ("REKIT_SETUP_GO", {"REKIT_SETUP_GO": "1", "REKIT_SETUP_FRAMES": "5"})):
+        before = tree(work)
+        unset = {k: v for k, v in dict(env, **extra).items() if k != "CHR_DATA_DIR"}
+        p, _ = run(a.program, ["--setup"], unset)
+        check(p.returncode == 2 and "needs CHR_DATA_DIR" in p.stdout and tree(work) == before,
+              "break: %s without CHR_DATA_DIR is refused (%d)" % (hook, p.returncode))
+        p, _ = run(a.program, [], unset)
+        check(p.returncode == 1 and "needs CHR_DATA_DIR" in p.stderr, "break: %s refused at a start too" % hook)
+
     # The setup screen, hidden: the rebuild's header; no picker (unattended), a check's answer stands in.
     screen = dict(env, REKIT_SETUP_FRAMES="5", REKIT_SETUP_FIND="1", REKIT_SETUP_GO="1",
                   REKIT_SETUP_PICKER="path:" + os.path.join(notgame, "README.TXT"))
