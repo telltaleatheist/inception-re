@@ -22,8 +22,8 @@ The loader reads the fields one after another:
 | 0x002 | 1 | | block row where the map starts (0 in every map) |
 | 0x003 | 1 | | width in cells (a multiple of 8) |
 | 0x004 | 1 | | height in cells (a multiple of 8) |
-| 0x005 | 0x80 | 2c6c:a461 | 8 people's names, 16 bytes each, NUL-ended (MAP1: Rick Atlas, …): the townspeople (docs/townspeople.md) |
-| 0x085 | 0x100 | 2c6c:a561 | 16 place names, 16 bytes each, one per entrance below (MAP1: Training Center, Citadel, ComStar Station, Weapons Shop, Armor Shop, Mechit-Lube, Barracks, Lounge; the rest are leftovers) |
+| 0x005 | 0x80 | 2c6c:a461 | 8 people's names, 16 bytes each, NUL-ended: the townspeople (docs/townspeople.md) |
+| 0x085 | 0x100 | 2c6c:a561 | 16 place names, 16 bytes each, one per entrance below (in MAP1, the town's eight places in the order of the .BLD table's places 0–7; the rest are leftovers) |
 | 0x185 | 0x20 | 3892:4564 | 16 entrance x positions (words) |
 | 0x1a5 | 0x20 | 3892:4596 | 16 entrance y positions (words) |
 | 0x1c5 | 0x20 | 3892:39b4 | 16 x positions of a second table, one per entrance (in MAP1 the same values). 19b8:0d58 puts the party here after a recruit (docs/scripts.md); 1e31:03ab also reads it, not read yet. |

@@ -887,7 +887,7 @@ bool Town::special(int n, KeySource& keys) {
         return true;
     }
     case 43: {
-        // 24d3:157e: Rick Atlas waits in the Lounge. Townsperson 0 stands
+        // 24d3:157e: the first townsperson waits in the lounge (LOUNGE.BLD). Townsperson 0 stands
         // at the Lounge's entrance (7), inside (wait ff), last in the
         // Lounge and bound for the Training Center (entrance 0), until the
         // talk lets him out (flag 2d, talk()).
