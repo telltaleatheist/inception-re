@@ -77,9 +77,9 @@ which it took; without a plain one it takes none and names them. The install
 writes out the game's 18 files and nothing else on the disk, so no saved game
 of whoever had it before.
 
-The setup screen can't offer such a find yet: the kit has no hook for a copy
-its own walk doesn't see. The screen names the copy instead. `--setup` with
-`CHR_SETUP_PICK` installs it, and `--game-dir` plays an .adf where it is.
+The setup screen offers such a find like any other (the kit's `find` hook, asked
+when its own walk finds no copy); a picked .adf is looked at itself, not only
+its folder. `--game-dir` plays an .adf where it is.
 
 A folder is:
 

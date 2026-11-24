@@ -111,9 +111,6 @@ std::vector<std::string> data_files() {
     return names;
 }
 
-// find_amiga's mark on its finds (Found::label).
-constexpr const char* kAmigaDisk = "Amiga disk image";
-
 // check_install for a copy without BTECH.EXE.
 Check check_amiga(const std::string& dir) {
     Check c;
@@ -275,6 +272,7 @@ rekit::Found find_amiga(const std::string& path, std::string* note) {
     if (!choice.copy) return f;
     f.kind = rekit::Found::kInstall, f.game = kId, f.version = kAmigaVersion, f.rank = 2;
     f.label = kAmigaDisk, f.data_track = choice.copy->where;
+    if (choice.different > 1) f.detail = "The unchanged one of " + std::to_string(choice.different) + " different copies there.";
     return f;
 }
 

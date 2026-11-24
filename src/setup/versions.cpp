@@ -269,6 +269,7 @@ AmigaChoice choose_amiga_copy(const std::string& path) {
         copies.push_back(std::move(c));
     }
     AmigaChoice choice;
+    choice.different = copies.size();
     if (copies.empty()) return choice;
     if (copies.size() == 1) return choice.copy = std::move(copies.front()), choice;
     std::string names;
@@ -278,8 +279,8 @@ AmigaChoice choose_amiga_copy(const std::string& path) {
         choice.note = "Different copies of the Amiga version are there (" + names + "). Pick one of them.";
         return choice;
     }
-    choice.note = std::to_string(copies.size()) + " different copies of the Amiga version are there. The setup takes the unchanged one: " +
-                  plain->where + ".";
+    choice.note = std::to_string(copies.size()) + " different copies of the Amiga version are there; the setup takes the "
+                  "unchanged one, " + plain->where.substr(plain->where.find_last_of("/\\") + 1) + ".";
     choice.copy = std::move(*plain);
     return choice;
 }

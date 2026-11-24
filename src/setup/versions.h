@@ -89,6 +89,7 @@ struct AmigaCopy {
 
 struct AmigaChoice {
     std::optional<AmigaCopy> copy;
+    std::size_t different = 0;  // how many different copies there are
     // Which was taken when there are several, or why none was; "" when there is nothing to say.
     std::string note;
 };

@@ -363,5 +363,4 @@ check makes up a C64 disk image and lists it there.
 
 ## Next
 
-1. The setup screen offering an Amiga disk image (docs/setup.md).
-2. The C64, then the Apple II: their containers are understood; their encodings are next.
+- The C64, then the Apple II: their containers are understood; their encodings are next.

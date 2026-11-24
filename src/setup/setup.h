@@ -88,8 +88,11 @@ std::string btech_version(const std::vector<std::uint8_t>& bytes);
 // BTECH.EXE stands for its folder.
 rekit::SourceRules rules();
 // The Amiga copy on a disk image in `path`, which the kit's walk can't read
-// (choose_amiga_copy): a find for install(), or kNothing. `note` (may be
-// null) gets what there is to say about the choice.
+// (choose_amiga_copy): a find for install() and for the screen's find hook, or
+// kNothing. Its label is kAmigaDisk, its data_track says where the image is
+// and its detail, when there are several copies, which it is in short. `note`
+// (may be null) gets the choice's note, also when there is no find.
+inline constexpr const char* kAmigaDisk = "Amiga disk image";
 rekit::Found find_amiga(const std::string& path, std::string* note = nullptr);
 // The find of `path`: the kit's, else find_amiga's.
 rekit::Found find_game(const std::string& path, std::string* note = nullptr);

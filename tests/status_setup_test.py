@@ -241,6 +241,14 @@ def main():
         p, _ = run(a.program, ["--map", "1", "--script", "up", "--screenshot", os.path.join(work, "amiga.bmp")], env)
         check(p.returncode == 0 and os.path.isfile(os.path.join(user, "import.json")),
               "Amiga: a start imports and plays from the install (%d)" % p.returncode)
+        # The same pick through the setup screen (hidden): offered and installed.
+        user2 = os.path.join(work, "user-amiga-screen")
+        p, _ = run(a.program, ["--setup"], dict(base, CHR_DATA_DIR=user2, REKIT_SETUP_FRAMES="3000", REKIT_SETUP_FIND="1",
+                                                REKIT_SETUP_GO="1", REKIT_SETUP_PICKER="path:" + a.amiga))
+        out = p.stdout.splitlines()
+        check(p.returncode == 0 and any(l.startswith("setup: screen confirm: %s, INSTALL" % os.path.basename(a.amiga)) for l in out),
+              "Amiga: the screen offers the pick (%d)" % p.returncode)
+        check(os.path.isfile(os.path.join(user2, "install", "battletech")), "Amiga: the screen's copy in the player's folder")
         os.remove(os.path.join(install, "snd"))
         p, _ = run(a.program, ["--status"], env)
         st = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {}

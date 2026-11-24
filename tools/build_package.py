@@ -43,13 +43,15 @@ BUNDLE_ID = "io.github.inceptionre.chi"  # its own, so it never shares another g
 TAG = re.compile(r"chi-v(\d+\.\d+\.\d+)")
 README = (
     "Inception Rebuild\n\n"
-    "A rebuild of BattleTech: The Crescent Hawk's Inception (1988). Your own copy of the DOS\n"
-    "game, version 1.03, is required and is not included: no game files are in this package.\n\n"
-    "The first time it starts without your game, it asks for your copy: its BTECH.EXE, any\n"
-    "file in its folder, or the archive it came in (a .zip, for example). It copies the game\n"
-    "into your own folder and plays from there; your copy is never changed. Your settings\n"
-    "(settings.ini), saves, the text and tables read once from your BTECH.EXE, the copied\n"
-    "game and the log (chi.log) live in your own folder:\n"
+    "A rebuild of BattleTech: The Crescent Hawk's Inception (1988). Your own copy of the game\n"
+    "is required and is not included: no game files are in this package. It plays the DOS\n"
+    "version 1.03 and the Amiga version 2.3.\n\n"
+    "The first time it starts without your game, it asks for your copy: the DOS game's\n"
+    "BTECH.EXE, any file in its folder, the Amiga game's disk image (.adf), or the archive it\n"
+    "came in (a .zip, for example). It copies the game into your own folder and plays from\n"
+    "there; your copy is never changed. Your settings (settings.ini), saves, the text and\n"
+    "tables read once from your copy, the copied game and the log (chi.log) live in your own\n"
+    "folder:\n"
     "  Windows: %APPDATA%\\BattleTech\\Inception Rebuild\n"
     "  macOS:   ~/Library/Application Support/BattleTech/Inception Rebuild\n"
     "  Linux:   ~/.local/share/BattleTech/Inception Rebuild\n\n"
@@ -503,7 +505,7 @@ def package_mac(root, build, sdl, output, label, game, universal=True):
              "CFBundleInfoDictionaryVersion": "6.0", "LSMinimumSystemVersion": minos.group(1) if minos else "12.0",
              "LSApplicationCategoryType": "public.app-category.games", "NSHighResolutionCapable": True,
              "NSHumanReadableCopyright": "A fan rebuild; BattleTech is a trademark of its owners. "
-                                         "Needs your own copy of The Crescent Hawk's Inception (DOS 1.03)."}
+                                         "Needs your own copy of The Crescent Hawk's Inception (DOS 1.03 or Amiga 2.3)."}
     with open(app / "Contents/Info.plist", "wb") as f:
         plistlib.dump(plist, f)
     # Ad hoc (no identity, so no name in the signature): the libraries, the program, then the app.

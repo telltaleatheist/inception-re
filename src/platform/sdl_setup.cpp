@@ -3,6 +3,7 @@
 #include "setup/setup.h"
 #include "setup/versions.h"
 
+#include <rekit/archive.h>
 #include <rekit/sdl/pickers.h>
 #include <rekit/sdl/setup_screen.h>
 #include <rekit/sources.h>
@@ -53,6 +54,9 @@ void say_error(bool setup_only, const std::string& why) {
 }
 
 std::string describe(const rekit::Found& f) {
+    if (f.label == setup::kAmigaDisk)
+        return "The Amiga version 2.3 of " + std::string(setup::kTitle) + ", on a disk image." +
+               (f.detail.empty() ? "" : " " + f.detail);
     const std::string what = f.version.empty() ? " (another version than " + std::string(setup::kVersion) + " or " +
                                                      setup::kAmigaVersion + ")"
                                                : " (" + f.version + ")";
@@ -85,14 +89,22 @@ std::string run_screen(bool setup_only, bool scripted, const std::string& found,
         return setup::find_install({}, user, pdir, &s);
     };
     g.describe = describe;
-    // What the kit's walk can't take: named, in place of the kit's "No copy".
+    // The Amiga's disk image, which the kit's walk can't read: offered like any copy.
+    g.find = [](const std::string& path, rekit::Found* out) {
+        *out = setup::find_amiga(path);
+        return out->kind != rekit::Found::kNothing;
+    };
+    const std::string zip = rekit::archives_supported() ? "a download, " : "";
+    g.pick_words = zip + "an Amiga disk image (.adf), or BTECH.EXE";
+    g.find_sub = rekit::archives_supported() ? "A download (.zip), an Amiga disk (.adf) or BTECH.EXE"
+                                             : "An Amiga disk (.adf), or BTECH.EXE in an installed copy";
+    g.find_show = std::string(rekit::archives_supported() ? "a download (.zip, .7z), " : "") +
+                  "an Amiga disk image (.adf) or a folder where it's installed";
+    // What can't be offered: named, in place of the kit's "No copy".
     g.recognise = [](const std::string& path) {
         try {
-            const setup::AmigaChoice amiga = setup::choose_amiga_copy(path);
-            if (amiga.copy)
-                return "The Amiga version 2.3 was found on a disk image (" + amiga.copy->where +
-                       "), but this screen can't copy it from there yet.";
-            if (!amiga.note.empty()) return amiga.note;
+            std::string note;
+            if (setup::find_amiga(path, &note).kind == rekit::Found::kNothing && !note.empty()) return note;
             setup::OtherCopy other;
             if (setup::find_other_copy(path, &other)) return other.note();
         } catch (...) {
@@ -130,7 +142,7 @@ std::string take_copy(const std::string& picked, const std::string& user, std::s
     const rekit::Found f = setup::find_game(picked, &note);
     std::printf("setup: looked at %s: %s\n", picked.c_str(),
                 f.kind == rekit::Found::kNothing ? "nothing" : f.version.empty() ? "another version" : f.version.c_str());
-    if (!f.detail.empty()) std::fprintf(stderr, "%s", f.detail.c_str());
+    if (!f.detail.empty() && note.empty()) std::fprintf(stderr, "%s", f.detail.c_str());
     if (!note.empty()) std::printf("setup: %s\n", note.c_str());
     if (f.kind != rekit::Found::kInstall) {
         setup::OtherCopy other;
