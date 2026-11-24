@@ -327,6 +327,13 @@ The whole tune is not run, since its end starts the demo.
 
 - Effects 9, 11 and 13 against the original. They are weapon shots (`22e8:152b..`, by weapon:
   13, 3, 5, 6, 11, 1, 9, 2, 4; combat.md 3), and no sequence the rig has fires those weapons.
+  Tried in the rebuild only, in the mission with people (training mode 3, the `people` sequence).
+  Jason is in the Locust there, so his own weapon byte is never used. The weapon byte (0x0b) of the
+  enemy soldiers, characters 8-10, was poked at the orders before round 1: to 00, 01, 02, 04, 05,
+  06, 0c and 0d, one value for all three, 10 rounds each with the Locust standing. Then 20 rounds
+  with 02, 05 and 0c (one for each of these effects: 13, 11 and 9), the Locust given Run orders
+  towards the soldiers: it stuck at a building, going back and forth with more than 20 half-cells
+  between. None of these weapons came into range, so none was fired. Not tried on the rig.
 - The title music's end: the run stops short of it, since the demo would follow (see "The
   title music"). The end mark is read as the code reads, and the tests check it.
 - The title music as Tandy owners heard it: a possible later option, not to be built now. On
