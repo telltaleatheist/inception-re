@@ -11,6 +11,8 @@
 //
 //     setup_test <work folder> [<game folder>]
 #include "setup/setup.h"
+#include "setup/versions.h"
+#include "formats/sha256.h"
 
 #include <rekit/archive.h>
 
@@ -278,6 +280,66 @@ void with_game(const fs::path& work, const fs::path& game) {
 #endif
 }
 
+// The other versions' recognition (setup/versions.h) against a table of the test's own: a
+// made-up 1541 disk image holding two made-up files, found loose, in a zip and in a zip in a
+// zip; one disk of a two-disk version named with the other missing; a changed variant file.
+void other_versions(const fs::path& work) {
+    // A 35-track image: the directory at 18/1, file A on track 1, file B on track 2.
+    std::string image(174848, '\0');
+    auto at = [](int t, int sec) {
+        std::size_t before = 0;
+        for (int i = 1; i < t; ++i) before += i <= 17 ? 21 : i <= 24 ? 19 : i <= 30 ? 18 : 17;
+        return (before + std::size_t(sec)) * 256;
+    };
+    image[at(18, 0)] = 18, image[at(18, 0) + 1] = 1;
+    image[at(18, 1) + 1] = char(0xff);
+    const std::string a_data = "made-up file one", b_data = "made-up file two, a variant";
+    auto put = [&](int slot, const std::string& name, const std::string& data, int track) {
+        const std::size_t e = at(18, 1) + std::size_t(slot) * 32;
+        image[e + 2] = char(0x82), image[e + 3] = char(track), image[e + 4] = 0;
+        for (std::size_t i = 0; i < 16; ++i) image[e + 5 + i] = i < name.size() ? name[i] : char(0xa0);
+        image[at(track, 0)] = 0, image[at(track, 0) + 1] = char(data.size() + 1);
+        image.replace(at(track, 0) + 2, data.size(), data);
+    };
+    put(0, "FIXA", a_data, 1);
+    put(1, "FIXB", b_data, 2);
+    const fs::path loose = work / "loose" / "fixture.d64";
+    write(loose, image);
+    auto hash = [](const std::string& s) {
+        return chr::formats::sha256_hex({reinterpret_cast<const std::uint8_t*>(s.data()), s.size()});
+    };
+    const std::string ha = hash(a_data), hb = hash(b_data);
+    // Disk 1 of 2, its variant file listed with the wrong hash; disk 2 nowhere.
+    const std::vector<setup::KnownDisk> two{
+        {setup::Machine::C64, "", 1, 2, {{"fixa", a_data.size(), ha.c_str()}}, {{"", {"fixb", b_data.size(), ha.c_str()}}}},
+        {setup::Machine::C64, "", 2, 2, {{"fixz", 1, ha.c_str()}}, {}},
+    };
+    auto copies = setup::recognise(setup::seen_files((work / "loose").string(), two, nullptr), two);
+    check(copies.size() == 1 && copies[0].found == std::vector<int>{1} &&
+              copies[0].missing() == std::vector<std::string>{"disk 2 of 2"},
+          "a disk image in a folder: disk 1 of 2 named, disk 2 missing");
+    check(!copies.empty() && copies[0].variants == std::vector<std::string>{"unknown"} &&
+              copies[0].note().find("changed from the copies we know") != std::string::npos,
+          "a variant file that matches no known variant is named as unknown");
+    const std::vector<setup::KnownDisk> one{
+        {setup::Machine::C64, "", 1, 1, {{"fixa", a_data.size(), ha.c_str()}}, {{"", {"fixb", b_data.size(), hb.c_str()}}}},
+    };
+    copies = setup::recognise(setup::seen_files(loose.string(), one, nullptr), one);
+    check(copies.size() == 1 && copies[0].missing().empty() && copies[0].variants == std::vector<std::string>{""} &&
+              copies[0].note().rfind("The Commodore 64 version was found", 0) == 0,
+          "the whole version, plain variant, named in the note");
+#if REKIT_HAVE_LIBARCHIVE
+    const fs::path inner = work / "inner.zip", outer = work / "zipped" / "outer.zip";
+    fs::create_directories(outer.parent_path());
+    check(make_zip(inner, {{"disks/fixture.d64", loose}, {"readme.txt", {}}}) && make_zip(outer, {{"inner.zip", inner}}),
+          "the made-up image zipped, and that zip zipped");
+    copies = setup::recognise(setup::seen_files(outer.string(), one, nullptr), one);
+    check(copies.size() == 1 && copies[0].missing().empty(), "found inside a zip inside a zip");
+#endif
+    check(setup::recognise(setup::seen_files((work / "loose").string(), {}, nullptr), {}).empty(),
+          "nothing named against an empty table");
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -287,6 +349,7 @@ int main(int argc, char** argv) {
     fs::remove_all(work, ec);  // the test's own folder (the build's setup_work)
     fs::create_directories(work);
     game_free(work / "free");
+    other_versions(work / "versions");
     const std::string game = argc == 3 ? argv[2] : "";
     if (!game.empty() && !rekit::any_case_path(game, "BTECH.EXE").empty()) with_game(work / "game", game);
     else std::printf("skip the game parts: no game folder\n");

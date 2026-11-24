@@ -1,6 +1,7 @@
 #include "platform/sdl_setup.h"
 
 #include "setup/setup.h"
+#include "setup/versions.h"
 
 #include <rekit/sdl/pickers.h>
 #include <rekit/sdl/setup_screen.h>
@@ -115,7 +116,9 @@ std::string take_copy(const std::string& picked, const std::string& user, std::s
                 f.kind == rekit::Found::kNothing ? "nothing" : f.version.empty() ? "another version" : f.version.c_str());
     if (!f.detail.empty()) std::fprintf(stderr, "%s", f.detail.c_str());
     if (f.kind != rekit::Found::kInstall) {
-        *why = "No copy of " + std::string(setup::kTitle) + " was found in " + picked + ".";
+        setup::OtherCopy other;
+        if (setup::find_other_copy(picked, &other)) *why = other.note();
+        else *why = "No copy of " + std::string(setup::kTitle) + " was found in " + picked + ".";
         return "";
     }
     const setup::Installed r = setup::install(f, setup::default_install(user));

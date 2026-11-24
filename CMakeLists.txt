@@ -132,7 +132,7 @@ set(CHR_VERSION "dev" CACHE STRING "The program's version, as --status reports i
 set(CHR_VERSION_TAG "dev" CACHE STRING "The package's full label, in the launcher's version marker (packages set it)")
 
 # The setup recipe (src/setup/setup.h): no SDL.
-add_library(chrsetup STATIC src/setup/setup.cpp)
+add_library(chrsetup STATIC src/setup/setup.cpp src/setup/versions.cpp)
 target_include_directories(chrsetup PUBLIC src)
 target_link_libraries(chrsetup PUBLIC chrformats rekit)
 

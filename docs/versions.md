@@ -126,7 +126,7 @@ cracked release; the files themselves are the game's.
 
 | C64 files | Count | What they are (by name, size and load address) |
 |---|---|---|
-| `BA`–`BZ` | 25 | place scripts, one per place (`B` + a letter), 0.2–5.4K each; there is no `BX` |
+| `BA`–`BZ` | 25 | place scripts, one per place (`B` + a letter), 0.2–5.4K each; there is no `BX`. Side 2 holds `BA`–`BY`; side 1 holds `BA`, `BB` and `BZ` |
 | `OA.ANM`–`OV.ANM` | 22 | place pictures: letters A–V for DOS's O0–O21 |
 | `MA`–`MZ` | 26 | maps, 1,024 bytes each: 32x32 cells, one byte a cell |
 | `G0`–`G7` | 8 | saved games, 1,696 bytes each |
@@ -188,11 +188,39 @@ encoded differently too.
 **Dialogue and text.** None of the 151 interface texts appears letter for letter, in plain
 or high-bit ASCII. Text and scripts are compressed or encoded, as on the C64.
 
-**The variants.** Disk 1 [cr] and disk 2 [cr] are cracked copies; disk 2 [a] is another dump.
-Their files have not been compared one by one yet (the next step's table records each
-variant's files by size and hash).
+**The variants.** Disk 1 [cr] changes three boot files (`HELLO`, `BOOT0`, `LAM`) and nothing
+else. Disk 2 [a] differs from the plain disk 2 in `VIEW` and four players' saves (`G0`–`G3`).
+Disk 2 [cr] holds exactly the plain disk's files. So every variant carries the same game
+data.
 
 **What the Apple II can fill.** As the C64, with its own art.
+
+## Recognising a copy
+
+`src/setup/versions.cpp` names any of these copies wherever the player points the setup or
+`--status`: a folder, a zip, zips inside zips (any archive the kit reads, four deep), and the
+disk images themselves (docs/formats/adf.md, d64.md, rdos.md), loose or inside archives. It
+lists the files of every disk image it meets and hashes only those whose name and size are
+in its table, `known_disks()`. The table holds each disk's file names, sizes and SHA-256
+hashes, nothing else:
+
+| Disk | Recognised by | Variants told apart by |
+|---|---|---|
+| Amiga 2.3 (one disk) | all 17 game data files in `Battletech` | the program `battletech`: the plain build (five disks), [a4]'s and [h Madwand]'s |
+| C64, side 1 | three game files found only on side 1 | (one release known) |
+| C64, side 2 | three game files found only on side 2 | |
+| Apple II, disk 1 | the program and two art files | the boot file `HELLO`: plain or [cr] (which also changes two other boot files) |
+| Apple II, disk 2 | three game files | `VIEW`: plain or [a] (which also carries four players' saves); disk 2 [cr] has the plain disk's files |
+
+A disk whose recognising files all match but whose variant file matches none is still named,
+as changed from the copies we know. A version with a disk missing is named with the disk
+it lacks: the archive's Apple II item is disk 1 alone, so a player with only that file is
+told disk 2 of 2 is missing.
+
+Until a version plays, `--status` answers `incomplete` for it, with `data` naming it ("Amiga
+2.3"), `missing` listing the missing disks and the rebuild's support for that version, and a
+one-line note. The setup's pick says the same instead of "no copy found". The DOS copy, in a
+folder or a zip, is recognised as before, by its BTECH.EXE.
 
 ## Asset and text families by version
 

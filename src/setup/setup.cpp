@@ -1,4 +1,5 @@
 #include "setup/setup.h"
+#include "setup/versions.h"
 
 #include "formats/bld.h"
 #include "formats/exe_data.h"
@@ -298,6 +299,18 @@ rekit::Status status(const std::vector<std::string>& known, const std::string& u
         st.where = found, st.data = c.version, st.state = c.state, st.missing = c.missing;
         if (c.version.empty()) st.note = "this copy's BTECH.EXE is another version; the rebuild needs " + std::string(kVersion);
         else if (searched) st.note = "found by the search, not set up yet";
+        return st;
+    }
+    // Another version's copy (an Amiga, C64 or Apple II one) where the player said: named, not played yet.
+    for (const auto& k : known) {
+        std::error_code ec;
+        OtherCopy other;
+        if (k.empty() || !fs::exists(k, ec) || !find_other_copy(k, &other)) continue;
+        st.where = k, st.data = other.label(), st.state = rekit::Status::kIncomplete;
+        st.missing = other.missing();
+        st.missing.push_back("the rebuild's support for " + other.name());
+        st.note = other.note();
+        break;
     }
     return st;
 }
