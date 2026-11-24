@@ -44,6 +44,21 @@ def run(program, args, env, timeout=120):
     return p, time.monotonic() - t
 
 
+def screen_pick(path, frames="200"):
+    """The setup screen driven to a pick of `path`. FIND searches first, and what a search finds near
+    the program is offered before any picker opens, so the find's plate (pick other files) is pressed
+    too: the pick is then looked at whatever lies near the build."""
+    return dict(REKIT_SETUP_FRAMES=frames, REKIT_SETUP_FIND="1", REKIT_SETUP_PICK_OTHER="1", REKIT_SETUP_GO="1",
+                REKIT_SETUP_PICKER="path:" + path)
+
+
+def after_pick(stdout):
+    """The log's lines from the last picker on; none when no picker was asked for."""
+    lines = stdout.splitlines()
+    asked = [i for i, l in enumerate(lines) if l.startswith("setup: the file picker asked for")]
+    return lines[asked[-1]:] if asked else []
+
+
 def same(a, b):
     return os.path.normcase(os.path.normpath(a)) == os.path.normcase(os.path.normpath(b))
 
@@ -107,13 +122,12 @@ def main():
         check(p.returncode == 1 and "needs CHR_DATA_DIR" in p.stderr, "break: %s refused at a start too" % hook)
 
     # The setup screen, hidden: the rebuild's header; no picker (unattended), a check's answer stands in.
-    screen = dict(env, REKIT_SETUP_FRAMES="5", REKIT_SETUP_FIND="1", REKIT_SETUP_GO="1",
-                  REKIT_SETUP_PICKER="path:" + os.path.join(notgame, "README.TXT"))
-    p, _ = run(a.program, ["--setup"], screen)
-    out = p.stdout.splitlines()
+    p, _ = run(a.program, ["--setup"], dict(env, **screen_pick(os.path.join(notgame, "README.TXT"))))
+    out = after_pick(p.stdout)
     check(p.returncode == 1, "break: the screen with a pick that is not the game ends cancelled (%d)" % p.returncode)
-    check("setup: header INCEPTION REBUILD" in out, "the screen's log: the rebuild's header")
-    check(not any(l.startswith("setup: screen confirm") for l in out), "break: not the game, not offered")
+    check("setup: header INCEPTION REBUILD" in p.stdout.splitlines(), "the screen's log: the rebuild's header")
+    check(any(l.startswith("setup: No copy of") for l in out) and not any(l.startswith("setup: screen confirm") for l in out),
+          "break: not the game, not offered")
     check(not os.path.exists(os.path.join(user, "install")), "break: nothing installed from the screen either")
 
     # Another version's copy, made up here: a C64 disk image holding one made-up file that the
@@ -141,14 +155,12 @@ def main():
     known = dict(env, CHR_EXTRA_KNOWN_DISKS=extra)
     p, _ = run(a.program, ["--setup"], dict(known, CHR_SETUP_PICK=disk))
     check(p.returncode == 2 and json.dumps(named)[1:-1] in p.stdout, "another version's disk, picked: named in the error")
-    p, _ = run(a.program, ["--setup"], dict(known, REKIT_SETUP_FRAMES="200", REKIT_SETUP_FIND="1", REKIT_SETUP_GO="1",
-                                            REKIT_SETUP_PICKER="path:" + disk))
-    out = p.stdout.splitlines()
+    p, _ = run(a.program, ["--setup"], dict(known, **screen_pick(disk)))
+    out = after_pick(p.stdout)
     check(p.returncode == 1 and "setup: " + named in out, "another version's disk, picked on the screen: our sentence")
     check(not any("No copy of" in l for l in out), "break: not the kit's no-copy sentence")
-    p, _ = run(a.program, ["--setup"], dict(env, REKIT_SETUP_FRAMES="200", REKIT_SETUP_FIND="1", REKIT_SETUP_GO="1",
-                                            REKIT_SETUP_PICKER="path:" + disk))
-    check(any(l.startswith("setup: No copy of") for l in p.stdout.splitlines()),
+    p, _ = run(a.program, ["--setup"], dict(env, **screen_pick(disk)))
+    check(any(l.startswith("setup: No copy of") for l in after_pick(p.stdout)),
           "break: unknown to the table, the kit's sentence as before")
     check(not os.path.exists(os.path.join(user, "install")), "break: nothing installed from another version")
 
@@ -201,10 +213,9 @@ def main():
         # The same copy through the setup screen (hidden): found, offered, installed; and into a picked folder.
         user = os.path.join(work, "user-c")
         env = dict(base, CHR_DATA_DIR=user)
-        screen = dict(env, REKIT_SETUP_FRAMES="200", REKIT_SETUP_FIND="1", REKIT_SETUP_GO="1",
-                      REKIT_SETUP_PICKER="path:" + os.path.join(pick, btech))
+        screen = dict(env, **screen_pick(os.path.join(pick, btech)))
         p, _ = run(a.program, ["--setup"], screen)
-        out = p.stdout.splitlines()
+        out = after_pick(p.stdout)
         check(p.returncode == 0, "the screen: --setup exits 0 (%d)" % p.returncode)
         check(any(l.startswith("setup: screen confirm: BTECH, INSTALL") for l in out) and
               any(l.startswith("setup: work: INSTALLING") for l in out), "the screen's log: offered, then installing")
@@ -243,9 +254,8 @@ def main():
               "Amiga: a start imports and plays from the install (%d)" % p.returncode)
         # The same pick through the setup screen (hidden): offered and installed.
         user2 = os.path.join(work, "user-amiga-screen")
-        p, _ = run(a.program, ["--setup"], dict(base, CHR_DATA_DIR=user2, REKIT_SETUP_FRAMES="3000", REKIT_SETUP_FIND="1",
-                                                REKIT_SETUP_GO="1", REKIT_SETUP_PICKER="path:" + a.amiga))
-        out = p.stdout.splitlines()
+        p, _ = run(a.program, ["--setup"], dict(base, CHR_DATA_DIR=user2, **screen_pick(a.amiga, "6000")))
+        out = after_pick(p.stdout)
         check(p.returncode == 0 and any(l.startswith("setup: screen confirm: %s, INSTALL" % os.path.basename(a.amiga)) for l in out),
               "Amiga: the screen offers the pick (%d)" % p.returncode)
         check(os.path.isfile(os.path.join(user2, "install", "battletech")), "Amiga: the screen's copy in the player's folder")
