@@ -51,10 +51,12 @@ endif()
 # It speaks in game terms and asset IDs (the goal of a later visual makeover as a mod).
 # Readers for the original's files, documented in docs/formats/. Standard C++ only.
 add_library(chrformats STATIC
+  src/formats/adf.cpp
   src/formats/anm.cpp
   src/formats/bld.cpp
   src/formats/cells.cpp
   src/formats/cmp.cpp
+  src/formats/d64.cpp
   src/formats/exe_data.cpp
   src/formats/exepack.cpp
   src/formats/font_file.cpp
@@ -64,6 +66,7 @@ add_library(chrformats STATIC
   src/formats/icn.cpp
   src/formats/mtp.cpp
   src/formats/palette.cpp
+  src/formats/rdos.cpp
   src/formats/rules.cpp
   src/formats/tables.cpp
   src/formats/sha256.cpp
@@ -146,6 +149,7 @@ add_executable(chrtests
   tests/test_interface_text.cpp
   tests/test_json.cpp
   tests/test_cmp.cpp
+  tests/test_disk_images.cpp
   tests/test_sound.cpp
   tests/test_maps.cpp
   tests/test_text.cpp
