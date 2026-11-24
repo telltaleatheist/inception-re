@@ -229,20 +229,17 @@ cracked release; the files themselves are the game's.
 | `OA.ANM`–`OV.ANM` | 22 | place pictures: letters A–V for DOS's O0–O21 |
 | `MA`–`MZ` | 26 | maps, 1,024 bytes each: 32x32 cells, one byte a cell |
 | `G0`–`G7` | 8 | saved games, 1,696 bytes each |
-| `TB`–`TM` | 12 | small text-sized records, about 190 bytes each (probably each map's names and entrances, which DOS keeps in the .MTP header) |
+| `TB`–`TM` | 12 | each map's townspeople, entrances and place scripts, 97–199 bytes (DOS keeps them in the .MTP header) |
 | `SETA`–`SETE`, `ICNA`–`ICND`, `COLA`–`COLD`, `BSET`/`BCHR`/`BCOL` | | character sets, tile definitions and colour tables (2K, 2K and 128 bytes each): the tile art |
 | `TPAG`/`TCHR`/`TCOL`, `EMBM`/`EMSM`/`EMCM` | | two full-screen pictures, each as an 8,000-byte bitmap with two 1,000-byte colour maps (the C64 multicolour bitmap form): by their names, probably the title and the ending |
 | `MECHS`, `DET.SCRN`, `I0`, `SPEC`, `INT`, `CBT`, `CCODE`, `CREATE`, `MAKEPLAYER`, `VIEW`, `CVIEW`, `LC`, `BEGTXT`, `SP.TXT`, `F/X`, `ZAP`, `S0`, `D`, `DEMO`, `BOOT`, `WESTWOOD` | | the 'Mech data, the combat and special code overlays, the start-up, and text pieces |
 
-**The maps.** DOS has 15 maps: four of 64x64 cells, eight of 32x32, two of 8x8 and a 15th of
-its own form. Cut into 32x32 pages that makes 26, the number of `M` files. Four pages are
-confirmed: `MV`–`MY` are map 14's four quarters, cell for cell (row order, no header). The
-other 22 do not match DOS cell for cell in row order; they are the same size and are
-expected to be the other maps' pages in another tile numbering or order. To be read. The DOS
-maps' names and entrance tables (the .MTP header) are probably in the twelve `T` files.
+**The maps.** All 26 pages are read (formats/c64.md): maps 1–11 are the C64's own layouts of
+the same places, not DOS's cells; map 14 is DOS's in 4,045 of 4,096 cells; map 12 is larger than
+DOS's; map 13 has no page of its own. Names, entrances and place script numbers are in the twelve
+`T` files.
 
-**Tiles.** The C64 draws its maps with character-set tiles in its own art: the `SET`, `ICN`
-and `COL` files. Its tiles are its own, coarser pictures, mapped to the same map cells.
+**Tiles.** 256 tiles of 2x2 characters in four sheets (`SET`, `ICN`; formats/c64.md).
 
 **Dialogue and text.** Not stored as plain text: only 2 of the 151 interface texts appear
 letter for letter (in upper case, in two of the start-up text files). The place scripts
@@ -250,7 +247,7 @@ letter for letter (in upper case, in two of the start-up text files). The place 
 DOS's deciphered scripts). The code that unpacks them is in the 6502 overlays, to be read
 statically.
 
-**What the C64 can fill.** Expected: every map (from the pages), the place pictures (22, the
+**What the C64 can fill.** Expected: its own maps (not DOS's cells, but for map 14), the place pictures (22, the
 same count as DOS), the place scripts (25 of DOS's 26 by count: if the letters follow the DOS
 place numbers, A for 0 to Z for 25, the missing `X` is place 0x17, one of the short ones; to be
 confirmed), the title and ending pictures, the tiles in its own art. Not
@@ -335,7 +332,7 @@ check makes up a C64 disk image and lists it there.
 | Tile sheets | 5 .ICN | 5, same container, same tile numbering | its own character-set tiles | its own hi-res tiles |
 | Place pictures | O0–O21.ANM | inside `animation.anm` | OA–OV.ANM (22) | 21: no OB.ANM |
 | Place scripts and dialogue | 26 .BLD, enciphered | inside `builds.bld`, enciphered, text in letter pairs | 25 `B` files, encoded | 25 `B` files, encoded |
-| Maps | 15 .MTP | `maps`: the same 15, three tables big-endian | 26 pages of 32x32; names and entrances probably in `T` files | as the C64, encoded differently |
+| Maps | 15 .MTP | `maps`: the same 15, three tables big-endian | 26 pages of 32x32, the C64's own layouts but for map 14; names and entrances in `T` files | as the C64, encoded differently |
 | Interface text | BTECH.EXE | the 68000 program, 145/151 plain | code overlays, encoded | code overlays, encoded |
 | Font | BTECH.EXE | not in the copy: ours | the C64's own characters | the Apple's own |
 | Tables ('Mechs, combat, prices) | BTECH.EXE | the program's data hunk | `MECHS` and the overlays | `MECHS` and the overlays |
