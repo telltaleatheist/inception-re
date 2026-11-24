@@ -40,6 +40,7 @@ public:
     std::optional<std::vector<std::uint8_t>> demo() const override;
     // The Amiga has no speaker tune; its music is among its sound samples.
     std::optional<std::vector<std::uint8_t>> title_tune() const override { return std::nullopt; }
+    std::unique_ptr<const ProgramData> program() const override;
 
 private:
     const std::vector<std::uint8_t>* file(const std::string& name) const;

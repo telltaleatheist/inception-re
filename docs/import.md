@@ -70,6 +70,16 @@ segment:offset and length. The repo ships that table, never the text or the tabl
 printer reads it (docs/text.md): it ends at a NUL that is not a code's argument, or after a byte
 with the top bit set.
 
+## Through the source
+
+The importer takes the copy as a source (`GameSource`, docs/versions.md "One source by ID"): the
+program's pieces by the import table's IDs (`GameSource::program()`, src/formats/program_data.h)
+and the places' scripts (`GameSource::script`). A DOS copy's program is BTECH.EXE, read as above.
+Another version's reader hands out the same IDs in DOS's forms, so the files written are the
+same shape whichever copy the player has; `import.json`'s `source` and `exe_sha256` name the
+program it came from. The Amiga's is `AmigaProgramData` (docs/formats/amiga.md, "The texts"):
+so far it gives the texts only.
+
 ## Overrides
 
 A text file of the same form layered on top (`chr --text FILE`) replaces any ID, for a translation

@@ -836,6 +836,14 @@ void OriginalExe::check() {
 
 std::string OriginalExe::sha256() const { return sha256_hex(unpacked_); }
 
+std::string OriginalExe::source() const { return "BTECH.EXE " + std::string(kSupportedVersion); }
+
+std::string OriginalExe::address(std::string_view name) const {
+    for (const auto& span : kDos103)
+        if (span.name == name) return address(span);
+    throw FormatError("no piece named " + std::string(name) + " in the import table");
+}
+
 OriginalExe OriginalExe::load(const std::filesystem::path& game_dir) {
     const auto path = find_game_file(game_dir, "BTECH.EXE");
     if (!path) throw FormatError("BTECH.EXE not found in " + game_dir.string());

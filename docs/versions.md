@@ -175,8 +175,9 @@ readers do. `describe()` names the copy for messages.
 The game logic (src/game) and the platform (src/platform) hold a source, never a path. An Amiga
 source, `AmigaGameSource` (src/formats/amiga_source.h), hands out the same forms from its own
 files (the readers in docs/formats/amiga.md), with the edits above always applied; its pictures
-will bring their own palettes as the copy's colours. The importer still reads BTECH.EXE and the .BLD files from the folder for the
-text and tables, as before.
+will bring their own palettes as the copy's colours. The importer also goes through the source (docs/import.md, "Through the
+source"): the program's texts and tables by the import table's IDs, the places' texts from the
+scripts.
 
 ## Commodore 64
 

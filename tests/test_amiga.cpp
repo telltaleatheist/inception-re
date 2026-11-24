@@ -12,6 +12,8 @@
 #include "formats/amiga_map.h"
 #include "formats/amiga_picture.h"
 #include "formats/amiga_program.h"
+#include "formats/exe_data.h"
+#include "formats/amiga_program_data.h"
 #include "formats/amiga_source.h"
 #include "formats/cmp.h"
 #include "test.h"
@@ -327,4 +329,19 @@ TEST(amiga_menus_and_demo_keys_come_out_in_dos_form) {
     // The number pad's 8 2 4 6 3 become DOS's codes; every other byte stays.
     const Bytes demo{0x38, 0x32, 0x34, 0x36, 0x33, 0x48, 0x35, 0x00, 0xb8};
     CHECK(amiga_demo_keys(demo) == Bytes({0xb8, 0xb0, 0xb5, 0xb3, 0xaf, 0x48, 0x35, 0x00, 0xb8}));
+}
+
+TEST(amiga_texts_cover_the_dos_import_table) {
+    // One entry per DOS text, in the table's order; edits within reason.
+    std::vector<std::string_view> dos;
+    for (const auto& span : OriginalExe::table())
+        if (span.kind == ExeSpan::Kind::Text) dos.push_back(span.name);
+    const auto amiga = amiga_texts();
+    CHECK(amiga.size() == dos.size());
+    bool same_order = amiga.size() == dos.size();
+    for (std::size_t i = 0; same_order && i < amiga.size(); ++i) same_order = amiga[i].id == dos[i];
+    CHECK(same_order);
+    bool sane = true;
+    for (const auto& t : amiga) sane = sane && t.hunk <= 1 && t.flip_count <= t.flips.size() && (t.sha256.empty() || t.sha256.size() == 16);
+    CHECK(sane);
 }

@@ -33,7 +33,7 @@
 
 namespace chr::formats {
 
-class OriginalExe;
+class ProgramData;
 
 inline constexpr int kMechRecordSize = 0x7d;
 inline constexpr int kWeaponRecordSize = 0x11;
@@ -102,12 +102,12 @@ std::string mech_text_id(std::string_view id);
 std::string weapon_text_id(int number);
 
 // Reads the tables from the program (the importer only).
-Rules rules_from_original(const OriginalExe& exe);
+Rules rules_from_original(const ProgramData& exe);
 // The names of the templates and weapons, as texts: (id, address, bytes).
 struct NamedText {
     std::string id, address, bytes;
 };
-std::vector<NamedText> rules_texts_from_original(const OriginalExe& exe);
+std::vector<NamedText> rules_texts_from_original(const ProgramData& exe);
 
 // The files' contents, and reading them back. Throws FormatError
 // (formats/cmp.h) or JsonError for a file that is not of this shape.

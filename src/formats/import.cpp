@@ -84,19 +84,19 @@ ImportState import_state(const fs::path& data_dir) {
     return ImportState::Current;
 }
 
-void import_original(const fs::path& game_dir, const fs::path& data_dir) {
-    const auto exe = OriginalExe::load(game_dir);
+void import_original(const GameSource& source, const fs::path& data_dir) {
+    const auto program = source.program();
+    const ProgramData& exe = *program;
 
     std::string text = "{\n  \"import_version\": " + std::to_string(kImportVersion) +
-                       ",\n  \"source\": " + json_quote("BTECH.EXE " + std::string(kSupportedVersion)) +
-                       ",\n  \"texts\": [\n";
+                       ",\n  \"source\": " + json_quote(exe.source()) + ",\n  \"texts\": [\n";
     bool first = true;
     for (const auto& span : OriginalExe::table()) {
         if (span.kind != ExeSpan::Kind::Text) continue;
         if (!first) text += ",\n";
         first = false;
         text += "    {\"id\": " + json_quote(span.name) + ", \"address\": " +
-                json_quote(OriginalExe::address(span)) + ", \"text\": " + json_quote(exe.text(span.name)) + "}";
+                json_quote(exe.address(span.name)) + ", \"text\": " + json_quote(exe.text(span.name)) + "}";
     }
     // The names of the 'Mech templates and the weapons, from the rule tables.
     const auto rules = rules_from_original(exe);
@@ -106,12 +106,12 @@ void import_original(const fs::path& game_dir, const fs::path& data_dir) {
     // The places' texts, from the player's .BLD files: every text a script
     // can print, found by walking the script from its start.
     const auto tables = tables_from_original(exe);
-    for (const auto file : kBldFiles) {
+    for (std::size_t f = 0; f < kBldFiles.size(); ++f) {
+        const auto file = kBldFiles[f];
         const std::string name = std::string(file) + ".BLD";
-        const auto path = find_game_file(game_dir, name);
-        if (!path) throw FormatError(name + " is missing from " + game_dir.string());
-        const auto script = read_bld(*path);
-        for (const auto& [at, in] : walk(script, tables.menus)) {
+        const auto script = source.script(int(f));
+        if (!script) throw FormatError(name + " is missing from " + source.describe());
+        for (const auto& [at, in] : walk(*script, tables.menus)) {
             if (in.op != Op::Print) continue;
             char address[16];
             std::snprintf(address, sizeof address, "+%04x", at + 1);
@@ -135,9 +135,13 @@ void import_original(const fs::path& game_dir, const fs::path& data_dir) {
     write_file(tables_path(data_dir), write_tables_file(tables, kImportVersion));
     write_file(manifest_path(data_dir),
                "{\n  \"import_version\": " + std::to_string(kImportVersion) + ",\n  \"source\": " +
-                   json_quote("BTECH.EXE " + std::string(kSupportedVersion)) + ",\n  \"exe_sha256\": " +
+                   json_quote(exe.source()) + ",\n  \"exe_sha256\": " +
                    json_quote(exe.sha256()) + ",\n  \"table_sha256\": " + json_quote(import_table_hash()) +
                    "\n}\n");
+}
+
+void import_original(const fs::path& game_dir, const fs::path& data_dir) {
+    import_original(DosGameSource(game_dir), data_dir);
 }
 
 bool ensure_imported(const fs::path& game_dir, const fs::path& data_dir) {

@@ -13,7 +13,7 @@
 
 namespace chr::formats {
 
-class OriginalExe;
+class ProgramData;
 
 // A text window, 385b:0000 + 16 n: where its inside starts and how big it is
 // in cells, its colours and its cursor.
@@ -182,7 +182,7 @@ struct Tables {
 };
 
 // Reads the tables from the program (the importer only).
-Tables tables_from_original(const OriginalExe& exe);
+Tables tables_from_original(const ProgramData& exe);
 // tables.json's contents, and reading them back. Throws FormatError or
 // JsonError for a file that is not of this shape.
 std::string write_tables_file(const Tables& tables, int import_version);

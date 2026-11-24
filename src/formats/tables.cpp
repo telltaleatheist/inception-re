@@ -207,7 +207,7 @@ constexpr std::array<std::uint16_t, kFramePieceTables> kPieceTablesAt = {0x0320,
 
 fs::path tables_path(const fs::path& data_dir) { return data_dir / "tables.json"; }
 
-Tables tables_from_original(const OriginalExe& exe) {
+Tables tables_from_original(const ProgramData& exe) {
     Tables t;
     for (const auto& f : flat_tables()) {
         const auto bytes = exe.get(span_name(f.name));

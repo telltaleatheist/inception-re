@@ -94,7 +94,7 @@ void fill(std::array<std::uint8_t, N>& out, const Json& j) {
     for (std::size_t i = 0; i < N; ++i) out[i] = byte_of(a[i]);
 }
 
-std::span<const std::uint8_t> table(const OriginalExe& exe, std::string_view name) { return exe.get(name); }
+std::span<const std::uint8_t> table(const ProgramData& exe, std::string_view name) { return exe.get(name); }
 
 }  // namespace
 
@@ -103,7 +103,7 @@ std::string mech_text_id(std::string_view id) { return "mech." + std::string(id)
 std::string weapon_text_id(int number) { return "weapon." + std::to_string(number); }
 fs::path rules_dir(const fs::path& data_dir) { return data_dir / "rules"; }
 
-Rules rules_from_original(const OriginalExe& exe) {
+Rules rules_from_original(const ProgramData& exe) {
     Rules rules;
     const auto mechs = table(exe, "rules.mech_templates");
     for (std::size_t i = 0; i < kMechIds.size(); ++i) {
@@ -155,7 +155,7 @@ Rules rules_from_original(const OriginalExe& exe) {
     return rules;
 }
 
-std::vector<NamedText> rules_texts_from_original(const OriginalExe& exe) {
+std::vector<NamedText> rules_texts_from_original(const ProgramData& exe) {
     std::vector<NamedText> out;
     const auto mechs = table(exe, "rules.mech_templates");
     for (std::size_t i = 0; i < kMechIds.size(); ++i) {

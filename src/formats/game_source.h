@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -14,6 +15,7 @@
 #include "formats/anm.h"
 #include "formats/cmp.h"
 #include "formats/icn.h"
+#include "formats/program_data.h"
 
 namespace chr::formats {
 
@@ -38,6 +40,9 @@ public:
     virtual std::optional<std::vector<std::uint8_t>> demo() const = 0;
     // The title tune, DOS's WWOODBT.SIF.
     virtual std::optional<std::vector<std::uint8_t>> title_tune() const = 0;
+    // The program's texts and tables (formats/program_data.h), for the importer only. Throws
+    // FormatError if the copy's program is missing or not a version the rebuild reads.
+    virtual std::unique_ptr<const ProgramData> program() const = 0;
 };
 
 // A DOS copy: a folder holding BTECH.EXE's data files, found whatever their case
@@ -55,6 +60,7 @@ public:
     std::optional<TileSheet> tile_sheet(const std::string& name) const override;
     std::optional<std::vector<std::uint8_t>> demo() const override;
     std::optional<std::vector<std::uint8_t>> title_tune() const override;
+    std::unique_ptr<const ProgramData> program() const override;
 
 private:
     std::optional<std::vector<std::uint8_t>> file(const std::string& name) const;

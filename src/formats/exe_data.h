@@ -21,6 +21,8 @@
 #include <string_view>
 #include <vector>
 
+#include "formats/program_data.h"
+
 namespace chr::formats {
 
 // One named piece of the program: segment:offset as in docs/functions.md
@@ -48,7 +50,7 @@ struct ExeLayout {
 };
 inline constexpr ExeLayout kDos103Layout = {260528, 3292, 832, 0x187f, 0x2d82, 0x3c5e, 0x0800, "0054271f61ff947d"};
 
-class OriginalExe {
+class OriginalExe final : public ProgramData {
 public:
     // Unpacks and checks `packed` (the BTECH.EXE file). Throws FormatError
     // naming the supported version if it is not that program.
@@ -59,20 +61,22 @@ public:
 
     // Where a piece is, "ssss:oooo", for the imported files.
     static std::string address(const ExeSpan& span);
+    std::string address(std::string_view name) const override;
 
     // The bytes of the named piece. Throws FormatError for an unknown name.
-    std::span<const std::uint8_t> get(std::string_view name) const;
+    std::span<const std::uint8_t> get(std::string_view name) const override;
     // A named piece as text, read the way the printer (2656:03f5) reads it:
     // up to the NUL that ends it, where the codes 02, 06, 09 and 13 take the
     // next byte as their argument (so `06 00`, black, is not the end), and a
     // byte with the top bit set is the last one.
-    std::string text(std::string_view name) const;
+    std::string text(std::string_view name) const override;
     // The same reading of any bytes (for texts inside a table).
     static std::string text_of(std::span<const std::uint8_t> bytes);
 
     static std::span<const ExeSpan> table();
     // The SHA-256 of the unpacked program (for the import's manifest).
-    std::string sha256() const;
+    std::string sha256() const override;
+    std::string source() const override;
 
 private:
     OriginalExe() = default;

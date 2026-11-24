@@ -114,6 +114,11 @@ std::span<const std::uint8_t> AmigaProgram::span(std::string_view id) const {
     throw FormatError("no Amiga span " + std::string(id));
 }
 
+std::span<const std::uint8_t> AmigaProgram::hunk(std::size_t n) const {
+    if (n >= hunks_.size()) throw FormatError("the Amiga program has no hunk " + std::to_string(n));
+    return hunks_[n].bytes;
+}
+
 std::array<MenuRecord, kMenuCount> amiga_menus(std::span<const std::uint8_t> menus) {
     if (menus.size() < std::size_t(kMenuCount) * 16) throw FormatError("the Amiga menu table is short");
     // Words 0, 1, 2, 4 and 5 of each 8-word record, as formats/tables.cpp reads DOS's.

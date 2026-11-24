@@ -39,6 +39,8 @@ public:
     explicit AmigaProgram(std::span<const std::uint8_t> file);
     // A span's bytes, by ID (amiga_spans()). Throws FormatError for an unknown ID.
     std::span<const std::uint8_t> span(std::string_view id) const;
+    // Hunk `n`'s bytes as stored. Throws FormatError for a hunk the program doesn't have.
+    std::span<const std::uint8_t> hunk(std::size_t n) const;
 
 private:
     std::vector<AmigaHunk> hunks_;

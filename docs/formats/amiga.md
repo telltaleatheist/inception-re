@@ -169,3 +169,22 @@ sheet reads. There is no speaker tune (`title_tune()` is empty); the Amiga's mus
 not read yet. The pictures keep the Amiga's colour numbers; their palettes are still to be
 handed to the renderer as the copy's colours.
 
+## The texts
+
+`AmigaProgramData` (src/formats/amiga_program_data.h) hands out the DOS import table's texts,
+all 538, by the same IDs. src/formats/amiga_texts.cpp says where each is in the program
+(hunk:offset, nearly all in the code hunk) and holds no text; each is read as DOS's printer reads
+one (docs/text.md). The program is checked text by text: each must hash to the DOS table's hash,
+or, for the six below, to its own.
+
+- 525 are DOS's letter for letter.
+- 6 differ only in colour numbers, the arguments of codes 0x02 and 0x06: the two crew labels, the
+  two hit marks of a shot, and the yes/no question's picked answers (fg 12 on bg 3 where DOS has
+  0 on 14, as the menus' highlight is 3 where DOS's is 14). Colour follows the copy, so these
+  are taken as the Amiga has them.
+- 6 differ in the case of some letters: the Amiga capitalises words that DOS doesn't. The
+  table lists the positions, and the reader flips them back, so the player reads DOS's text.
+- 1 (`orders.points_left`) is three strings the Amiga prints one after another; joined, they are
+  DOS's text.
+
+Checked in all seven copies: 532 texts equal DOS's and 6 differ only in colour numbers.

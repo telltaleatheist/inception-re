@@ -9,6 +9,7 @@
 #include "formats/amiga_bld.h"
 #include "formats/amiga_map.h"
 #include "formats/amiga_picture.h"
+#include "formats/amiga_program_data.h"
 #include "formats/bld.h"
 #include "formats/game_files.h"
 
@@ -98,6 +99,10 @@ std::optional<TileSheet> AmigaGameSource::tile_sheet(const std::string& name) co
     if (!bytes) return std::nullopt;
     if (lower(name) == "map.icn") return decode_amiga_map_icn(*bytes).sheet;
     return decode_amiga_icn(*bytes).sheet;
+}
+
+std::unique_ptr<const ProgramData> AmigaGameSource::program() const {
+    return std::make_unique<const AmigaProgramData>(*file("battletech"));
 }
 
 std::optional<std::vector<std::uint8_t>> AmigaGameSource::demo() const {

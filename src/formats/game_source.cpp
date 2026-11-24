@@ -3,6 +3,7 @@
 #include "formats/game_source.h"
 
 #include "formats/bld.h"
+#include "formats/exe_data.h"
 #include "formats/game_files.h"
 
 namespace chr::formats {
@@ -45,5 +46,9 @@ std::optional<TileSheet> DosGameSource::tile_sheet(const std::string& name) cons
 std::optional<std::vector<std::uint8_t>> DosGameSource::demo() const { return file("DEMOFILE"); }
 
 std::optional<std::vector<std::uint8_t>> DosGameSource::title_tune() const { return file("WWOODBT.SIF"); }
+
+std::unique_ptr<const ProgramData> DosGameSource::program() const {
+    return std::make_unique<const OriginalExe>(OriginalExe::load(dir_));
+}
 
 }  // namespace chr::formats

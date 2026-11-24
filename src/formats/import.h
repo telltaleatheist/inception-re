@@ -19,6 +19,7 @@
 #include <string>
 
 #include "formats/exe_data.h"
+#include "formats/game_source.h"
 
 namespace chr::formats {
 
@@ -40,8 +41,11 @@ std::string import_table_hash();
 enum class ImportState { Current, Missing, Outdated };
 ImportState import_state(const std::filesystem::path& data_dir);
 
-// Imports from `game_dir` into `data_dir`. Throws FormatError (a missing or
-// unknown BTECH.EXE) or std::filesystem errors.
+// Imports from the player's copy into `data_dir`: the texts and tables from its program
+// (GameSource::program), the places' texts from its scripts. Throws FormatError (a missing or
+// unknown program) or std::filesystem errors.
+void import_original(const GameSource& source, const std::filesystem::path& data_dir);
+// The same from a DOS copy's folder.
 void import_original(const std::filesystem::path& game_dir, const std::filesystem::path& data_dir);
 
 // Imports if the data folder has no import or an older one; true if it did.
