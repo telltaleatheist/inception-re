@@ -289,6 +289,19 @@ void with_game(const fs::path& work, const fs::path& game) {
     r = setup::install(f, out.string());
     check(r.ok, "installing again replaces our own install");
 
+    // Stopped in mid copy: nothing left; and all the while the staging folder is marked ours.
+    bool marked = true;
+    r = setup::install(f, (work / "stopped").string(), [&](double at, const std::string&) {
+        marked = marked && fs::exists(work / "stopped.new" / setup::kInstallMarker);
+        return at < 0.5;
+    });
+    check(!r.ok && r.cancelled && marked && !fs::exists(work / "stopped") && !fs::exists(work / "stopped.new"),
+          "break: a folder copy stopped: nothing left, marked ours all the while");
+    write(work / "broken.new" / setup::kInstallMarker, "ours, broken off");
+    r = setup::install(f, (work / "broken").string());
+    check(r.ok && !fs::exists(work / "broken.new") && !fs::exists(work / "broken" / "game"),
+          "a copy broken off is cleared up by the next install");
+
     const fs::path theirs = work / "theirs";
     write(theirs / "LETTER.TXT", "the player's");
     r = setup::install(f, theirs.string());

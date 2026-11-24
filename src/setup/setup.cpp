@@ -458,6 +458,7 @@ Installed install(const rekit::Found& found, const std::string& out_dir, const P
     if (out_dir.empty()) return fail("There is no folder to copy the game into.");
     std::error_code ec;
     const fs::path dest(out_dir), tmp(out_dir + ".new");
+    fs::path fresh = tmp;  // the folder swapped in
     // tmp is ours only when it carries the marker (an earlier run's, stopped); else it is the player's.
     if (fs::exists(tmp, ec)) {
         if (!fs::exists(tmp / kInstallMarker, ec))
@@ -496,16 +497,23 @@ Installed install(const rekit::Found& found, const std::string& out_dir, const P
             return fail("The folder " + src + " holds far more than " + std::string(kTitle) +
                         ", which is under 2 MB: nothing was copied. Put the game's files in a folder of "
                         "their own and pick that.");
+        // The kit makes the folder it copies into, so that is one inside tmp: tmp has its marker from
+        // the start, and a copy broken off doesn't leave a folder the next setup can't tell is ours.
+        fs::create_directories(tmp, ec);
+        if (ec) return fail("Could not make " + tmp.string() + ": " + ec.message() + ".");
+        std::ofstream(tmp / kInstallMarker) << "Being copied from " << src << " by the setup.\n";
+        fresh = tmp / "game";
         const rekit::CopyResult c =
-            rekit::copy_folder(src, tmp.string(), [&](std::uint64_t done, std::uint64_t total, const std::string& f) {
+            rekit::copy_folder(src, fresh.string(), [&](std::uint64_t done, std::uint64_t total, const std::string& f) {
                 return !progress || progress(total ? double(done) / double(total) : 0.0, f);
             });
         if (!c.ok) {
             r.cancelled = c.cancelled;
+            fs::remove_all(tmp, ec);  // ours: made above with the marker
             return fail(c.cancelled ? "Stopped. Nothing was copied." : "Could not copy the game from " + src + ": " + c.error);
         }
         r.files = c.files, r.bytes = c.bytes;
-        std::ofstream(tmp / kInstallMarker) << "Copied from " << src << " by the setup (the original was left as it was).\n";
+        std::ofstream(fresh / kInstallMarker) << "Copied from " << src << " by the setup (the original was left as it was).\n";
     } else {
         // In an archive (at any depth): the game's folder read out in one forward pass.
         if (!rekit::archives_supported())
@@ -571,15 +579,16 @@ Installed install(const rekit::Found& found, const std::string& out_dir, const P
             return fail(why);
         }
     }
-    if (check_install(tmp.string()).state == rekit::Status::kMissing) {
+    if (check_install(fresh.string()).state == rekit::Status::kMissing) {
         fs::remove_all(tmp, ec);
         return fail("The copy is not a version of the game the rebuild plays: nothing was changed.");
     }
-    if (!rekit::swap_in_folder(tmp.string(), dest.string(), kInstallMarker, ec)) {
+    if (!rekit::swap_in_folder(fresh.string(), dest.string(), kInstallMarker, ec)) {
         const std::string why = ec.message();
         fs::remove_all(tmp, ec);
         return fail("Could not put the game in " + dest.string() + " (" + why + "): nothing was changed.");
     }
+    if (fresh != tmp) fs::remove_all(tmp, ec);  // ours: the marker's
     r.ok = true, r.dir = dest.string();
     return r;
 }

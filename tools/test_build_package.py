@@ -88,7 +88,7 @@ class LinuxLayout(unittest.TestCase):
         program = root / "build/chr"
         write(program, '#!/bin/sh\n'
                        '[ "$1" = --help ] && { echo "usage: chi --status | --setup"; exit 0; }\n'
-                       '[ "$1" = --status ] && { echo \'{"kit": 1, "game": "inception"}\'; exit 0; }\n'
+                       '[ "$1" = --status ] && { echo \'{"kit": 1, "game": "inception", "setup": 1}\'; exit 0; }\n'
                        'exit 2\n')
         with open(program, "ab") as f:  # past the exit: the launcher's marker, as the real program holds it
             f.write(b"MW3-PROGRAM-VERSION:1-test\0")
@@ -99,6 +99,7 @@ class LinuxLayout(unittest.TestCase):
                 patch.object(build_package, "needed_sdl", return_value="libSDL3.so.0"), \
                 patch.object(build_package, "resolved_beside", return_value=True), \
                 patch.object(build_package, "check_paths"), \
+                patch.object(build_package.served_setup, "checks", return_value=[(True, "served")]), \
                 patch.object(build_package, "platform_name", return_value="x86_64"):
             return build_package.package(root, root / "build", root / "sdl", root / "dist", "1-test",
                                          installer=installer)
@@ -196,10 +197,17 @@ class Smoke(unittest.TestCase):
             program = Path(d) / "chi"
             program.write_text('#!/bin/sh\n'
                                '[ "$1" = --help ] && { echo "usage: chi --status | --setup"; exit 0; }\n'
-                               '[ "$1" = --status ] && { echo \'{"kit": 1, "game": "inception"}\'; exit 0; }\n'
+                               '[ "$1" = --status ] && { echo \'{"kit": 1, "game": "inception", "setup": 1}\'; exit 0; }\n'
                                'exit 2\n')
             program.chmod(0o755)
-            build_package.smoke(program)
+            with patch.object(build_package.served_setup, "checks", return_value=[(True, "served")]):
+                build_package.smoke(program)
+            with patch.object(build_package.served_setup, "checks", return_value=[(True, "a"), (False, "cancel")]):
+                with self.assertRaisesRegex(RuntimeError, "served setup: cancel"):
+                    build_package.smoke(program)
+            program.write_text(program.read_text().replace(', "setup": 1', ""))
+            with self.assertRaisesRegex(RuntimeError, "setup is served"):
+                build_package.smoke(program)
             program.write_text('#!/bin/sh\n[ "$1" = --help ] && { echo "usage: chr"; exit 0; }\nexit 0\n')
             with self.assertRaisesRegex(RuntimeError, "usage line"):
                 build_package.smoke(program)

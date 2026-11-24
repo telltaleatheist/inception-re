@@ -20,6 +20,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools", "package"))
+import served_setup  # noqa: E402
+
 failures = 0
 
 
@@ -120,6 +123,9 @@ def main():
               "break: %s without CHR_DATA_DIR is refused (%d)" % (hook, p.returncode))
         p, _ = run(a.program, [], unset)
         check(p.returncode == 1 and "needs CHR_DATA_DIR" in p.stderr, "break: %s refused at a start too" % hook)
+        p, _ = run(a.program, ["--setup", "--look", notgame], unset)
+        check(p.returncode == 2 and [json.loads(l)["done"] for l in p.stdout.splitlines()] == [True] and
+              "needs CHR_DATA_DIR" in p.stdout and tree(work) == before, "break: %s refused when served" % hook)
 
     # The setup screen, hidden: the rebuild's header; no picker (unattended), a check's answer stands in.
     p, _ = run(a.program, ["--setup"], dict(env, **screen_pick(os.path.join(notgame, "README.TXT"))))
@@ -168,6 +174,18 @@ def main():
     check(any(l.startswith("setup: No copy of") for l in after_pick(p.stdout)),
           "break: unknown to the table, the kit's sentence as before")
     check(not os.path.exists(os.path.join(user, "install")), "break: nothing installed from another version")
+
+    # The setup served to the launcher, with made-up copies; and the words a refused pick gets are the screen's.
+    check(st.get("setup") == 1, "--status: the setup is served")
+    for passed, what in served_setup.checks(a.program, base, os.path.join(work, "served")):
+        check(passed, "served: " + what)
+    served_user = os.path.join(work, "user-served")
+    ask_env = dict(served_setup.asking_env(base, served_user), CHR_EXTRA_KNOWN_DISKS=extra)
+    for what in ("--look", "--install"):
+        s = served_setup.ask(a.program, [what, disk], ask_env)
+        check(s.clean() and s.code == 2 and s.last.get("summary") == named,
+              "served: %s of another version's disk: the screen's sentence (%s)" % (what, s))
+    check(served_setup.tree(served_user) == [], "break: served: nothing made for it")
 
     if a.game and os.path.isdir(a.game):
         pick = os.path.join(work, "pick", "BTECH")
@@ -264,6 +282,25 @@ def main():
         check(p.returncode == 0 and any(l.startswith("setup: screen confirm: %s, INSTALL" % os.path.basename(a.amiga)) for l in out),
               "Amiga: the screen offers the pick (%d)" % p.returncode)
         check(os.path.isfile(os.path.join(user2, "install", "battletech")), "Amiga: the screen's copy in the player's folder")
+        # And served to the launcher: the screen's words, installed as by the screen, stopped.
+        user3 = os.path.join(work, "user-amiga-served")
+        ask_env = served_setup.asking_env(base, user3)
+        plate = [l for l in out if l.startswith("setup: found plate: ")]
+        s = served_setup.ask(a.program, ["--look", a.amiga], ask_env)
+        check(s.clean() and s.code == 0 and plate and
+              plate[-1] == "setup: found plate: %s (%s)" % (os.path.basename(a.amiga), s.last.get("words")),
+              "Amiga: served: the screen's words (%s; %s)" % (plate[-1:], s))
+        s = served_setup.ask(a.program, ["--install", a.amiga], ask_env, cancel_at="")
+        check(s.clean() and s.code == 1 and s.last.get("cancelled") and served_setup.tree(user3) == [],
+              "break: Amiga: served: stopped, nothing left (%s)" % s)
+        s = served_setup.ask(a.program, ["--install", a.amiga], ask_env)
+        check(s.clean() and s.code == 0 and s.last.get("ok"), "Amiga: served: installed (%s)" % s)
+        check(served_setup.tree(os.path.join(user3, "install")) == served_setup.tree(os.path.join(user2, "install")),
+              "Amiga: served: the same files as the screen's install")
+        p, _ = run(a.program, ["--status"], dict(base, CHR_DATA_DIR=user3))
+        st = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {}
+        check(st.get("files", {}).get("state") == "ready" and st.get("files", {}).get("data") == "Amiga 2.3",
+              "Amiga: served: --status ready")
         os.remove(os.path.join(install, "snd"))
         p, _ = run(a.program, ["--status"], env)
         st = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {}

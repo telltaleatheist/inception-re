@@ -116,12 +116,15 @@ player's folder.
 
 ## The smoke test
 
-Packaging ends by starting the packaged program, hidden: SDL's dummy drivers,
-`CHR_HIDDEN` (a background app on macOS) and a made-up home. On Windows, the
+Packaging ends by starting the packaged program, hidden: SDL's dummy drivers (a
+video driver that doesn't exist for the served setup), `CHR_HIDDEN` (a background app on macOS) and a made-up home. On Windows, the
 program is started from the extracted zip.
 
 - `--help` must print its usage, and `--status` its JSON line for
   `inception`.
+- The setup served to the launcher answers through pipes, with made-up copies
+  and its own player folder (`tools/package/served_setup.py`,
+  docs/setup.md).
 - With a game folder (`--game DIR`, or `CHR_GAME_DIR`), `--setup` must copy
   the game from it into an empty player folder (`CHR_SETUP_PICK`). A start
   must then import the game's text and draw a frame. The game folder is only

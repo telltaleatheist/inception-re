@@ -6,14 +6,17 @@
 #include <rekit/archive.h>
 #include <rekit/sdl/pickers.h>
 #include <rekit/sdl/setup_screen.h>
+#include <rekit/sdl/setup_serve.h>
 #include <rekit/sources.h>
 #include <rekit/status.h>
 
 #include <SDL3/SDL.h>
 
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <filesystem>
 
 #ifndef CHR_VERSION
@@ -75,10 +78,8 @@ rekit::sdl::Theme theme() {
     return t;
 }
 
-// The kit's screen with this game's recipe: the find offered or looked for,
-// copied in; the game's folder, or "".
-std::string run_screen(bool setup_only, bool scripted, const std::string& found, bool searched,
-                       const std::string& user, int* exit) {
+// This game's recipe for the kit's setup, on its screen or on the launcher's.
+rekit::sdl::Game kit_game(const std::string& user) {
     rekit::sdl::Game g;
     g.id = setup::kId, g.title = setup::kTitle, g.folder_key = setup::kFolderKey, g.folder_name = setup::kFolderName;
     g.program = "BTECH.EXE";
@@ -124,9 +125,17 @@ std::string run_screen(bool setup_only, bool scripted, const std::string& found,
                                   : "Nothing was copied: " + r.error;
         return o;
     };
+    return g;
+}
+
+// The kit's screen with this game's recipe: the find offered or looked for,
+// copied in; the game's folder, or "".
+std::string run_screen(bool setup_only, bool scripted, const std::string& found, bool searched,
+                       const std::string& user, int* exit) {
+    const rekit::sdl::Game g = kit_game(user);
     rekit::sdl::SetupOptions o;
     o.hidden = setup_unattended(scripted);
-    o.user_folder = user, o.default_out = setup::default_install(user), o.program_dir = pdir;
+    o.user_folder = user, o.default_out = setup::default_install(user), o.program_dir = program_dir();
     if (searched) o.look_first = found;  // found by the search: offered, to copy in or pass over
     else if (!found.empty()) o.in_use = found, o.play_button = !setup_only;
     const rekit::sdl::SetupResult r = rekit::sdl::run_setup(g, theme(), o);
@@ -160,6 +169,39 @@ std::string take_copy(const std::string& picked, const std::string& user, std::s
     return r.dir;
 }
 
+// A test hook without the test's own player folder: why it is refused, else "".
+std::string hook_without_folder() {
+    const char* own = std::getenv("CHR_DATA_DIR");
+    if (own && *own) return "";
+    for (const char* hook : {"CHR_SETUP_PICK", "REKIT_SETUP_GO"})
+        if (const char* v = std::getenv(hook); v && *v)
+            return std::string(hook) + " is a test's: it copies a game into the player's folder, so it "
+                                       "needs CHR_DATA_DIR to name the test's own (docs/setup.md). Nothing was done.";
+    return "";
+}
+
+// What is wrong with a served ask's arguments, else "". The kit takes an ask with arguments it
+// doesn't know, and a --folder without its folder would install into the default one.
+std::string wrong_ask(const std::vector<std::string>& args) {
+    const std::string& ask = args[0];
+    const std::size_t n = args.size();
+    if (ask == "--describe" || ask == "--search") return n == 1 ? "" : "--setup " + ask + " takes nothing after it.";
+    if (n < 2 || args[1].empty()) return "--setup " + ask + " needs the pick.";
+    if (ask == "--look") return n == 2 ? "" : "--setup --look takes the pick and nothing after it.";
+    if (n == 2 || (n == 4 && args[2] == "--folder" && !args[3].empty())) return "";
+    return "--setup --install takes the pick, then --folder and a folder or nothing.";
+}
+
+// A served ask that isn't answered: its last line and exit.
+int refuse_ask(const std::string& why) {
+    rekit::SetupMessage m;
+    m.done = true, m.summary = why;
+    std::printf("%s\n", rekit::setup_message_json(m).c_str());
+    std::fflush(stdout);
+    std::fprintf(stderr, "setup: %s\n", why.c_str());
+    return rekit::kSetupFailed;
+}
+
 }  // namespace
 
 bool setup_unattended(bool scripted) {
@@ -169,15 +211,9 @@ bool setup_unattended(bool scripted) {
 }
 
 bool setup_hooks_allowed(bool setup_only) {
-    const char* own = std::getenv("CHR_DATA_DIR");
-    if (own && *own) return true;
-    for (const char* hook : {"CHR_SETUP_PICK", "REKIT_SETUP_GO"})
-        if (const char* v = std::getenv(hook); v && *v) {
-            say_error(setup_only, std::string(hook) + " is a test's: it copies a game into the player's folder, so it "
-                                  "needs CHR_DATA_DIR to name the test's own (docs/setup.md). Nothing was done.");
-            return false;
-        }
-    return true;
+    const std::string why = hook_without_folder();
+    if (!why.empty()) say_error(setup_only, why);
+    return why.empty();
 }
 
 int print_setup_status(const std::string& given, const std::string& builtin, const std::string& data_dir) {
@@ -186,7 +222,8 @@ int print_setup_status(const std::string& given, const std::string& builtin, con
     const std::string user = data_dir.empty() ? setup::user_folder() : data_dir;
     const std::vector<std::string> known =
         given.empty() ? std::vector<std::string>{setup::remembered_folder(user), builtin} : std::vector<std::string>{given};
-    const rekit::Status st = setup::status(known, user, program_dir(), CHR_VERSION);
+    rekit::Status st = setup::status(known, user, program_dir(), CHR_VERSION);
+    st.setup = rekit::kServedSetup;  // serve_game_setup answers the launcher
     std::printf("%s\n", rekit::status_json(st).c_str());
     std::fflush(stdout);
     return 0;
@@ -204,6 +241,33 @@ std::string settled_user_folder() {
         std::fprintf(stderr, "chr: %s; this start uses %s, the move is tried again at the next\n", s.error.c_str(),
                      s.folder.c_str());
     return s.folder;
+}
+
+bool served_ask(const std::string& arg) {
+    return arg == "--describe" || arg == "--search" || arg == "--look" || arg == "--install";
+}
+
+int serve_game_setup(const std::vector<std::string>& args, const std::string& data_dir) {
+#if !defined(_WIN32)
+    std::signal(SIGPIPE, SIG_IGN);  // a launcher that has gone: the work goes on
+#endif
+    if (const std::string why = wrong_ask(args); !why.empty()) return refuse_ask(why);
+    if (const std::string why = hook_without_folder(); !why.empty()) return refuse_ask(why);
+    std::string user = data_dir;
+    if (const char* env = std::getenv("CHR_DATA_DIR"); user.empty() && env) user = env;
+    if (user.empty()) user = settled_user_folder();
+    if (user.empty()) return refuse_ask(std::string("There is no folder for the player's files (") + SDL_GetError() + ").");
+    try {
+        rekit::sdl::SetupOptions o;
+        o.hidden = true, o.user_folder = user, o.default_out = setup::default_install(user), o.program_dir = program_dir();
+        const rekit::sdl::SetupResult r = rekit::sdl::serve_setup(kit_game(user), o, args);
+        if (!r.install_dir.empty() && setup::remembered_folder(user) != r.install_dir &&
+            !setup::remember_folder(user, r.install_dir))
+            std::fprintf(stderr, "setup: couldn't save the game folder in %s\n", setup::kSettingsFile);
+        return r.exit;
+    } catch (const std::exception& e) {
+        return refuse_ask(std::string("The setup failed: ") + e.what());
+    }
 }
 
 int resolve_game(bool setup_only, bool scripted, const std::string& builtin, const std::string& user,

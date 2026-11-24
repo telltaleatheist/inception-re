@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace chr::platform {
 
@@ -18,6 +19,16 @@ bool setup_unattended(bool scripted = false);
 // "" for the setup's; `builtin`: the build's own default, may be "";
 // `data_dir`: --data-dir, else "" for the player's folder.
 int print_setup_status(const std::string& given, const std::string& builtin, const std::string& data_dir);
+
+// `--setup --describe | --search | --look <pick> | --install <pick> [--folder <dir>]`: the setup
+// for the launcher's own screens (the kit's rekit/sdl/setup_serve.h). JSON lines on stdout and
+// nothing else there, the last one `done`; no window and no picker. A "cancel" line on stdin stops
+// a look or an install. served_ask: whether `arg`, after --setup, is one of these. serve_game_setup
+// answers: `args` are the ask and its arguments, `data_dir` is --data-dir, else "" for the
+// player's folder. What it installs is remembered as after the setup screen. Returns the
+// contract's exit; wrong arguments get a last line saying so and a failed exit.
+bool served_ask(const std::string& arg);
+int serve_game_setup(const std::vector<std::string>& args, const std::string& data_dir);
 
 // The player's folder for this start (setup::settle_user_folder) made and
 // returned, ending in a separator: SDL's per-user folder for the family's

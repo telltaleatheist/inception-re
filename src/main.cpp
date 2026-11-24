@@ -91,6 +91,7 @@ struct Options {
     bool help = false;       // --help: the usage on stdout
     bool status = false;     // --status: the launcher contract's answer (platform/sdl_setup.h)
     bool setup = false;      // --setup: the setup screen only
+    std::vector<std::string> served;  // what follows --setup when the launcher asks (platform/sdl_setup.h)
     bool state = false;      // print the game state after the script
     bool fight_state = false;  // with it, the fight's tables
     int event = -1;            // --event N
@@ -115,6 +116,7 @@ void usage(std::FILE* out, const char* argv0) {
     if (program.empty() || program == "AppRun") program = "chi";
     const char* name = program.c_str();
     std::fprintf(out, "usage: %s --status | --setup\n"
+                 "       %s --setup --describe | --search | --look PICK | --install PICK [--folder DIR]\n"
                  "       %s [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
                  "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--demo-to N]\n"
                  "           [--state] [--show-quiz]\n"
@@ -122,7 +124,7 @@ void usage(std::FILE* out, const char* argv0) {
                  "           picked and any answer goes on); by default it is skipped\n"
                  "  test aids (docs/reference.md): [--set-flag NN=VV] sets a flag (hex) as the town\n"
                  "           starts; a script's set:NN=VV sets one at that point;\n"
-                 "           [--window X,Y] (hex, repeatable) prints the cell window built there\n", name, name);
+                 "           [--window X,Y] (hex, repeatable) prints the cell window built there\n", name, name, name);
 }
 
 bool parse(int argc, char** argv, Options& options) {
@@ -149,6 +151,8 @@ bool parse(int argc, char** argv, Options& options) {
             options.status = true;
         } else if (arg == "--setup") {
             options.setup = true;
+            if (i + 1 < argc && chr::platform::served_ask(argv[i + 1]))
+                while (++i < argc) options.served.push_back(argv[i]);  // the rest is the ask's
         } else if (arg == "--import") {
             options.import = true;
         } else if (arg == "--text" && i + 1 < argc) {
@@ -386,6 +390,8 @@ int main(int argc, char** argv) {
     if (options.status)
         return chr::platform::print_setup_status(options.game_dir.string(), CHR_DEFAULT_GAME_DIR,
                                                  options.data_dir.string());
+    // So does an ask about the setup, on stdout alone: the launcher reads it through a pipe.
+    if (!options.served.empty()) return chr::platform::serve_game_setup(options.served, options.data_dir.string());
 
     if (options.setup || options.game_dir.empty()) {
         if (!chr::platform::setup_hooks_allowed(options.setup)) return options.setup ? 2 : 1;

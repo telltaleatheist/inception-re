@@ -15,10 +15,12 @@ package names it chi. Every file made gets a .sha256 beside it; sums.py writes
 a release's SHA256SUMS over all of them.
 
 The smoke test starts the packaged program: --help must print its usage and
---status its JSON line. With a game folder (--game, or CHR_GAME_DIR) it also
+--status its JSON line, and the setup served to the launcher must answer
+through pipes (tools/package/served_setup.py). With a game folder (--game, or CHR_GAME_DIR) it also
 sets the game up from it (--setup with CHR_SETUP_PICK) into an empty player
 folder, and a start must import the game's text and draw a frame. Every run is
-hidden: SDL's dummy drivers, a background app on macOS, a made-up home. The
+hidden: SDL's dummy drivers (the served setup's: none at all), a background app
+on macOS, a made-up home. The
 game folder is only read and never packaged.
 """
 import argparse
@@ -35,6 +37,9 @@ import tarfile
 import tempfile
 import zipfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "package"))
+import served_setup  # noqa: E402
+
 STEM = "CHI-Rebuild"
 APP_NAME = "Inception Rebuild"
 PROGRAM = "chi"   # the shipped program; the build's target stays chr
@@ -48,10 +53,10 @@ README = (
     "version 1.03 and the Amiga version 2.3.\n\n"
     "The first time it starts without your game, it asks for your copy: the DOS game's\n"
     "BTECH.EXE, any file in its folder, the Amiga game's disk image (.adf), or the archive it\n"
-    "came in (a .zip, for example). It copies the game into your own folder and plays from\n"
-    "there; your copy is never changed. Your settings (settings.ini), saves, the text and\n"
-    "tables read once from your copy, the copied game and the log (chi.log) live in your own\n"
-    "folder:\n"
+    "came in (a .zip, for example), or the launcher asks for it on its own screens. It copies\n"
+    "the game into your own folder, or the one you choose, and plays from there; your copy is\n"
+    "never changed. Your settings (settings.ini), saves, the text and tables read once from\n"
+    "your copy, the copied game and the log (chi.log) live in your own folder:\n"
     "  Windows: %APPDATA%\\BattleTech\\Inception Rebuild\n"
     "  macOS:   ~/Library/Application Support/BattleTech/Inception Rebuild\n"
     "  Linux:   ~/.local/share/BattleTech/Inception Rebuild\n\n"
@@ -208,7 +213,8 @@ def started(executable, args, env, what):
 
 
 def smoke(executable, game=None, **more):
-    """--help and --status from the packaged program; with `game`, the setup from that folder and a start.
+    """--help, --status and the setup served to the launcher (tools/package/served_setup.py, made-up
+    copies) from the packaged program; with `game`, the setup from that folder and a start.
     `more` goes into each run's environment."""
     with tempfile.TemporaryDirectory(prefix="chi-smoke-") as scratch:
         scratch = Path(scratch)
@@ -218,7 +224,15 @@ def smoke(executable, game=None, **more):
         status = json.loads(started(executable, ["--status"], env, "--status").stdout.strip().splitlines()[-1])
         if status.get("game") != "inception":
             raise RuntimeError(f"--status answered {status}")
+        if status.get("setup") != 1:
+            raise RuntimeError(f"--status doesn't say that the setup is served: {status}")
         print("Smoke: --help and --status answer")
+        count = 0
+        for passed, what in served_setup.checks(executable, hidden_env(scratch, **more), scratch / "served", kill=not more):
+            if not passed:
+                raise RuntimeError(f"The packaged program's served setup: {what}")
+            count += 1
+        print(f"Smoke: the setup served to the launcher, {count} checks through pipes")
         if not game:
             return
         user = scratch / "player"

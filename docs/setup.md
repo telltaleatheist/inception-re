@@ -110,8 +110,45 @@ and in a folder dropped beside the program.
 - `chr --setup` opens the setup screen whatever is found, plays nothing, and
   exits 0 (ready), 1 (cancelled) or 2 (failed, with `{"error": ...}` on
   stdout).
+- `chr --setup` followed by `--describe`, `--search`, `--look <pick>` or
+  `--install <pick> [--folder <dir>]` is the setup for the launcher's own
+  screens (the kit's `rekit/sdl/setup_serve.h`; `--status` says `"setup": 1`).
+  See "The setup served to the launcher".
 - `--status` reports the program's version as `CHR_VERSION` (CMake; `dev`
   unless a package sets it).
+
+## The setup served to the launcher
+
+An ask opens no window and no picker. It answers on stdout with JSON lines and
+nothing else, the last one with `done`, and exits 0 (ready), 1 (cancelled) or 2
+(failed). `serve_game_setup` (`platform/sdl_setup.cpp`) answers with the same
+recipe as the setup screen (`kit_game`), so what is found, the words for it,
+the sentence for a pick that can't be used and the install are the screen's.
+
+- The folder a served install went to is remembered in `settings.ini`, as after
+  the screen. So is a looked-at folder that is played where it is.
+- The player's folder is the one a start uses: `--data-dir`, else
+  `CHR_DATA_DIR`, else the system's. An install writes there by design.
+  Only a test's hook (`CHR_SETUP_PICK`, `REKIT_SETUP_GO`) without
+  `CHR_DATA_DIR` is refused, as everywhere.
+- `--folder` names the game's own folder: the kit marks it, refuses one that
+  holds other things or is another game's, and installs to its `install`. An
+  `install` without our marker is never replaced.
+- A `cancel` line on stdin stops a look or an install at its next progress
+  step. Looking for the Amiga's disk has no such steps, so a stop during it
+  takes effect when it ends. What was copied is removed; a folder named with
+  `--folder` keeps the kit's mark.
+- Wrong arguments get one `done` line saying what is wrong, and exit 2. (The
+  kit passes over arguments it doesn't know, and would install to the default
+  folder for a `--folder` without its folder.) Anything else after `--setup`
+  is the usage and exit 2, as without the served setup.
+- stdout goes to `chi.log` only for a start with no arguments and no terminal,
+  so never for an ask. Errors besides the last line go to stderr.
+- A launcher that closes the pipe doesn't stop an install: `SIGPIPE` is
+  ignored.
+
+A copy of a folder is staged in `install.new`, which has our marker from the
+start, so a copy that was killed is cleared up by the next install.
 
 ## The checks
 
@@ -131,6 +168,12 @@ and in a folder dropped beside the program.
   version's `--status`, and the screen's CHANGE FOLDER with its
   `game=chi` mark. With `--amiga` or `CHR_AMIGA_COPY`, it also installs that
   copy, imports it and draws a frame from it.
+
+- `tools/package/served_setup.py` asks a built or packaged program through
+  pipes on stdin and stdout, with made-up copies and a video driver that
+  doesn't exist (a window would be a failure): each ask, wrong arguments, a
+  cancel, a closed pipe, a kill in mid copy, `--folder`. `status_setup` and
+  every package's smoke test run it.
 
 **Running the setup by hand, or in a new test.** The setup's test hooks copy a
 game into the player's folder, so a run that uses one must name a folder of its
