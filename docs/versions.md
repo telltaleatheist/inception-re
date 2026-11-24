@@ -51,7 +51,7 @@ needs to boot (a start-up script and two small system commands).
 | `builds.bld` | 55,861 | the 26 .BLD (85,379 bytes together) | the 26 scripts in one file, DOS's cipher, the text packed in letter pairs (docs/formats/amiga.md) |
 | `maps` | 33,046 | MAP1–MAP15.MTP | the 15 DOS maps one after the other, the same total size (below) |
 | `demofile` | 1,023 | DEMOFILE | same size; about two thirds of the bytes differ, so recorded differently or in another order; not read yet |
-| `snd` | 65,532 | none (DOS plays the speaker from tables in BTECH.EXE) | a short header, then 8-bit signed samples: the Amiga's sampled sound |
+| `snd` | 65,532 | none (DOS plays the speaker from tables in BTECH.EXE) | 19 sampled sounds, 8-bit signed (docs/formats/amiga.md, "The sound file") |
 | `battletech` | 204,784 | BTECH.EXE | a 68000 program (AmigaDOS load file: three hunks of 165,104, 35,432 and 4 bytes) |
 
 **The pictures and tile sheets.** Each Amiga .cmp and .icn is the DOS container with a
@@ -154,6 +154,16 @@ included). An Amiga copy has no DOS speaker data, so it plays its own sound set,
 animations start at a set frame included (docs/formats/amiga.md, "The place pictures"). Those
 are the only differences between copies, and only because they can't be avoided.
 
+**Known look differences** (docs/formats/amiga.md, "Colours"), left open until an Amiga copy
+imports and plays:
+
+- In the Amiga's cache the whole screen is under STARLEAG.ICN's palette. The rebuild gives only the
+  cache's tiles those colours. Proposed: an event in game terms, "the screen's colours are now set
+  S" (the game's, or the cache's), sent on entering and leaving for every copy; the renderer asks
+  the asset provider for set S's 16 colours, which for DOS are the game's for both.
+- The menus' highlight bar and the boxes over the map XOR colour numbers. What the Amiga shows there
+  has not been read.
+
 **Animation timing changes no game state.** A place picture's frames and delays are waits that
 only show the picture (BTECH.EXE 1000:1afd, held by 273d:0006). They read no keys: keys pressed
 meanwhile wait in the buffer and are read afterwards, in order. They make no random draws: the
@@ -163,7 +173,11 @@ those don't run while a picture plays. In the rebuild they are presentation even
 (docs/resuming.md). So an animation that is longer or shorter on the Amiga (O4, O5, O6, O9, O10,
 O13, O15) changes only how long the box animates. The one place that reads a picture's frame
 list for anything else, the 'Mech that won't start (19b8:16b2), uses O0, which the Amiga leaves
-as DOS has it. Sound lengths get the same check when `snd` is read.
+as DOS has it. A sound's
+length is a wait of the same kind, but DOS's are kept whichever the copy: `snd`'s sounds have other
+lengths and the Amiga waits other times (docs/formats/amiga.md, "The sound file"), so neither may
+set the game's wait. And DOS's effects leave a word behind that the game reads (docs/sound.md,
+bug 21), which is DOS's too.
 
 ## One source by ID
 

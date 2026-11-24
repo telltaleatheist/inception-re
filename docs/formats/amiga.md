@@ -205,8 +205,8 @@ docs/versions.md are similarity figures (each Amiga colour matched to its most f
 colour, several Amiga colours often to one DOS colour): they say the art is DOS's drawing
 recoloured, not that it was read right.
 
-There is no speaker tune (`title_tune()` is empty); the Amiga's music is in `snd`,
-not read yet.
+There is no speaker tune (`title_tune()` is empty), and no title music was found ("The sound
+file").
 
 ## Colours
 
@@ -260,10 +260,8 @@ Open:
 - In the Amiga cache the whole screen is under STARLEAG.ICN's palette, not only the tiles: the
   frame, the text and the figures. Only the tiles have it here; the rest keep the game's colours.
 - XORs work on colour numbers: the menus' highlight bar (docs/text.md) and the boxes over the map
-  (docs/combat.md 2.6). On DOS's numbers they don't give what they would on the Amiga's. The picked
-  yes/no answer is what an XOR with 3 on the Amiga's numbers makes of 15 on 0 (12 on 3), so its
-  highlight bar probably XORs too; that code has not been read. On DOS's numbers the bar's letters
-  come out as colour 1 instead.
+  (docs/combat.md 2.6). On DOS's numbers they needn't give what they would on the Amiga's. The
+  Amiga's code for both is not read, so what it shows there is unknown.
 - The overhead map's third table is DOS's for the cache's level 1, and the Amiga has no such table:
   0:bac0 swaps the level 0 table in on both levels. So `tables.overhead_colours` has that table
   twice, and level 1 looks as on the Amiga. (A tile number past 249 reads on into the next table.
@@ -333,12 +331,47 @@ from the order of the tables around them ("by neighbours"), not from the code th
 Each place holds the same bytes, and the data hunk's hash is fixed, so a wrong choice would give the
 same table; only its address here, and the claim that the Amiga reads it there, would be wrong.
 
-Not read yet: `sound_lists` and `music_note_hz` (sound).
+`sound_lists` and `music_note_hz` have no counterpart: the Amiga has no speaker lists ("The sound
+file").
 
 **The font is not in the copy.** The program draws text through graphics.library's Text (0:1c706,
 the stub at 0:2848e), in rastports it sets up with InitRastPort (0:1bf9e). It has no call to
 SetFont or to graphics.library's OpenFont, no font name, and none of DOS's glyphs in any of the bit
 orders tried (as stored, mirrored, transposed, inverted); the disks have no fonts folder. So it
 shows the system's default font, which is in the machine's ROM, at the size the disk's
-`system-configuration` asks for (8 in all seven copies). How it draws the characters below 32 that
+`system-configuration` asks for (8 in all seven copies).
+
+What was searched: both hunks as stored, for DOS's glyphs whole in those four orders (glyphs of
+more than three different rows); every use of SetFont and OpenFont by library vector; the library,
+device and font names; the absolute address of the two rastports' Font field. What would still
+escape: a font drawn differently from DOS's; glyphs wider, taller, interleaved or in bit planes; a
+compressed one; one in a picture file; the Font field set through a pointer; and the parts of the
+disks outside the game's folder, of which only the folder names and `system-configuration` were
+looked at. How it draws the characters below 32 that
 DOS's font has as pictures (the arrows, the path marks) was not read.
+
+## The sound file
+
+`snd` (65,532 bytes, the same in all seven copies) is 19 sounds back to back, filling it exactly.
+Each is a big-endian word, a big-endian long and that many 8-bit signed samples. The program finds
+sound n - 1 by a table of 19 longs, 1:2540. The word is a rate in Hz, which the loader (0:26ce2)
+turns into a number it keeps and the player doesn't use; the period played is from a table of 19
+words, 1:2590 (samples per second: the Amiga's clock, 3,579,545 for NTSC and 3,546,895 for PAL,
+over the period). Word x period is 3.57 to 3.65
+million for 18 of the sounds, so there the two agree; effect 16's is 3.22 million, played about a
+tenth faster than its word says.
+
+**Playing effect n** (0:265ea, the counterpart of DOS's `1000:19bf`; nothing when 1:0018 is 0, the
+sound switch). The sample is loaded the first time. It plays once, at volume 63 of 64, on the next
+of the Amiga's four channels in turn (0:272a2), so sounds overlap. Two effects vary the period by
+1:7bb8, which the shot sets (0:15570) and clears (0:15a9a): effect 2 by -45, 0
+or +45 for 0x10, 0x11 and 0x12, effect 4 by +900 whenever it isn't 0. What it holds (the weapon,
+by those values) was not traced. Then, unless 1:1c3e is set (the place pictures' code sets and clears it), the program
+waits 35 ticks after effect 3, 20 after 2, 6 and 7, none after 4, 14 and 17-19, until the sample is
+done after 8, and 15 ticks after the rest. DOS waits for the sound to end.
+
+**No title music.** The program has a sequence player for three channels (0:2465c, 0:246ae), with
+one caller (at 0:1c880), but its start flag (1:25b8) is 0 in the file, its pointers (1:88ba, 1:88d6) are
+empty, and nothing was found that sets either by absolute address. No data of WWOODBT.SIF
+(runs of 12 bytes and up) is in either hunk. So it is taken as unused, and the Amiga's title as
+silent. A setting through a pointer was not excluded.
