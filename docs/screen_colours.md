@@ -1,8 +1,9 @@
 # The screen's colours: a proposal
 
-Nothing here is built. In the Amiga's cache the whole screen changes colours. The rebuild changes only
-the cache's tiles (docs/formats/amiga.md, "Colours"). This page says what the Amiga program does, and
-proposes how the rebuild could show it without the logic knowing a colour.
+Nothing here is built, and nothing will be until a person has played an Amiga copy in the cache. In the
+Amiga's cache the whole screen changes colours. The rebuild changes only the cache's tiles
+(docs/formats/amiga.md, "Colours"). This page says what the Amiga program does, and proposes how the
+rebuild could show it without the logic knowing a colour.
 
 ## What the Amiga does
 
@@ -29,11 +30,8 @@ So, apart from the black moments, the cache's colours go on when the party goes 
 something puts the game's back: the title, a load of a game saved outside (or a load refused or failed outside),
 or the stats screen.
 
-**Colours left on.** A new game from the game-over question (called at 0:008e0, in the main loop) is the same
-function as the title's, 0:1c9c (DOS `1000:4dc7`), without the call before it that sets the colours. It clears
-flag 3a with the other flags and sets no colours. So a game won in the cache and the question answered with
-a new game should start in the town with the cache's colours, until one of the three above. This is read
-from the code, not seen: no Amiga copy has been run to it. It looks like a bug of the Amiga version.
+**Colours left on.** A new game from the game-over question sets no colours, so one after winning in the cache
+should start the town in the cache's. Found, and not reproduced (docs/formats/amiga.md, "Colours").
 
 The stats screen would do the opposite, opened in the cache: it would leave the game's colours there.
 It needs a 'Mech, and all four of the party's records are put aside on going in (docs/formats/save.md). That
@@ -50,27 +48,18 @@ Nothing to show: DOS has one set of colours but for the stats screen's pulse and
 are better said like the rest of the screen, as what is so now:
 
 - The logic has two names for the colours in force, the game's and the cache's (`ScreenColours`), and
-  no colour values. `Town` keeps the one for now and sets it where the Amiga does:
-
-| Where | To |
-|---|---|
-| a game's or the demo's start after the title | the game's |
-| the load's end, with flag 3a clear, whatever came of the load | the game's |
-| leaving the stats screen | the game's |
-| `Town::enter_cache`, after the view is drawn and before `hold_screen(60)` | the cache's |
-| `Town::cache_way_up`, and special 45 after its key | the cache's (it is already) |
-
+  no colour values. `Town` works out the one for now: the cache's while flag 3a is set, the game's
+  otherwise. It keeps nothing, so a load, a new game, the demo and a replayed town (docs/resuming.md)
+  need no code, and saves don't change.
 - `Shown` carries the one that was in force when its screen was recorded. A turn's recorded screens
-  can end with the cache's first (`hold_screen(60)`) after others from before it.
-- A replayed town (docs/resuming.md) sets it again on the way. It is not in a save: the load sets it.
+  can end with the cache's first (`hold_screen(60)` in `Town::enter_cache`) after others from before it.
 
-Every copy keeps it, DOS too. That is why it isn't an Amiga rule: the logic says which colours are
-in force, and the copy says whether they look different.
+Every copy answers the same, DOS too. That is why it isn't an Amiga rule: the logic says which colours
+are in force, and the copy says whether they look different.
 
-It could be worked out from flag 3a instead, with nothing kept. The two agree but for the colours left on
-after a game-over's new game (and the stats screen in the cache, if it can be had). Working it out would remove
-that oddity without a word, and the rebuild keeps the original's bugs by default, so the kept one is proposed.
-A fix switch could then set the game's colours in the new game too.
+Flag 3a is set a little before 0:0af6c: when map 14 is loaded (`load_town_map`), or with a saved game's flags. No
+screen is recorded and no key asked in between. It differs from the Amiga in two places only: the colours
+left on (above), and the stats screen in the cache, if it can be opened there.
 
 **2. The colours come from the asset provider.** {"COLOUR", n} stays the game's colour n (0-15).
 {"COLOUR", 16 + n} is the cache's colour n:
@@ -110,21 +99,15 @@ are drawn by number where the numbers are known (`draw_xor_box`).
 
 - The whole reference set, DOS: every comparison as before. No colour may change, the cache
   sequences' (`chain_cache_*`, `chain_finale`) above all.
-- A unit test of the state: a game's start, into the cache, a load out of it and into it, a new game from the
-  game-over question, and a recorded screen from before the cache beside one from inside.
+- A unit test of the answer: a game's start, into the cache, a load out of it and into it, a new game from the
+  game-over question (the game's colours), and a recorded screen from before the cache beside one from inside.
 - A renderer test with made-up pictures: with numbers, without them, with a palette of its own, under both sets.
 - An Amiga copy, headless: a screen in the cache holds no colour outside the cache's 16, and one in a town
   none outside the game's. A run with the two sets swapped must fail it.
 - No one has compared the result with a real Amiga. A person's look is still needed.
 
-## To be decided
-
-- Whether the colours left on after a game-over's new game are kept (as proposed, with a fix switch) or not.
-  On a DOS copy nothing shows either way.
-- Whether it is worth building before an Amiga copy has been played in the cache.
-
 ## The size of it
 
-The logic's part is one member of `Town` with six places that set it, and one of `Shown`. The
-provider's is the 16 new colours and the flag. The renderer's, recolouring and its cache's key, is most of the work. Nothing is
+The logic's part is one function of `Town` and one member of `Shown`. The provider's is the 16 new
+colours and the flag. The renderer's, recolouring and its cache's key, is most of the work. Nothing is
 imported anew, saves don't change, and no table or text is added.

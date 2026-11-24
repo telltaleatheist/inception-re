@@ -252,6 +252,12 @@ the loader (0:1b3f8); the program sets the screen's colours (each place: docs/sc
   `tables.endmech_palette`, taken from ENDMECH.CMP.
 - All black (1:1a10) at start-up and before the cache's colours.
 
+**Found and not reproduced.** A new game from the game-over question is the title's new game (0:1c9c, called at
+0:008e0 in the main loop) without the call before it that sets the colours (0:227c4). It clears the cache's flag,
+3a, with the others. So a new game after winning in the cache should start in the town with the cache's
+colours, until a load outside the cache, the stats screen or the title. Read from the code, not seen on a
+running Amiga. Every copy plays DOS's game (docs/versions.md, "Amiga rules"), so here a new game has the game's.
+
 The other files' palettes are never set. `AmigaGameSource::picture_palette` gives the two start-up
 pictures' and the cache's tiles' own; everything else has the game's.
 
