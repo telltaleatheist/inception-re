@@ -93,6 +93,9 @@ const std::vector<KnownDisk>& known_disks() {
 
 namespace {
 
+// What a player with another version's copy needs.
+constexpr char kPlayableCopy[] = "a copy of DOS 1.03 or Amiga 2.3";
+
 constexpr int kMaxArchiveDepth = 4;
 constexpr int kMaxFolderDepth = 6;
 constexpr std::size_t kMaxFolderEntries = 50000;
@@ -315,9 +318,23 @@ std::vector<std::string> OtherCopy::missing() const {
     return m;
 }
 
+bool OtherCopy::same_game() const { return machine == Machine::Amiga; }
+
+std::vector<std::string> OtherCopy::needed() const {
+    if (!same_game()) return {kPlayableCopy};
+    auto m = missing();
+    m.push_back("the rebuild's support for " + name());
+    return m;
+}
+
 std::string OtherCopy::note() const {
     std::string s;
     const auto gone = missing();
+    if (!same_game()) {
+        s = gone.empty() ? name() : "disk " + std::to_string(found.front()) + " of " + std::to_string(disks) + " of " + name();
+        s[0] = char(std::toupper(static_cast<unsigned char>(s[0])));
+        return s + " was found, but it can't give the same game: its towns are its own. Use " + kPlayableCopy + ".";
+    }
     if (gone.empty()) {
         s = name() + " was found";
         s[0] = char(std::toupper(static_cast<unsigned char>(s[0])));

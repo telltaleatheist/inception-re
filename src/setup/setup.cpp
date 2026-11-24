@@ -383,7 +383,7 @@ rekit::Status status(const std::vector<std::string>& known, const std::string& u
         else if (searched) st.note = "found by the search, not set up yet";
         return st;
     }
-    // Another version's copy where the player said: named, not played yet.
+    // Another version's copy where the player said: named, not played.
     for (const auto& k : known) {
         std::error_code ec;
         OtherCopy other;
@@ -397,8 +397,7 @@ rekit::Status status(const std::vector<std::string>& known, const std::string& u
         }
         if (!find_other_copy(k, &other)) continue;
         st.where = k, st.data = other.label(), st.state = rekit::Status::kIncomplete;
-        st.missing = other.missing();
-        st.missing.push_back("the rebuild's support for " + other.name());
+        st.missing = other.needed();
         st.note = other.note();
         break;
     }

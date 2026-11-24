@@ -1,6 +1,8 @@
 # The game's versions
 
-The rebuild is to play the same game from any copy a player has. This page surveys the
+The rebuild plays the same game from a DOS 1.03 or an Amiga 2.3 copy. A Commodore 64 or Apple II copy
+is recognised and not playable: its towns are its own, so it can't give the same game (below).
+This page surveys the
 copies we know of: how each is packed, what files it holds, which of them match the DOS
 formats the rebuild already reads, and where each version keeps its tiles, pictures, maps,
 dialogue, interface text, tables and sound. It was written by reading the files statically
@@ -332,14 +334,13 @@ hashes, nothing else:
 | Apple II, disk 2 | three game files | none: [a] differs only in its saves, [cr] in `LC` |
 
 A disk whose recognising files all match but whose variant file matches none is still named,
-as changed from the copies we know. A version with a disk missing is named with the disk
-it lacks: the archive's Apple II item is disk 1 alone, so a player with only that file is
-told disk 2 of 2 is missing.
+as changed from the copies we know. The C64 and Apple II copies are named and refused: their maps 1–11
+are the C64's own, not DOS's (formats/c64.md), and a DOS or Amiga copy is needed.
 
 DOS 1.03 and Amiga 2.3 play (docs/setup.md, "What counts as the game"); the release 0.1.0 plays
 DOS 1.03 alone. For the others `--status` answers `incomplete` for it, with `data` naming it
-("Commodore 64"), `missing` listing the missing disks and the rebuild's support for that version,
-and a one-line note. The setup says the same instead of "no copy found", both for a scripted pick
+("Commodore 64"), `missing` naming a DOS 1.03 or Amiga 2.3 copy, and a note of why
+(the same the setup shows). The setup says the same instead of "no copy found", both for a scripted pick
 and on the setup screen (the kit's `recognise` hook, which the kit calls only when its own walk
 finds no copy). The DOS copy, in a folder or a zip, is recognised as before, by its BTECH.EXE.
 
@@ -381,6 +382,7 @@ check makes up a C64 disk image and lists it there.
   and the Apple II has no `OB.ANM` place picture. Whether those places are merged into others,
   drawn another way or absent from those versions is the first thing to find there.
 
-## Next
+## Not going further
 
-- The C64, then the Apple II: their containers are understood; their encodings are next.
+The C64 and the Apple II are not read further: their copies stay recognised and not playable.
+The proposals above for their art, font and sound are not being built.

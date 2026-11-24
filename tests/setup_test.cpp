@@ -371,8 +371,20 @@ void other_versions(const fs::path& work) {
               copies[0].missing() == std::vector<std::string>{"disk 2 of 2"},
           "a disk image in a folder: disk 1 of 2 named, disk 2 missing");
     check(!copies.empty() && copies[0].variants == std::vector<std::string>{"unknown"} &&
-              copies[0].note().find("changed from the copies we know") != std::string::npos,
+              copies[0].label().find("(changed)") != std::string::npos,
           "a variant file that matches no known variant is named as unknown");
+    // The C64's and the Apple II's game isn't DOS's: needed is a copy that is, not the missing disk.
+    for (const setup::Machine m : {setup::Machine::C64, setup::Machine::AppleII}) {
+        setup::OtherCopy c;
+        c.machine = m, c.disks = 2, c.found = {1};
+        check(!c.same_game() && c.needed().size() == 1 && c.needed()[0].rfind("a copy of DOS", 0) == 0 &&
+                  c.note().find("can't give the same game") != std::string::npos &&
+                  c.note().find("missing") == std::string::npos,
+              "its note says why it can't be played and what is needed");
+    }
+    setup::OtherCopy amiga;
+    amiga.machine = setup::Machine::Amiga, amiga.version = "2.3", amiga.found = {1};
+    check(amiga.same_game() && amiga.note().find("towns") == std::string::npos, "the Amiga's game is the same one");
     const std::vector<setup::KnownDisk> one{
         {setup::Machine::C64, "", 1, 1, {{"fixa", a_data.size(), ha.c_str()}}, {{"", {"fixb", b_data.size(), hb.c_str()}}}},
     };

@@ -68,8 +68,11 @@ struct OtherCopy {
     std::string name() const;        // "the Amiga version 2.3", "the Commodore 64 version"
     std::string label() const;       // for --status's "data": "Amiga 2.3", "Amiga 2.3 [a4]", "Apple II (changed)"
     std::vector<std::string> missing() const;  // "disk 2 of 2", in plain words
-    // One sentence for the player: what was found, what is missing, and that the rebuild
-    // can't play it yet.
+    // Whether this version's game is DOS's: the C64's and the Apple II's towns are their own
+    // (docs/formats/c64.md), so their copies are recognised and never played.
+    bool same_game() const;
+    std::vector<std::string> needed() const;  // for --status's "missing"
+    // For the player: what was found, and why it can't be played.
     std::string note() const;
 };
 

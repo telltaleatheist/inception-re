@@ -150,11 +150,16 @@ def main():
     open(disk, "wb").write(bytes(d64))
     extra = os.path.join(work, "extra-known.txt")
     open(extra, "w").write("c64 1 2 FIXA %d %s\n" % (len(body), hashlib.sha256(body).hexdigest()))
-    named = ("Disk 1 of 2 of the Commodore 64 version was found (disk 2 of 2 is missing), "
-             "but the rebuild can't play it: it plays the DOS version 1.03 and the Amiga version 2.3.")
+    playable = "a copy of DOS 1.03 or Amiga 2.3"
+    named = ("Disk 1 of 2 of the Commodore 64 version was found, but it can't give the same game: its towns "
+             "are its own. Use " + playable + ".")
     known = dict(env, CHR_EXTRA_KNOWN_DISKS=extra)
     p, _ = run(a.program, ["--setup"], dict(known, CHR_SETUP_PICK=disk))
     check(p.returncode == 2 and json.dumps(named)[1:-1] in p.stdout, "another version's disk, picked: named in the error")
+    p, _ = run(a.program, ["--status"], dict(known, CHR_GAME_DIR=disk))
+    st = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {}
+    check(st.get("files", {}).get("state") == "incomplete" and st.get("files", {}).get("missing") == [playable] and
+          st.get("note") == named, "another version's disk, --status: the same note, and what is needed")
     p, _ = run(a.program, ["--setup"], dict(known, **screen_pick(disk)))
     out = after_pick(p.stdout)
     check(p.returncode == 1 and "setup: " + named in out, "another version's disk, picked on the screen: our sentence")
