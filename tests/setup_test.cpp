@@ -9,6 +9,8 @@
 // Prints names and counts only, never the game's bytes; the work folder is
 // removed at the end.
 //
+// CHR_AMIGA_COPY, when set, names an Amiga copy for its parts.
+//
 //     setup_test <work folder> [<game folder>]
 #include "setup/setup.h"
 #include "setup/versions.h"
@@ -210,6 +212,56 @@ void game_free(const fs::path& work) {
     check(!r.ok && fs::exists(work / "blocked.new" / "X"), "break: a .new folder that is not ours is left alone");
 }
 
+// With an Amiga copy (CHR_AMIGA_COPY: an .adf, or a folder or archive holding one).
+void with_amiga(const fs::path& work, const std::string& copy) {
+    const setup::AmigaChoice choice = setup::choose_amiga_copy(copy);
+    check(choice.copy && choice.copy->files.size() == 18, "Amiga: the copy found, its 18 files");
+    if (!choice.copy) return;
+    std::string note;
+    const rekit::Found f = setup::find_game(copy, &note);
+    check(f.kind == rekit::Found::kInstall && f.version == setup::kAmigaVersion, "Amiga: find_game finds it");
+    const fs::path out = work / "amiga" / "install";
+    setup::Installed r = setup::install(f, out.string());
+    const setup::Check c = setup::check_install(out.string());
+    check(r.ok && r.files == 18 && c.state == rekit::Status::kReady && c.version == setup::kAmigaVersion,
+          "Amiga: installed, ready");
+    r = setup::install(f, out.string());
+    check(r.ok, "Amiga: installing again replaces our own install");
+    const fs::path theirs = work / "amiga-theirs";
+    write(theirs / "LETTER.TXT", "the player's");
+    r = setup::install(f, theirs.string());
+    check(!r.ok && read(theirs / "LETTER.TXT") == "the player's", "break: Amiga: a folder that is not ours is never replaced");
+    r = setup::install(f, (work / "amiga-stopped").string(), [](double, const std::string&) { return false; });
+    check(r.cancelled && !fs::exists(work / "amiga-stopped") && !fs::exists(work / "amiga-stopped.new"),
+          "Amiga: a stop leaves nothing");
+    // The files in a folder, and in the disk's layout, are found by the kit's walk.
+    check(rekit::find_source(out.string(), setup::rules()).version == setup::kAmigaVersion, "Amiga: the walk finds its folder");
+    fs::create_directories(work / "amiga-disk");
+    fs::copy(out, work / "amiga-disk" / "Battletech");
+    const rekit::Found disk = rekit::find_source((work / "amiga-disk").string(), setup::rules());
+    r = setup::install(disk, (work / "amiga-from-disk").string());
+    check(r.ok && setup::check_install((work / "amiga-from-disk").string()).state == rekit::Status::kReady,
+          "Amiga: installed from the disk's folder");
+    check(setup::game_in((work / "amiga-disk").string()) == (work / "amiga-disk" / "Battletech").string(), "game_in finds the Amiga's files");
+#if REKIT_HAVE_LIBARCHIVE
+    std::vector<std::pair<std::string, fs::path>> entries;
+    for (const auto& e : fs::directory_iterator(out)) entries.push_back({"x/Battletech/" + e.path().filename().string(), e.path()});
+    const fs::path zip = work / "amiga-files.zip";
+    check(make_zip(zip, entries), "a zip of the Amiga's files built in the work folder");
+    r = setup::install(setup::find_game(zip.string()), (work / "amiga-zip").string());
+    check(r.ok && setup::check_install((work / "amiga-zip").string()).state == rekit::Status::kReady,
+          "Amiga: installed from a zip of its files");
+#endif
+    // A data file gone, and the program changed.
+    fs::remove(out / "maps");
+    check(setup::check_install(out.string()).state == rekit::Status::kMissing, "Amiga: without the maps: not the game");
+    fs::copy_file(work / "amiga-disk" / "Battletech" / "maps", out / "maps");
+    fs::remove(out / "snd");
+    check(setup::check_install(out.string()).state == rekit::Status::kIncomplete, "Amiga: a data file gone: incomplete");
+    write(out / "battletech", "junk");
+    check(setup::check_install(out.string()).state == rekit::Status::kMissing, "break: Amiga: another program: not the game");
+}
+
 void with_game(const fs::path& work, const fs::path& game) {
     const std::string btech = rekit::any_case_path(game.string(), "BTECH.EXE");
     std::ifstream in(btech, std::ios::binary);
@@ -353,6 +405,10 @@ int main(int argc, char** argv) {
     const std::string game = argc == 3 ? argv[2] : "";
     if (!game.empty() && !rekit::any_case_path(game, "BTECH.EXE").empty()) with_game(work / "game", game);
     else std::printf("skip the game parts: no game folder\n");
+    const char* amiga = std::getenv("CHR_AMIGA_COPY");
+    std::error_code e2;
+    if (amiga && fs::exists(amiga, e2)) with_amiga(work / "with-amiga", amiga);
+    else std::printf("skip the Amiga parts: no Amiga copy (CHR_AMIGA_COPY)\n");
     fs::remove_all(work, ec);  // nothing of the game's kept
     std::printf("%s (%d failed)\n", failures ? "FAILED" : "passed", failures);
     return failures ? 1 : 0;

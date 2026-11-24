@@ -14,6 +14,7 @@
 #include <set>
 #include <tuple>
 
+#include "formats/amiga_source.h"
 #include "formats/cmp.h"  // FormatError
 #include "formats/disk_image.h"
 #include "formats/sha256.h"
@@ -97,6 +98,7 @@ namespace {
 constexpr int kMaxArchiveDepth = 4;
 constexpr int kMaxFolderDepth = 6;
 constexpr std::size_t kMaxFolderEntries = 50000;
+constexpr std::size_t kMaxAmigaCopies = 64;
 constexpr std::size_t kMaxImage = 2u << 20;  // larger than any disk image we read
 
 std::string lower(std::string s) {
@@ -121,6 +123,8 @@ struct Walk {
     std::set<std::pair<std::string, std::uint64_t>> wanted;
     std::vector<SeenFile> seen;
     std::string* detail;
+    // When set, only the Amiga's game disks are looked for, and kept whole.
+    std::vector<AmigaCopy>* amiga = nullptr;
 
     explicit Walk(const std::vector<KnownDisk>& d, std::string* why) : disks(d), detail(why) {
         for (const KnownDisk& k : disks) {
@@ -136,6 +140,11 @@ struct Walk {
         seen.push_back({name, data.size(), formats::sha256_hex(data)});
     }
     void image(const std::string& where, std::span<const std::uint8_t> bytes) {
+        if (amiga) {
+            if (amiga->size() >= kMaxAmigaCopies) return;
+            if (auto files = formats::amiga_disk_files(bytes); !files.empty()) amiga->push_back({where, "", std::move(files)});
+            return;
+        }
         try {
             for (const auto& f : formats::read_disk_image(bytes)) {
                 const std::string name = base_name(f.path);
@@ -222,7 +231,58 @@ const char* machine_name(Machine m) {
     return "";
 }
 
+// Whether the rebuild plays these files: all there, and a program the importer takes.
+bool playable(const formats::AmigaFiles& files) {
+    if (!formats::amiga_files_missing(files).empty()) return false;
+    try {
+        return formats::AmigaGameSource(files, "").program() != nullptr;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+std::string amiga_variant(const formats::AmigaFiles& files) {
+    const auto program = files.find("battletech");
+    if (program == files.end()) return "unknown";
+    const std::string sha = formats::sha256_hex(program->second);
+    for (const KnownDisk& k : known_disks())
+        if (k.machine == Machine::Amiga)
+            for (const auto& v : k.variants)
+                if (sha == v.file.sha256) return v.label;
+    return "unknown";
+}
+
 }  // namespace
+
+AmigaChoice choose_amiga_copy(const std::string& path) {
+    std::vector<AmigaCopy> all;
+    Walk w(known_disks(), nullptr);
+    w.amiga = &all;
+    w.path(fs::path(path));
+    std::sort(all.begin(), all.end(), [](const AmigaCopy& a, const AmigaCopy& b) { return a.where < b.where; });
+    // One of each different copy, the first by name.
+    std::vector<AmigaCopy> copies;
+    for (AmigaCopy& c : all) {
+        const bool again = std::any_of(copies.begin(), copies.end(), [&](const AmigaCopy& k) { return k.files == c.files; });
+        if (again || !playable(c.files)) continue;
+        c.variant = amiga_variant(c.files);
+        copies.push_back(std::move(c));
+    }
+    AmigaChoice choice;
+    if (copies.empty()) return choice;
+    if (copies.size() == 1) return choice.copy = std::move(copies.front()), choice;
+    std::string names;
+    for (const AmigaCopy& c : copies) names += (names.empty() ? "" : ", ") + c.where;
+    const auto plain = std::find_if(copies.begin(), copies.end(), [](const AmigaCopy& c) { return c.variant.empty(); });
+    if (plain == copies.end()) {
+        choice.note = "Different copies of the Amiga version are there (" + names + "). Pick one of them.";
+        return choice;
+    }
+    choice.note = std::to_string(copies.size()) + " different copies of the Amiga version are there. The setup takes the unchanged one: " +
+                  plain->where + ".";
+    choice.copy = std::move(*plain);
+    return choice;
+}
 
 std::vector<SeenFile> seen_files(const std::string& path, std::string* detail) {
     return seen_files(path, known_disks(), detail);
@@ -270,7 +330,7 @@ std::string OtherCopy::note() const {
     }
     if (std::find(variants.begin(), variants.end(), "unknown") != variants.end())
         s += ", changed from the copies we know";
-    return s + ", but the rebuild can't play it yet: it plays the DOS version 1.03 for now.";
+    return s + ", but the rebuild can't play it: it plays the DOS version 1.03 and the Amiga version 2.3.";
 }
 
 std::vector<OtherCopy> recognise(const std::vector<SeenFile>& seen) { return recognise(seen, known_disks()); }

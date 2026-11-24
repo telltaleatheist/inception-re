@@ -197,11 +197,11 @@ bool ensure_imported(const GameSource& source, const fs::path& data_dir) {
     try {
         import_original(source, data_dir);
     } catch (const std::exception& e) {
-        throw FormatError(std::string("the game's text, font and rule tables have ") +
+        throw FormatError(std::string("the game's data has ") +
                           (state == ImportState::Missing ? "not been imported" : "an older import or another copy's") +
-                          " in " + data_dir.string() + ", and importing them failed: " + e.what() +
-                          ". Run `chr --import --game-dir DIR` with your copy of the game (DOS " +
-                          std::string(kSupportedVersion.substr(4)) + ").");
+                          " in " + data_dir.string() + ", and importing it failed: " + e.what() +
+                          ". Run `chr --import --game-dir DIR` with your copy of the game (" +
+                          std::string(kSupportedVersion) + " or Amiga 2.3).");
     }
     return true;
 }

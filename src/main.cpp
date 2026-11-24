@@ -417,11 +417,12 @@ int main(int argc, char** argv) {
         source = chr::formats::open_game_source(options.game_dir);
         if (options.import) {
             chr::formats::import_original(*source, options.data_dir);
-            std::printf("imported the text and font into %s\n", options.data_dir.string().c_str());
+            std::printf("imported the game's data (%s) into %s\n", source->program_name().c_str(), options.data_dir.string().c_str());
             return 0;
         }
         if (chr::formats::ensure_imported(*source, options.data_dir))
-            std::fprintf(stderr, "chr: imported the text and font into %s\n", options.data_dir.string().c_str());
+            std::fprintf(stderr, "chr: imported the game's data (%s) into %s\n", source->program_name().c_str(),
+                         options.data_dir.string().c_str());
     } catch (const std::exception& e) {
         std::fprintf(stderr, "chr: %s\n", e.what());
         return 1;

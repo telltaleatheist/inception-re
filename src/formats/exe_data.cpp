@@ -848,7 +848,9 @@ std::string OriginalExe::address(std::string_view name) const {
 
 OriginalExe OriginalExe::load(const std::filesystem::path& game_dir) {
     const auto path = find_game_file(game_dir, "BTECH.EXE");
-    if (!path) throw FormatError("BTECH.EXE not found in " + game_dir.string());
+    if (!path) throw FormatError("no copy of the game was found in " + game_dir.string() + ": no BTECH.EXE (" +
+                                 std::string(kSupportedVersion) + ") and no Amiga 2.3 files or disk image (.adf). A download "
+                                 "in an archive (.zip) is taken by `chr --setup`");
     return OriginalExe(read_file(*path));
 }
 

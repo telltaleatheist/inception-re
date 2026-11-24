@@ -13,6 +13,8 @@ namespace chr::formats {
 //   a folder with BTECH.EXE            the DOS copy
 //   a folder with the Amiga's battletech, builds.bld and maps, or with a folder Battletech
 //   holding them, or a disk image with them    the Amiga copy
+//   a folder with such disk images     the Amiga copy; when they hold different copies it throws,
+//                                      naming them (the same game files on each are one copy)
 // A folder that is none of these is taken as a DOS copy, so what is missing is said by name when
 // it is read. Throws FormatError for a file that is not such a disk, or an Amiga program that
 // isn't version 2.3's.

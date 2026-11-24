@@ -9,6 +9,7 @@ player folder (CHR_DATA_DIR) in the work folder, a made-up home, and SDL's
 dummy drivers; nothing of the game is kept. Prints names and counts only.
 
     status_setup_test.py --program build/chr --work build/status_setup_work [--game DIR]
+                          [--amiga COPY]
 """
 import argparse
 import hashlib
@@ -52,6 +53,7 @@ def main():
     ap.add_argument("--program", required=True)
     ap.add_argument("--work", required=True)
     ap.add_argument("--game", default="")
+    ap.add_argument("--amiga", default=os.environ.get("CHR_AMIGA_COPY", ""))
     a = ap.parse_args()
     work = os.path.abspath(a.work)
     shutil.rmtree(work, ignore_errors=True)  # the test's own folder
@@ -123,7 +125,7 @@ def main():
     extra = os.path.join(work, "extra-known.txt")
     open(extra, "w").write("c64 1 2 FIXA %d %s\n" % (len(body), hashlib.sha256(body).hexdigest()))
     named = ("Disk 1 of 2 of the Commodore 64 version was found (disk 2 of 2 is missing), "
-             "but the rebuild can't play it yet: it plays the DOS version 1.03 for now.")
+             "but the rebuild can't play it: it plays the DOS version 1.03 and the Amiga version 2.3.")
     known = dict(env, CHR_EXTRA_KNOWN_DISKS=extra)
     p, _ = run(a.program, ["--setup"], dict(known, CHR_SETUP_PICK=disk))
     check(p.returncode == 2 and json.dumps(named)[1:-1] in p.stdout, "another version's disk, picked: named in the error")
@@ -207,6 +209,32 @@ def main():
         check(os.listdir(os.path.join(games, "something else")) == [], "what was there is left as it was")
     else:
         print("skip the game parts: no --game folder")
+
+    # An Amiga copy (--amiga, else CHR_AMIGA_COPY: an .adf, or a folder or archive holding one).
+    if a.amiga and os.path.exists(a.amiga):
+        user = os.path.join(work, "user-amiga")
+        env = dict(base, CHR_DATA_DIR=user)
+        before = os.path.getsize(a.amiga) if os.path.isfile(a.amiga) else tree(a.amiga)
+        p, _ = run(a.program, ["--setup"], dict(env, CHR_SETUP_PICK=a.amiga))
+        check(p.returncode == 0, "Amiga: --setup from the pick exits 0 (%d)" % p.returncode)
+        check("setup: copied 18 files" in p.stdout, "Amiga: the game's 18 files copied")
+        install = os.path.join(user, "install")
+        check(sorted(f for f in os.listdir(install) if f.lower().startswith("game")) == [], "break: no saved game copied")
+        after = os.path.getsize(a.amiga) if os.path.isfile(a.amiga) else tree(a.amiga)
+        check(before == after, "Amiga: the player's original is left as it was")
+        p, _ = run(a.program, ["--status"], env)
+        st = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {}
+        check(st.get("files", {}).get("state") == "ready" and st.get("files", {}).get("data") == "Amiga 2.3",
+              "Amiga: --status after the setup: ready, Amiga 2.3")
+        p, _ = run(a.program, ["--map", "1", "--script", "up", "--screenshot", os.path.join(work, "amiga.bmp")], env)
+        check(p.returncode == 0 and os.path.isfile(os.path.join(user, "import.json")),
+              "Amiga: a start imports and plays from the install (%d)" % p.returncode)
+        os.remove(os.path.join(install, "snd"))
+        p, _ = run(a.program, ["--status"], env)
+        st = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {}
+        check(st.get("files", {}).get("state") == "incomplete", "Amiga: a data file gone: incomplete")
+    else:
+        print("skip the Amiga parts: no Amiga copy")
 
     shutil.rmtree(work, ignore_errors=True)
     print("%s (%d failed)" % ("FAILED" if failures else "passed", failures))

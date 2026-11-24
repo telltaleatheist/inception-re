@@ -53,7 +53,8 @@ void say_error(bool setup_only, const std::string& why) {
 }
 
 std::string describe(const rekit::Found& f) {
-    const std::string what = f.version.empty() ? " (another version than " + std::string(setup::kVersion) + ")"
+    const std::string what = f.version.empty() ? " (another version than " + std::string(setup::kVersion) + " or " +
+                                                     setup::kAmigaVersion + ")"
                                                : " (" + f.version + ")";
     return std::string(f.on_disk ? "An installed copy of " : "A download of ") + setup::kTitle + what + ".";
 }
@@ -84,9 +85,14 @@ std::string run_screen(bool setup_only, bool scripted, const std::string& found,
         return setup::find_install({}, user, pdir, &s);
     };
     g.describe = describe;
-    // Another version's copy (an Amiga, C64 or Apple II one): named, in place of the kit's "No copy".
+    // What the kit's walk can't take: named, in place of the kit's "No copy".
     g.recognise = [](const std::string& path) {
         try {
+            const setup::AmigaChoice amiga = setup::choose_amiga_copy(path);
+            if (amiga.copy)
+                return "The Amiga version 2.3 was found on a disk image (" + amiga.copy->where +
+                       "), but this screen can't copy it from there yet.";
+            if (!amiga.note.empty()) return amiga.note;
             setup::OtherCopy other;
             if (setup::find_other_copy(path, &other)) return other.note();
         } catch (...) {
@@ -120,13 +126,16 @@ std::string run_screen(bool setup_only, bool scripted, const std::string& found,
 // What a test names as the player's pick (CHR_SETUP_PICK), walked by the kit
 // and copied into the player's folder. "" with `why` when not.
 std::string take_copy(const std::string& picked, const std::string& user, std::string* why) {
-    const rekit::Found f = rekit::find_source(picked, setup::rules());
+    std::string note;
+    const rekit::Found f = setup::find_game(picked, &note);
     std::printf("setup: looked at %s: %s\n", picked.c_str(),
                 f.kind == rekit::Found::kNothing ? "nothing" : f.version.empty() ? "another version" : f.version.c_str());
     if (!f.detail.empty()) std::fprintf(stderr, "%s", f.detail.c_str());
+    if (!note.empty()) std::printf("setup: %s\n", note.c_str());
     if (f.kind != rekit::Found::kInstall) {
         setup::OtherCopy other;
-        if (setup::find_other_copy(picked, &other)) *why = other.note();
+        if (!note.empty()) *why = note;
+        else if (setup::find_other_copy(picked, &other)) *why = other.note();
         else *why = "No copy of " + std::string(setup::kTitle) + " was found in " + picked + ".";
         return "";
     }

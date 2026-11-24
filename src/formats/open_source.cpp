@@ -1,14 +1,10 @@
 #include "formats/open_source.h"
 
-#include <algorithm>
-#include <cctype>
-#include <cstdint>
-#include <map>
 #include <string>
 #include <system_error>
 #include <utility>
-#include <vector>
 
+#include "formats/amiga_disk.h"
 #include "formats/amiga_source.h"
 #include "formats/cmp.h"  // FormatError
 #include "formats/disk_image.h"
@@ -20,53 +16,40 @@ namespace fs = std::filesystem;
 
 namespace {
 
-constexpr const char* kAmigaFolder = "Battletech";  // on the Amiga's disk
-constexpr const char* kAmigaFiles[] = {"battletech", "builds.bld", "maps"};
-
-bool is_amiga_folder(const fs::path& dir) {
-    return std::all_of(std::begin(kAmigaFiles), std::end(kAmigaFiles), [&](const char* name) {
-        const auto path = find_game_file(dir, name);
-        std::error_code ec;
-        return path && fs::is_regular_file(*path, ec);
-    });
+std::shared_ptr<const GameSource> amiga_source(AmigaFiles files, const fs::path& where) {
+    return std::make_shared<const AmigaGameSource>(std::move(files), where.string());
 }
 
-std::string lower(std::string s) {
-    for (char& c : s) c = char(std::tolower(static_cast<unsigned char>(c)));
-    return s;
-}
-
-// The files of a disk image's Battletech folder, by their names there.
-std::map<std::string, std::vector<std::uint8_t>> amiga_disk_files(const fs::path& image) {
+std::shared_ptr<const GameSource> open_image(const fs::path& image) {
     std::error_code ec;
     const auto size = fs::file_size(image, ec);
     if (ec || disk_kind_by_size(size) != DiskKind::Adf)
         throw FormatError(image.string() + " is not a folder or an Amiga disk image (.adf)");
-    std::map<std::string, std::vector<std::uint8_t>> files;
-    const std::string folder = lower(kAmigaFolder) + "/";
-    for (auto& f : read_adf(read_file(image))) {
-        const std::string path = lower(f.path);
-        if (path.compare(0, folder.size(), folder) == 0 && path.find('/', folder.size()) == std::string::npos)
-            files[path.substr(folder.size())] = std::move(f.data);
-    }
-    for (const char* name : kAmigaFiles)
-        if (!files.contains(name))
-            throw FormatError("the disk image " + image.string() + " is not the Amiga game's: it has no " +
-                              std::string(kAmigaFolder) + "/" + name);
-    return files;
+    auto files = amiga_disk_files(read_file(image));
+    if (files.empty())
+        throw FormatError("the disk image " + image.string() + " is not the Amiga game's: it has no Battletech/" +
+                          std::string(kAmigaTellingFiles[0]) + ", " + std::string(kAmigaTellingFiles[1]) + " and " +
+                          std::string(kAmigaTellingFiles[2]));
+    return amiga_source(std::move(files), image);
 }
 
 }  // namespace
 
 std::shared_ptr<const GameSource> open_game_source(const fs::path& copy) {
     std::error_code ec;
-    if (fs::is_regular_file(copy, ec)) return std::make_shared<const AmigaGameSource>(amiga_disk_files(copy), copy.string());
+    if (fs::is_regular_file(copy, ec)) return open_image(copy);
     if (fs::is_directory(copy, ec) && !find_game_file(copy, "BTECH.EXE")) {
-        if (is_amiga_folder(copy)) return std::make_shared<const AmigaGameSource>(AmigaGameSource::from_folder(copy));
-        for (const auto& entry : fs::directory_iterator(copy, ec))
-            if (entry.is_directory(ec) && lower(entry.path().filename().string()) == lower(kAmigaFolder) &&
-                is_amiga_folder(entry.path()))
-                return std::make_shared<const AmigaGameSource>(AmigaGameSource::from_folder(entry.path()));
+        if (const auto folder = amiga_folder(copy))
+            return std::make_shared<const AmigaGameSource>(AmigaGameSource::from_folder(*folder));
+        auto images = amiga_images_in(copy);
+        for (const auto& image : images)
+            if (image.files != images.front().files) {
+                std::string names;
+                for (const auto& i : images) names += (names.empty() ? "" : ", ") + i.path.filename().string();
+                throw FormatError("there are different copies of the Amiga game in " + copy.string() + " (" + names +
+                                  "): name the disk image to play");
+            }
+        if (!images.empty()) return amiga_source(std::move(images.front().files), images.front().path);
     }
     return std::make_shared<const DosGameSource>(copy);
 }

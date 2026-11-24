@@ -36,8 +36,9 @@ inline constexpr const char* kSettingsFile = "settings.ini";
 inline constexpr const char* kInstallMarker = "inception-install.txt";
 // The game is under 2 MB: a pick holding far more (a Games folder, a drive's top) is refused before copying.
 inline constexpr std::uint64_t kMaxGameBytes = std::uint64_t(64) << 20;
-// The version the rebuild reads (formats/exe_data.h, kSupportedVersion).
+// The versions the rebuild plays (formats/exe_data.h, kSupportedVersion; formats/amiga_program_data.h).
 inline constexpr const char* kVersion = "DOS 1.03";
+inline constexpr const char* kAmigaVersion = "Amiga 2.3";
 
 // The per-user folder for (organisation, application), ending in a separator,
 // as SDL_GetPrefPath names it (%APPDATA%, ~/Library/Application Support,
@@ -80,11 +81,18 @@ Settled settle_user_folder(const std::string& folder);
 // (formats/exe_data.h), else "".
 std::string btech_version(const std::vector<std::uint8_t>& bytes);
 
-// What the kit's walk looks for: BTECH.EXE judged by its version, and
+// What the kit's walk looks for: BTECH.EXE judged by its version, the Amiga's
+// program `battletech` (its files in a folder, or in an archive), and
 // MAP1.MTP, which only this game has (MechWarrior 1's BTECH.EXE shares the
 // name), so a copy of another version is still found as this game. A pick of
 // BTECH.EXE stands for its folder.
 rekit::SourceRules rules();
+// The Amiga copy on a disk image in `path`, which the kit's walk can't read
+// (choose_amiga_copy): a find for install(), or kNothing. `note` (may be
+// null) gets what there is to say about the choice.
+rekit::Found find_amiga(const std::string& path, std::string* note = nullptr);
+// The find of `path`: the kit's, else find_amiga's.
+rekit::Found find_game(const std::string& path, std::string* note = nullptr);
 // Where a DOS game's copy is usually kept: no installer, so no registry; the
 // usual folder names under the system drive, the home folder and any Wine
 // prefix, and a folder dropped beside the program.
@@ -92,17 +100,21 @@ rekit::SearchHints hints();
 
 struct Check {
     rekit::Status::State state = rekit::Status::kMissing;
-    std::string version;               // kVersion, or "" for another version
+    std::string version;               // kVersion, kAmigaVersion, or "" for another version
     std::vector<std::string> missing;  // kIncomplete: in plain words
     std::string why;                   // kMissing: why this folder is not the game
 };
 // Whether `dir` is the game: BTECH.EXE of kVersion and every data file is
 // ready; another BTECH.EXE beside MAP1.MTP, or data files missing, is
-// incomplete; anything else is missing.
+// incomplete. Without BTECH.EXE, an Amiga copy as open_game_source takes it
+// (a folder of its files, a folder with a disk image, the disk image itself)
+// is ready when its program is one the importer reads and its files are all
+// there. Anything else is missing.
 Check check_install(const std::string& dir);
 
-// `dir` when it holds BTECH.EXE, else the first folder under it, `depth`
-// levels down at most (shallowest first, names sorted); "" when none.
+// `dir` when it holds BTECH.EXE or the Amiga's files, else the first folder
+// under it, `depth` levels down at most (shallowest first, names sorted); ""
+// when none.
 std::string game_in(const std::string& dir, int depth = 2);
 
 // The game folder a start uses: the first of `known` (the remembered one,
@@ -124,7 +136,8 @@ bool remember_folder(const std::string& user, const std::string& dir);
 
 // Installing what the kit's walk found into `out_dir`: a folder on disk
 // copied (rekit::copy_folder), an archive's game folder unpacked in one
-// forward read; staged in `out_dir`.new and swapped in
+// forward read, an Amiga disk image's game files (find_amiga) written out;
+// staged in `out_dir`.new and swapped in
 // (rekit::swap_in_folder), so a failure or a cancel leaves nothing and
 // `out_dir` is replaced only when our install made it. The player's original
 // (folder or archive) is only read, never moved or deleted.

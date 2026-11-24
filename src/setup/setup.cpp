@@ -1,8 +1,12 @@
 #include "setup/setup.h"
 #include "setup/versions.h"
 
+#include "formats/amiga_disk.h"
+#include "formats/amiga_program.h"
+#include "formats/amiga_program_data.h"
 #include "formats/bld.h"
 #include "formats/exe_data.h"
+#include "formats/open_source.h"
 
 #include <rekit/archive.h>
 #include <rekit/family_folder.h>
@@ -15,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <span>
 
 namespace fs = std::filesystem;
@@ -84,6 +89,14 @@ bool under_root(const std::string& entry, const std::string& root, std::string* 
     return !rel->empty();
 }
 
+// The line for --status naming the data files that are absent.
+std::string files_missing(const std::vector<std::string>& absent) {
+    std::string list;
+    for (std::size_t i = 0; i < absent.size() && i < 4; ++i) list += (i ? ", " : "") + absent[i];
+    if (absent.size() > 4) list += " and " + std::to_string(absent.size() - 4) + " more";
+    return std::to_string(absent.size()) + " of the game's data files (" + list + ")";
+}
+
 // The data files the rebuild reads besides BTECH.EXE (docs/original.md):
 // $VERIFY.EXE is the original's own check and is not needed.
 std::vector<std::string> data_files() {
@@ -96,6 +109,36 @@ std::vector<std::string> data_files() {
                              "MECHSHAP.CMP", "TINYLAND.CMP", "WWOODBT.SIF", "DEMOFILE"})
         names.push_back(name);
     return names;
+}
+
+// find_amiga's mark on its finds (Found::label).
+constexpr const char* kAmigaDisk = "Amiga disk image";
+
+// check_install for a copy without BTECH.EXE.
+Check check_amiga(const std::string& dir) {
+    Check c;
+    std::error_code ec;
+    if (is_dir(dir) && !formats::amiga_folder(dir) && formats::amiga_images_in(dir).empty()) return c.why = "no BTECH.EXE", c;
+    try {
+        const auto source = formats::open_game_source(dir);
+        if (source->program_name() != formats::kAmigaProgramName) return c.why = "no BTECH.EXE", c;
+        source->program();
+    } catch (const std::exception& e) {
+        return c.why = e.what(), c;
+    }
+    c.version = kAmigaVersion;
+    std::vector<std::string> absent;
+    if (const auto folder = is_dir(dir) ? formats::amiga_folder(dir) : std::nullopt) {
+        for (const auto name : formats::kAmigaFiles)
+            if (any_case(folder->string(), std::string(name)).empty()) absent.emplace_back(name);
+    } else {
+        const auto images = is_dir(dir) ? formats::amiga_images_in(dir) : std::vector<formats::AmigaImage>{};
+        absent = formats::amiga_files_missing(!images.empty() ? images.front().files
+                                                              : formats::amiga_disk_files(read_start(dir, 2u << 20)));
+    }
+    if (!absent.empty()) c.missing.push_back(files_missing(absent));
+    c.state = c.missing.empty() ? rekit::Status::kReady : rekit::Status::kIncomplete;
+    return c;
 }
 
 }  // namespace
@@ -187,10 +230,27 @@ rekit::SourceRules rules() {
             id.why = "BTECH.EXE (" + std::to_string(bytes.size()) + " bytes) is not " + std::string(kVersion);
             return id;
         }
-        id.game = kId, id.version = kVersion, id.rank = 2;
+        id.game = kId, id.version = kVersion, id.rank = 3;
         return id;
     };
     r.clues.push_back(std::move(btech));
+    // The Amiga's files, in a folder of their own or the disk's Battletech folder.
+    for (const char* path : {"battletech/battletech", "battletech"}) {
+        rekit::Clue amiga;
+        amiga.kind = rekit::Clue::kInstall;
+        amiga.path = path;
+        amiga.limit = 1u << 20;
+        amiga.judge = [](const std::vector<std::uint8_t>& bytes) {
+            rekit::Identity id;
+            try {
+                formats::AmigaProgram program{std::span<const std::uint8_t>(bytes)};
+                id.game = kId, id.version = kAmigaVersion, id.rank = 2;
+            } catch (const std::exception&) {
+            }
+            return id;
+        };
+        r.clues.push_back(std::move(amiga));
+    }
     // Another version's copy: found by its first map, ranked below a known BTECH.EXE.
     rekit::Clue map;
     map.kind = rekit::Clue::kInstall;
@@ -205,6 +265,25 @@ rekit::SourceRules rules() {
     r.clues.push_back(std::move(map));
     r.programs = {"btech.exe"};
     return r;
+}
+
+rekit::Found find_amiga(const std::string& path, std::string* note) {
+    rekit::Found f;
+    f.path = path;
+    AmigaChoice choice = choose_amiga_copy(path);
+    if (note) *note = choice.note;
+    if (!choice.copy) return f;
+    f.kind = rekit::Found::kInstall, f.game = kId, f.version = kAmigaVersion, f.rank = 2;
+    f.label = kAmigaDisk, f.data_track = choice.copy->where;
+    return f;
+}
+
+rekit::Found find_game(const std::string& path, std::string* note) {
+    if (note) note->clear();
+    rekit::Found f = rekit::find_source(path, rules());
+    if (f.kind != rekit::Found::kNothing || f.cancelled) return f;
+    rekit::Found amiga = find_amiga(path, note);
+    return amiga.kind == rekit::Found::kNothing ? f : amiga;
 }
 
 rekit::SearchHints hints() {
@@ -223,9 +302,13 @@ rekit::SearchHints hints() {
 
 Check check_install(const std::string& dir) {
     Check c;
-    if (!is_dir(dir)) return c.why = "no such folder", c;
+    std::error_code ec;
+    if (!is_dir(dir)) {
+        if (fs::is_regular_file(dir, ec)) return check_amiga(dir);
+        return c.why = "no such folder", c;
+    }
     const std::string btech = any_case(dir, "BTECH.EXE");
-    if (btech.empty()) return c.why = "no BTECH.EXE", c;
+    if (btech.empty()) return check_amiga(dir);
     c.version = btech_version(read_start(btech, 1u << 20));
     if (c.version.empty()) {
         if (any_case(dir, "MAP1.MTP").empty()) return c.why = "BTECH.EXE is not this game's", c;
@@ -234,12 +317,7 @@ Check check_install(const std::string& dir) {
     std::vector<std::string> absent;
     for (const auto& name : data_files())
         if (any_case(dir, name).empty()) absent.push_back(name);
-    if (!absent.empty()) {
-        std::string list;
-        for (std::size_t i = 0; i < absent.size() && i < 4; ++i) list += (i ? ", " : "") + absent[i];
-        if (absent.size() > 4) list += " and " + std::to_string(absent.size() - 4) + " more";
-        c.missing.push_back(std::to_string(absent.size()) + " of the game's data files (" + list + ")");
-    }
+    if (!absent.empty()) c.missing.push_back(files_missing(absent));
     c.state = c.missing.empty() ? rekit::Status::kReady : rekit::Status::kIncomplete;
     return c;
 }
@@ -250,15 +328,20 @@ std::string game_in(const std::string& dir, int depth) {
     for (int d = 0; d <= depth && !level.empty(); ++d) {
         std::vector<std::string> next;
         for (const std::string& f : level) {
-            if (!any_case(f, "BTECH.EXE").empty()) return f;
-            if (d == depth) continue;
             std::error_code ec;
             std::vector<std::string> subs;
+            std::set<std::string> names;  // listed once: the search looks into many folders
             for (fs::directory_iterator it(f, fs::directory_options::skip_permission_denied, ec), end;
                  !ec && it != end; it.increment(ec)) {
                 std::error_code e2;
-                if (it->is_directory(e2) && !it->is_symlink(e2)) subs.push_back(it->path().string());
+                names.insert(lower(it->path().filename().string()));
+                if (d < depth && it->is_directory(e2) && !it->is_symlink(e2)) subs.push_back(it->path().string());
             }
+            if (names.contains("btech.exe")) return f;
+            if (std::all_of(formats::kAmigaTellingFiles.begin(), formats::kAmigaTellingFiles.end(),
+                            [&](std::string_view name) { return names.contains(std::string(name)); }) &&
+                formats::amiga_folder(f))
+                return f;
             std::sort(subs.begin(), subs.end());
             next.insert(next.end(), subs.begin(), subs.end());
         }
@@ -297,15 +380,24 @@ rekit::Status status(const std::vector<std::string>& known, const std::string& u
     if (!found.empty()) {
         const Check c = check_install(found);
         st.where = found, st.data = c.version, st.state = c.state, st.missing = c.missing;
-        if (c.version.empty()) st.note = "this copy's BTECH.EXE is another version; the rebuild needs " + std::string(kVersion);
+        if (c.version.empty())
+            st.note = "this copy's BTECH.EXE is another version; the rebuild needs " + std::string(kVersion) + " or " + kAmigaVersion;
         else if (searched) st.note = "found by the search, not set up yet";
         return st;
     }
-    // Another version's copy (an Amiga, C64 or Apple II one) where the player said: named, not played yet.
+    // Another version's copy where the player said: named, not played yet.
     for (const auto& k : known) {
         std::error_code ec;
         OtherCopy other;
-        if (k.empty() || !fs::exists(k, ec) || !find_other_copy(k, &other)) continue;
+        if (k.empty() || !fs::exists(k, ec)) continue;
+        // An Amiga copy a start can't play from there (in an archive, or several): the setup takes it.
+        if (const AmigaChoice amiga = choose_amiga_copy(k); amiga.copy || !amiga.note.empty()) {
+            st.where = k, st.data = kAmigaVersion, st.state = rekit::Status::kIncomplete;
+            st.missing.push_back("the setup: it copies the game out of there");
+            st.note = amiga.note.empty() ? "the Amiga version was found, not set up yet" : amiga.note;
+            break;
+        }
+        if (!find_other_copy(k, &other)) continue;
         st.where = k, st.data = other.label(), st.state = rekit::Status::kIncomplete;
         st.missing = other.missing();
         st.missing.push_back("the rebuild's support for " + other.name());
@@ -377,7 +469,28 @@ Installed install(const rekit::Found& found, const std::string& out_dir, const P
     }
     fs::create_directories(dest.parent_path(), ec);
 
-    if (found.on_disk && found.steps.empty()) {
+    if (found.label == kAmigaDisk) {
+        // On a disk image: its game files written out, and nothing else that is on the disk.
+        const AmigaChoice choice = choose_amiga_copy(found.path);
+        if (!choice.copy || choice.copy->where != found.data_track)
+            return fail("Could not find " + found.data_track + " again in " + found.path + ".");
+        fs::create_directories(tmp, ec);
+        if (ec) return fail("Could not make " + tmp.string() + ": " + ec.message() + ".");
+        std::ofstream(tmp / kInstallMarker) << "Copied from " << choice.copy->where << " by the setup (" << found.path
+                                            << " was left as it was).\n";
+        std::string why;
+        for (const auto& [name, bytes] : choice.copy->files) {
+            std::ofstream f(tmp / name, std::ios::binary);
+            f.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+            if (!f) why = "Could not write " + (tmp / name).string() + ".";
+            ++r.files, r.bytes += bytes.size();
+            if (why.empty() && progress && !progress(double(r.files) / double(choice.copy->files.size()), name))
+                r.cancelled = true, why = "Stopped. Nothing was copied.";
+            if (why.empty()) continue;
+            fs::remove_all(tmp, ec);  // ours: made above with the marker
+            return fail(why);
+        }
+    } else if (found.on_disk && found.steps.empty()) {
         // An installed copy in a folder: copied, never moved.
         const std::string from = (fs::path(found.path) / found.root).lexically_normal().string();
         const std::string src = is_dir(from) ? from : fs::path(from).parent_path().string();
@@ -463,7 +576,7 @@ Installed install(const rekit::Found& found, const std::string& out_dir, const P
     }
     if (check_install(tmp.string()).state == rekit::Status::kMissing) {
         fs::remove_all(tmp, ec);
-        return fail("The copy has no BTECH.EXE of this game: nothing was changed.");
+        return fail("The copy is not a version of the game the rebuild plays: nothing was changed.");
     }
     if (!rekit::swap_in_folder(tmp.string(), dest.string(), kInstallMarker, ec)) {
         const std::string why = ec.message();

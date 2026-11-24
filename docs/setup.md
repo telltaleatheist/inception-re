@@ -58,22 +58,41 @@ with a message. On macOS these runs are background apps
 
 ## What counts as the game
 
-The walk looks for two clues:
+The walk looks for three clues:
 
 - `BTECH.EXE`, judged by the importer's own check (docs/import.md, "How it
   reads the program"). The layout and every imported piece must match DOS
   1.03. MechWarrior 1's program has the same name, so a name match alone
   means nothing.
+- The Amiga's program `battletech`, alone or in a folder `Battletech`, judged
+  by the Amiga reader (docs/formats/amiga.md). It ranks below DOS's.
 - `MAP1.MTP`, which only this game has. This lets a copy of another version
   still be found as this game, ranked below a known `BTECH.EXE`.
+
+The kit's walk can't read a disk image. `find_amiga` (`setup.h`) looks for the
+Amiga's disk in what was picked: an .adf, a folder, or archives up to four
+deep (a download can be a zip of zips). Images with the same game files are
+one copy. Of several different copies the setup takes the plain build and says
+which it took; without a plain one it takes none and names them. The install
+writes out the game's 18 files and nothing else on the disk, so no saved game
+of whoever had it before.
+
+The setup screen can't offer such a find yet: the kit has no hook for a copy
+its own walk doesn't see. The screen names the copy instead. `--setup` with
+`CHR_SETUP_PICK` installs it, and `--game-dir` plays an .adf where it is.
 
 A folder is:
 
 - **ready** when its `BTECH.EXE` is DOS 1.03 and every data file the
   rebuild reads is there: the 26 `.BLD`, 15 `.MTP`, 22 `.ANM`, 5 `.ICN` and
   7 `.CMP` files, `WWOODBT.SIF` and `DEMOFILE`. `$VERIFY.EXE` is not needed.
+  Without a `BTECH.EXE`, also when it is an Amiga copy (docs/import.md, "Which
+  source a copy is") whose program the importer reads and whose 18 files are
+  all there. An .adf itself counts the same way.
 - **incomplete** when its `BTECH.EXE` is another version (beside `MAP1.MTP`)
-  or when data files are missing. The launcher's PLAY stays on.
+  or when data files are missing. The launcher's PLAY stays on. An Amiga copy
+  in an archive, or several different ones in a folder, is incomplete too: a
+  start can't play it there, and the setup takes it.
 - **missing** otherwise.
 
 The search looks in the usual folder names for a DOS game under the system
@@ -86,8 +105,8 @@ and in a folder dropped beside the program.
   `version`, `files.state`, `files.where`, `files.data`, the missing files and
   a note) and exits 0. It makes and writes nothing (it works out the player's
   folder from the environment, as SDL would name it) and opens no window.
-  With another version's `BTECH.EXE`, the note says that the rebuild needs
-  DOS 1.03.
+  With another version's `BTECH.EXE`, the note says which versions the
+  rebuild needs.
 - `chr --setup` opens the setup screen whatever is found, plays nothing, and
   exits 0 (ready), 1 (cancelled) or 2 (failed, with `{"error": ...}` on
   stdout).
@@ -102,12 +121,15 @@ and in a folder dropped beside the program.
   nothing, and installs refusing a folder that isn't ours. Given the game
   folder, it also installs from a folder and from a zip built in the work
   folder, where an entry that climbs out of the game's folder is left out.
+  `CHR_AMIGA_COPY`, when set, names an Amiga copy (an .adf, or a folder or
+  archive with one) for the Amiga's parts.
 - `status_setup` (`tests/status_setup_test.py`) runs the built program with a
   made-up home, its own player folders and SDL's dummy drivers. It covers
   `--status`, `--setup` hidden and through the kit's screen (driven by its
   `REKIT_SETUP_*` hooks), `CHR_SETUP_PICK` (a test's stand-in for the
   player's pick), a start playing from the remembered folder, another
   version's `--status`, and the screen's CHANGE FOLDER with its
-  `game=chi` mark.
+  `game=chi` mark. With `--amiga` or `CHR_AMIGA_COPY`, it also installs that
+  copy, imports it and draws a frame from it.
 
 Both remove their work folders. They print names and counts only.

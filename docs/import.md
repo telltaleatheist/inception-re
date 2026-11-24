@@ -89,8 +89,10 @@ program it came from. The addresses in the rules and tables files stay DOS's. Th
 Which source a copy is, `open_game_source` decides by what is there (src/formats/open_source.h): a
 folder with BTECH.EXE is the DOS copy, whatever else it holds; a folder with the Amiga's
 battletech, builds.bld and maps, or with a folder Battletech that has them, or an .adf of the
-game's disk, is an Amiga copy; anything else is tried as DOS, so what is missing is named. The
-setup (docs/setup.md) does not offer an Amiga copy yet; `--game-dir` takes one.
+game's disk, is an Amiga copy; so is a folder holding such .adf files. Other disks there are
+passed over, and several .adf with the same game files are one copy; if they hold different
+copies, the import stops and names them. Anything else is tried as DOS, so what is missing is
+named. An archive is not opened here: the setup takes one (docs/setup.md).
 
 ## Overrides
 

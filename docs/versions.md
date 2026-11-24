@@ -88,16 +88,34 @@ the same as DOS. So the maps fill fully. The program finds each map by a table o
 offsets (docs/formats/amiga.md, "The maps").
 
 **Dialogue and text.** The interface text is in the program file, uncompressed: 145 of the
-151 interface texts in data/text/interface.json appear in `battletech` letter for letter.
-The other six are to be found (worded differently or built from pieces). The place scripts'
+151 interface texts in data/text/interface.json appear in `battletech` letter for letter, and
+the rest are there in pieces or with another case (docs/formats/amiga.md, "The texts"). The place scripts'
 dialogue is in `builds.bld` (docs/formats/amiga.md): DOS's scripts, enciphered the same way,
 with their text packed in letter pairs from two tables in the program. Laid out again in DOS
-form they are DOS's scripts, every text the same, apart from the two differences under
-"Amiga rules" below. So the Amiga fills every place text ID.
+form they are DOS's scripts (after the edits under "Amiga rules" below), every text the same but for
+three colours. So the Amiga fills every place text ID.
+
+**Every text that differs from DOS's** once imported. All nine have DOS's length and letters, and
+differ in one thing: the colour number after a foreground colour code (0x06, docs/text.md), once
+each, or twice in the two mayor texts. They keep the colour the Amiga has (its number turned into
+DOS's, docs/formats/amiga.md "Colours"), as the look follows the copy. None comes from a layout
+difference, and since the code takes no cell, no line break and no wait changes.
+
+| Text ID | Colour in DOS | Colour in the Amiga, as DOS's number | Why |
+|---|---|---|---|
+| bld.citadel.0e71 | 14 | 7 | the Amiga's script has DOS's number 14, which is another colour there |
+| bld.mayor.0309 | 14, twice | 7, twice | the same |
+| bld.mayor.0550 | 14, twice | 7, twice | the same |
+| crew.pilot_label | 2 | 10 | the Amiga program's own colour |
+| crew.rider_label | 2 | 10 | the same |
+| shot.mech_hit | 13 | 4 | the same |
+| shot.person_hit | 13 | 4 | the same |
+| ui.answer_no_picked | 0 | 13 | the same |
+| ui.answer_yes_picked | 0 | 13 | the same |
 
 **Tables, font, palettes, sound sequences.** In the program's data hunk, as in BTECH.EXE's
 data segment. The 68000 program gets its own version-checked span table, like
-formats::OriginalExe, mapping each DOS span ID to its Amiga address. Not read yet.
+formats::OriginalExe, mapping each DOS span ID to its Amiga address (docs/formats/amiga.md).
 
 **Saved games.** `Game1`–`Game6` on the [a] to [h SSC] disks are players' saves (the plain
 disk has none). Each is 3,929 bytes, 16 more than a DOS save (docs/formats/save.md), with the
@@ -113,16 +131,15 @@ same first-byte mark; the extra 16 bytes are not read yet.
   small extra files on [h Madwand], a longer start-up script with a text file on
   [h SSC], a directory cache on [a2], and different icons.
 
-So one data layout serves every Amiga copy; the program file needs a span table for each of
-its three builds (or only the five-disk build, with the other two recognised and reported).
+So one data layout serves every Amiga copy, and one span table its three programs: the changed
+bytes of the other two are in none of the spans.
 
 **What the Amiga can fill.** Maps: all. Pictures and tile sheets: all twelve, in the Amiga's
-own colours and, for the title and the town tiles, the Amiga's own art. Interface text: at
-least 145 of 151 directly. Place scripts and their dialogue: all 26, every text (above).
+own colours and, for the title and the town tiles, the Amiga's own art. Interface text:
+every ID. Place scripts and their dialogue: all 26, every text (above).
 Place pictures, the demo, the palettes and the tables: all read (docs/formats/amiga.md) but the
-sound tables. The font: not in the copy
-(docs/formats/amiga.md). Sound: the Amiga's
-own samples, an option beside the DOS speaker sound.
+speaker's sound tables, which it hasn't got: it has recorded sounds. The font: not in the copy,
+so the rebuild's own is used (docs/formats/font.md).
 
 ## Amiga rules
 
@@ -299,11 +316,12 @@ as changed from the copies we know. A version with a disk missing is named with 
 it lacks: the archive's Apple II item is disk 1 alone, so a player with only that file is
 told disk 2 of 2 is missing.
 
-Until a version plays, `--status` answers `incomplete` for it, with `data` naming it ("Amiga
-2.3"), `missing` listing the missing disks and the rebuild's support for that version, and a
-one-line note. The setup says the same instead of "no copy found", both for a scripted pick
-and on the setup screen (the kit's `recognise` hook, which the kit calls only when its own walk
-finds no copy). The DOS copy, in a folder or a zip, is recognised as before, by its BTECH.EXE.
+DOS 1.03 and Amiga 2.3 play (docs/setup.md, "What counts as the game"). For the others `--status`
+answers `incomplete` for it, with `data` naming it ("Commodore 64"), `missing` listing the missing
+disks and the rebuild's support for that version, and a one-line note. The setup says the same
+instead of "no copy found", both for a scripted pick and on the setup screen (the kit's
+`recognise` hook, which the kit calls only when its own walk finds no copy). The DOS copy, in a
+folder or a zip, is recognised as before, by its BTECH.EXE.
 
 The checks can't use the real table without the real disks, so `CHR_EXTRA_KNOWN_DISKS` may
 name a file of extra entries, one disk a line (`src/setup/versions.h`); the status and setup
@@ -345,9 +363,5 @@ check makes up a C64 disk image and lists it there.
 
 ## Next
 
-1. Container readers for nested zips, ADF/OFS, D64 and RDOS DSK, and a known-versions table
-   that recognises each copy and variant by its files' sizes and hashes, so `--status` and
-   `--setup` name it (and say it can't be played yet).
-2. The Amiga import: the pictures and tiles (understood), the maps (understood), the 68000
-   program's span table, then `animation.anm`, `builds.bld`, `demofile` and `snd`.
-3. The C64, then the Apple II: their containers are understood; their encodings are next.
+1. The setup screen offering an Amiga disk image (docs/setup.md).
+2. The C64, then the Apple II: their containers are understood; their encodings are next.

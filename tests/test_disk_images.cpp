@@ -264,10 +264,26 @@ TEST(a_copy_opens_by_what_it_holds) {
     disk.file(folder, 0, "battletech", junk);
     disk.file(folder, 1, "builds.bld", junk);
     put_file(dir / "part.adf", disk.d);
-    CHECK(opened_as(dir / "part.adf").find("Battletech/maps") != std::string::npos);
+    CHECK(opened_as(dir / "part.adf").find("is not the Amiga game's") != std::string::npos);
     disk.file(folder, 2, "maps", junk);
     put_file(dir / "whole.adf", disk.d);
     CHECK(opened_as(dir / "whole.adf") == files);
+
+    // A folder with disk images: other disks are passed over, the same copy twice is one copy,
+    // different ones are refused by name.
+    put_file(dir / "images" / "1.adf", disk.d);
+    put_file(dir / "images" / "0-other.adf", Bytes(disk.d.size(), 0));
+    put_file(dir / "images" / "readme.txt", junk);
+    CHECK(opened_as(dir / "images") == files);
+    put_file(dir / "images" / "2.adf", disk.d);
+    CHECK(opened_as(dir / "images") == files);
+    Adf changed;
+    const auto changed_folder = changed.folder(880, 0, "Battletech");
+    changed.file(changed_folder, 0, "battletech", junk);
+    changed.file(changed_folder, 1, "builds.bld", junk);
+    changed.file(changed_folder, 2, "maps", pattern(64, 2));
+    put_file(dir / "images" / "3.adf", changed.d);
+    CHECK(opened_as(dir / "images").find("1.adf, 2.adf, 3.adf") != std::string::npos);
 
     put_file(dir / "some.txt", junk);
     CHECK(opened_as(dir / "some.txt").find("not a folder or an Amiga disk image") != std::string::npos);

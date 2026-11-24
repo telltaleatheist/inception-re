@@ -6,8 +6,11 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
+
+#include "formats/amiga_disk.h"
 
 namespace chr::setup {
 
@@ -76,5 +79,23 @@ std::vector<OtherCopy> recognise(const std::vector<SeenFile>& seen, const std::v
 // seen_files then recognise, against known_disks() and extra_known_disks(): the best find (most
 // disks, then the Amiga first), or none.
 bool find_other_copy(const std::string& path, OtherCopy* out, std::string* detail = nullptr);
+
+// An Amiga copy the rebuild plays, on a disk image anywhere in what was picked.
+struct AmigaCopy {
+    std::string where;    // the image, with the archives it is in ("a.zip/b.zip/c.adf")
+    std::string variant;  // as KnownDisk::Variant::label, "unknown" for one we don't know
+    formats::AmigaFiles files;
+};
+
+struct AmigaChoice {
+    std::optional<AmigaCopy> copy;
+    // Which was taken when there are several, or why none was; "" when there is nothing to say.
+    std::string note;
+};
+
+// The Amiga copy in `path` (a folder, an archive at any depth, a disk image). Images with the
+// same game files are one copy. Of several different copies the plain build is taken, and `note`
+// says so; without it none is, and `note` names them.
+AmigaChoice choose_amiga_copy(const std::string& path);
 
 }  // namespace chr::setup
