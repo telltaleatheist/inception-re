@@ -2,9 +2,17 @@ name: package check
 # Builds and smoke-tests the packages (tools/build_package.py,
 # docs/RELEASING.md) on each platform, with no game files: --help and
 # --status from the packaged program. Uploads the results as workflow
-# artifacts only, to look at. Nothing here tags, releases or publishes.
+# artifacts only. Nothing here tags, releases or publishes: a release's
+# packages are made by dispatching it with the tag as the label, then
+# published by hand (docs/RELEASING.md).
 on:
   workflow_dispatch:
+    inputs:
+      label:
+        description: "The packages' label: empty for <run number>-test, a release tag chi-vX.Y.Z, or a name ending -test"
+        required: false
+        default: ''
+        type: string
   push:
     branches: [main]
     paths:
@@ -16,17 +24,27 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: package-check-${{ github.ref }}
+  # A labelled run (a release's) is never cancelled by a push's run.
+  group: package-check-${{ github.ref }}-${{ inputs.label }}
   cancel-in-progress: true
 env:
   # SDL 3.4.12, as docs/RELEASING.md pins it.
   SDL_COMMIT: f87239e71e42da91ca317a12eefb82cfbf3393eb
-  LABEL: ${{ github.run_number }}-test
+  # The input reaches the jobs only as this variable, never inside a script.
+  LABEL: ${{ inputs.label || format('{0}-test', github.run_number) }}
 jobs:
   linux:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
+      - name: The label is a release tag or a test's
+        shell: bash
+        run: |
+          if [[ ! "$LABEL" =~ ^chi-v[0-9]+\.[0-9]+\.[0-9]+$ && ! "$LABEL" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*-test$ ]]; then
+            echo "::error::The label must be chi-vX.Y.Z or end in -test"
+            exit 1
+          fi
+          echo "label: $LABEL"
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -83,6 +101,14 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 50
     steps:
+      - name: The label is a release tag or a test's
+        shell: bash
+        run: |
+          if [[ ! "$LABEL" =~ ^chi-v[0-9]+\.[0-9]+\.[0-9]+$ && ! "$LABEL" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*-test$ ]]; then
+            echo "::error::The label must be chi-vX.Y.Z or end in -test"
+            exit 1
+          fi
+          echo "label: $LABEL"
       - uses: actions/checkout@v4
         with:
           submodules: true
@@ -120,6 +146,14 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 50
     steps:
+      - name: The label is a release tag or a test's
+        shell: bash
+        run: |
+          if [[ ! "$LABEL" =~ ^chi-v[0-9]+\.[0-9]+\.[0-9]+$ && ! "$LABEL" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*-test$ ]]; then
+            echo "::error::The label must be chi-vX.Y.Z or end in -test"
+            exit 1
+          fi
+          echo "label: $LABEL"
       - uses: actions/checkout@v4
         with:
           submodules: true

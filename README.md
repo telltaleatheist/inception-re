@@ -10,7 +10,11 @@ exactly what it does, then write our own code that does the same thing. The
 aim is for the rebuild to play as the original did, and for its source and
 notes to document how the original worked, for preservation and research.
 
-**Status:** just started. Nothing is playable yet.
+**Status:** an early first release, chi-v0.1.0, is out for Windows, macOS
+and Linux on the [Releases page](https://github.com/telltaleatheist/inception-re/releases).
+It is checked against the original game, but more playtesting is still to
+come. You need your own copy of the DOS version 1.03 (below); the first start
+finds it or asks you where it is.
 
 ## You need your own copy of the game
 

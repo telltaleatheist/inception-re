@@ -1,10 +1,12 @@
 # Building a package
 
-Nothing publishes from this repository. A release (a preview included) is
-made only when the project decides to. Until then, no `chi-v` tag and no
-GitHub release are made. `tools/build_package.py` builds and checks a package
-on the machine it runs on, and a person publishes it. Releases go to GitHub
-only, with `SHA256SUMS` (DEPLOY.md has the family's repos).
+A release is made only when the project owner clears it, and it is made by
+hand: nothing in this repository tags or publishes on its own.
+`tools/build_package.py` builds and checks a package on the machine it runs
+on, and the package check workflow runs it on all three platforms. Releases
+go to this repository's GitHub Releases page only, with `SHA256SUMS`
+(DEPLOY.md has the family's repos). "Making a release", below, has the
+steps.
 
 ## What a package holds
 
@@ -140,9 +142,37 @@ Each job runs the unit tests, builds the static archive libraries from their
 pinned sources, then packages and smoke-tests with SDL at its pinned commit.
 The jobs have no game folder, so their smoke test is `--help` and
 `--status`. They upload their files as workflow artifacts
-(`package-check-linux`, `-windows`, `-mac`) and nothing else: no tag, no
-release, no secret beyond the default read-only token. Their label is the
-run's number with `-test`.
+(`package-check-linux`, `-windows`, `-mac`, kept 7 days) and nothing else:
+no tag, no release, no secret beyond the default read-only token. Their
+label is the run's number with `-test`. A run started by hand may be given
+one (`label`), which must be a release tag, `chi-vX.Y.Z`, or end in `-test`,
+or every job stops at once. A labelled run has its own concurrency group, so
+a push to main doesn't cancel it.
+
+## Making a release
+
+1. Choose the version, `chi-vX.Y.Z`, and the commit on main to release.
+   Write its notes in `docs/release-notes/chi-vX.Y.Z.md`.
+2. Run the package check by hand on main with the tag as its label:
+
+       gh workflow run "package check" --ref main -f label=chi-vX.Y.Z
+
+   and wait until all three jobs pass. Note the commit it ran on.
+3. Download its three artifacts into one empty folder
+   (`gh run download <run id>`), and check each file against its `.sha256`.
+4. Write `SHA256SUMS` over the packages:
+   `python3 -I tools/package/sums.py <folder>`.
+5. Tag the commit the run built `chi-vX.Y.Z`, and push the tag.
+6. Publish the release:
+
+       gh release create chi-vX.Y.Z --verify-tag --title "Inception Rebuild X.Y.Z" \
+         --notes-file docs/release-notes/chi-vX.Y.Z.md <every package> SHA256SUMS
+
+   Not a draft and not a prerelease: the launcher takes only a published,
+   full release, and installs nothing without the package's line in
+   `SHA256SUMS` (DEPLOY.md, "How updates work").
+7. Download every asset again from the release and check it against
+   `SHA256SUMS`.
 
 ## Before calling a package validated
 
