@@ -25,7 +25,7 @@ namespace fs = std::filesystem;
 
 // Each known disk's files, by name, size and SHA-256 only (docs/versions.md, "Recognising a
 // copy"). The common files are game files every copy of that disk has; a variant's file is
-// the one its copies differ in (the Amiga's program, the Apple II's boot and view files).
+// the one its copies differ in (the Amiga's program, the Apple II's boot file).
 const std::vector<KnownDisk>& known_disks() {
     static const std::vector<KnownDisk> disks{
     {Machine::Amiga, "2.3", 1, 1,
@@ -71,23 +71,21 @@ const std::vector<KnownDisk>& known_disks() {
      }},
     {Machine::AppleII, "", 1, 2,
      {
-         {"btech", 23808, "88f0b46b602eb13e457a60b32a952ce962f6ea71153efdd1bb90f20b22e60e8d"},
-         {"set1", 1048, "bcb078a7e36920ab066eee6ef92a69595be0a90671ac49610847a07bb27c32ad"},
-         {"title", 6657, "586abc202be01c379e8221639c7e9e8fe7080833913119e648c0c795ab334be1"},
+         {"btech", 23808, "264e79a26bffe2a28bfb2b88841e4427b7bd0b53d63781c267de63e61ea60df2"},
+         {"set1", 1048, "178dfe3bcc3c7560d55785b0c71e51635b986d7084417be8237aa604f7c5baf0"},
+         {"title", 6657, "3b8b18ca05d26ea032b61eebd7bcd545ff79624deee8b7ba205f504af46ef60c"},
      },
      {
-         {"", {"hello", 32, "5ab622fb8bb0278b60436789c2e1fedcee2887bfa285eea732d533c6d852a399"}},
-         {"[cr]", {"hello", 125, "a3ef0bc008fb5184b6b2ba0316e6087c087f4b22d0dc1f2f98263188ed56acae"}},
+         {"", {"hello", 32, "df1e3d5e227c3480e5a8059f701d21638bff65272da865e6bf603ea7ec5b653e"}},
+         {"[cr]", {"hello", 125, "274fec08d074de7e8cd2485b563914799a69481d4be5c5ba1abc3a07f5e6d411"}},
      }},
     {Machine::AppleII, "", 2, 2,
      {
-         {"det.scrn", 2304, "ce27bbccec80017c89aea4fcc72086cbe4a0e39c7eea1ada917b0e2d9daba91e"},
-         {"i0", 7520, "3e1e5746d150d51c99c02d5bffc8b608a9346449ffee21484071f5ba5a3c42e0"},
-         {"mechs", 3456, "3e5d6397b9a3ccb426623bbd4ad4afad842701081c5c833a0f2b29ada226e6a3"},
+         {"det.scrn", 2304, "48180d285cd1e64caf1bd4bf45daa74cd73180fa14c15244f2b67ef5ea001d7d"},
+         {"i0", 7520, "035238505a205850bc79677edad2adf724e026c1b42e4a4a8ff2070cf01ac11b"},
+         {"mechs", 3456, "00a99200cdfa33b82e152bf6fde56b57dc64194160ee81816348a094b18cd496"},
      },
      {
-         {"", {"view", 2033, "fb202ac6488331b95278415668397b393ef4bd8c4aacc1a8018c2c3b2553bfbf"}},
-         {"[a]", {"view", 2033, "8a41512cf9387c030048ff2f2d74ac5bc1d736316ffbe5de04c7d715f97323e9"}},
      }},
     };
     return disks;

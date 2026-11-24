@@ -30,7 +30,7 @@ std::string adf_volume(std::span<const std::uint8_t> image);
 // Commodore 1541 disk, 35 tracks (with or without the error bytes after the sectors).
 std::vector<ImageFile> read_d64(std::span<const std::uint8_t> image);
 
-// Apple II 140K disk in DOS 3.3 sector order, under RDOS 3.3 (its catalog on track 1).
+// Apple II 140K disk in DOS 3.3 sector order, under RDOS 3.3 (its catalog on track 1, its own sector order).
 std::vector<ImageFile> read_rdos(std::span<const std::uint8_t> image);
 
 // Any of the three, by size; empty for an image of none of their sizes.

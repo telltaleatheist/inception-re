@@ -329,7 +329,7 @@ hashes, nothing else:
 | C64, side 1 | three game files found only on side 1 | (one release known) |
 | C64, side 2 | three game files found only on side 2 | |
 | Apple II, disk 1 | the program and two art files | the boot file `HELLO`: plain or [cr] (which also changes `BOOT0`) |
-| Apple II, disk 2 | three game files | `VIEW` as the reader takes it, sectors shuffled (formats/rdos.md, "Known fault"): plain or [a]; in RDOS's order [a] differs only in its saves |
+| Apple II, disk 2 | three game files | none: [a] differs only in its saves, [cr] in `LC` |
 
 A disk whose recognising files all match but whose variant file matches none is still named,
 as changed from the copies we know. A version with a disk missing is named with the disk

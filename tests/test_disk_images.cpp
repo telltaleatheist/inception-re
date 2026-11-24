@@ -109,20 +109,29 @@ struct D64 {
 
 // --- Apple II RDOS 3.3 ---
 
+// Written from docs/formats/rdos.md, "The sectors' order", as a table: where in the image's track
+// each of RDOS's 16 sectors is.
+constexpr std::size_t kRdosSectorAt[16] = {0, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 15};
+
 struct Rdos {
     Bytes d = Bytes(143360, 0);
     std::size_t slot = 1;
+    // The image's byte for byte `at` of the disk as RDOS counts it.
+    std::uint8_t& byte(std::size_t at) {
+        const std::size_t sector = at / 256;
+        return d[(sector / 16 * 16 + kRdosSectorAt[sector % 16]) * 256 + at % 256];
+    }
     Rdos() {
         const std::string mark = "RDOS 3.3 FIXTURE";
-        for (std::size_t i = 0; i < mark.size(); ++i) d[4096 + i] = std::uint8_t(mark[i] | 0x80);
+        for (std::size_t i = 0; i < mark.size(); ++i) byte(4096 + i) = std::uint8_t(mark[i] | 0x80);
     }
     void file(const std::string& n, const Bytes& data, std::size_t start) {
-        std::uint8_t* e = &d[4096 + slot++ * 32];
-        for (std::size_t i = 0; i < 24; ++i) e[i] = std::uint8_t((i < n.size() ? n[i] : ' ') | 0x80);
-        e[24] = 'B' | 0x80, e[25] = std::uint8_t((data.size() + 255) / 256);
-        e[28] = std::uint8_t(data.size()), e[29] = std::uint8_t(data.size() >> 8);
-        e[30] = std::uint8_t(start), e[31] = std::uint8_t(start >> 8);
-        std::copy(data.begin(), data.end(), d.begin() + std::ptrdiff_t(start * 256));
+        const std::size_t e = 4096 + slot++ * 32;
+        for (std::size_t i = 0; i < 24; ++i) byte(e + i) = std::uint8_t((i < n.size() ? n[i] : ' ') | 0x80);
+        byte(e + 24) = 'B' | 0x80, byte(e + 25) = std::uint8_t((data.size() + 255) / 256);
+        byte(e + 28) = std::uint8_t(data.size()), byte(e + 29) = std::uint8_t(data.size() >> 8);
+        byte(e + 30) = std::uint8_t(start), byte(e + 31) = std::uint8_t(start >> 8);
+        for (std::size_t i = 0; i < data.size() && start * 256 + i < d.size(); ++i) byte(start * 256 + i) = data[i];
     }
 };
 
@@ -202,6 +211,24 @@ TEST(rdos_reads_its_catalog) {
     CHECK(files.size() == 2);
     CHECK(files[0].path == "FIRST FILE" && files[0].data == a);
     CHECK(files[1].path == "B" && files[1].data == b);
+}
+
+TEST(rdos_reads_files_and_the_catalog_in_rdos_s_sector_order) {
+    Rdos r;
+    const Bytes track = pattern(16 * 256, 1), across = pattern(5000, 2);  // a whole track; across two tracks
+    r.file("TRACK", track, 48);
+    r.file("ACROSS", across, 70);
+    std::vector<std::string> names{"TRACK", "ACROSS"};
+    for (int i = 0; i < 18; ++i) {  // on into the catalog's third sector
+        names.push_back("FILE" + std::to_string(i));
+        r.file(names.back(), text(names.back()), 100 + std::size_t(i));
+    }
+    const auto files = read_disk_image(r.d);
+    CHECK(files.size() == names.size());
+    for (std::size_t i = 0; i < files.size() && i < names.size(); ++i) CHECK(files[i].path == names[i]);
+    CHECK(files[0].data == track);
+    CHECK(files[1].data == across);
+    for (std::size_t i = 2; i < files.size(); ++i) CHECK(files[i].data == text(names[i]));
 }
 
 TEST(rdos_refuses_another_disk_and_an_entry_off_the_disk) {
