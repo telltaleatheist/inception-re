@@ -1,5 +1,6 @@
 #include "formats/rules.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <type_traits>
 

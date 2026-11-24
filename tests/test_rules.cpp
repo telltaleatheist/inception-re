@@ -1,6 +1,7 @@
 // The rule tables: imported from the player's BTECH.EXE, written as JSON and
 // read back, they must give the program's bytes exactly. No values here:
 // the repo never holds them (docs/rules.md).
+#include <algorithm>
 #include <filesystem>
 
 #include "formats/exe_data.h"

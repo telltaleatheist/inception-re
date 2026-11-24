@@ -3,6 +3,7 @@
 // from the player's .BLD at run time; every text it prints is looked up by
 // its text ID (bld.<file>.<offset>), so the words come from the import.
 
+#include <algorithm>
 #include <cstdio>
 #include <stdexcept>
 
