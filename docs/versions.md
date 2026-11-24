@@ -1,0 +1,238 @@
+# The game's versions
+
+The rebuild is to play the same game from any copy a player has. This page surveys the
+copies we know of: how each is packed, what files it holds, which of them match the DOS
+formats the rebuild already reads, and where each version keeps its tiles, pictures, maps,
+dialogue, interface text, tables and sound. It was written by reading the files statically
+(no copy was run). It holds no text or bytes of the game: files are named, sizes and
+layouts are described, and contents are paraphrased.
+
+What "fill" means below: the DOS importer fills a set of asset IDs (the tile sheets, the
+pictures, the place pictures, the maps), text IDs (data/text/interface.json's interface
+texts, the place scripts' text) and tables (docs/formats/tables.md, the 'Mech and combat
+tables in docs/formats/mech.md). A version can play the same game once its files fill the
+same set.
+
+## The copies
+
+| Copy | Container | Version | Variants |
+|---|---|---|---|
+| DOS | a zip of a folder, 79 files | 1.03 | one: byte for byte our reference copy (all 79 files) |
+| Amiga | a zip of 7 zips, each one .adf (901,120 bytes, an 880K floppy) | 2.3 | the plain disk and six others: [a], [a2], [a3], [a4], [h Madwand], [h SSC] |
+| Amiga (archive item) | a zip with one .adf and the archive's pictures and metadata | 2.3 | the same disk image as the plain Amiga one (same SHA-256) |
+| C64 | a zip with two .d64 (174,848 bytes each, 35 tracks) and an NFO | not stated by the game's files | one pair of disks, from a cracked release |
+| Apple II | a zip of 5 zips, each one .dsk (143,360 bytes, a 140K floppy in DOS order) | not stated | disk 1 plain and [cr]; disk 2 plain, [a] and [cr] |
+| Apple II (archive item) | a zip with one .dsk and the archive's pictures and metadata | | the same image as Apple II disk 1 plain (same SHA-256) |
+
+So there are four distinct games: DOS, Amiga, C64 and Apple II. The archive items add no
+new version.
+
+## DOS 1.03 (the reference)
+
+Covered by docs/original.md and docs/formats/. Everything the rebuild uses comes from here:
+the 12 pictures and tile sheets (.CMP, .ICN), 22 place pictures (O0–O21.ANM), 26 place
+scripts (.BLD), 15 maps (MAP1–15.MTP), the demo (DEMOFILE), and the program BTECH.EXE, which
+holds the interface text, the font, the palettes, the tables and the sound sequences.
+
+## Amiga 2.3
+
+**Container.** An Amiga DOS floppy, the original file system (OFS: 512-byte blocks, the
+root directory in block 880, each data block with a 24-byte header). Its volume name
+gives the version. The game is in a folder `Battletech`, beside a few system files the disk
+needs to boot (a start-up script and two small system commands).
+
+**Files.** The game folder holds:
+
+| Amiga file | Size | DOS counterpart | Form |
+|---|---|---|---|
+| `infocom.cmp`, `bttitle.cmp`, `BTBORDER.CMP`, `tinyland.cmp`, `mechshap.cmp`, `btstats.cmp`, `endmech.cmp` | 0.3–24K | the seven .CMP | Amiga form of the DOS picture (below) |
+| `bttltech.icn`, `destruct.icn`, `starleag.icn`, `map.icn`, `animate.icn` | 3–28K | the five .ICN | Amiga form of the DOS tile sheet (below) |
+| `animation.anm` | 134,378 | O0–O21.ANM (22 files, 129,536 bytes together) | one bundle; the place pictures inside it are not read yet |
+| `builds.bld` | 55,861 | the 26 .BLD (85,379 bytes together) | one bundle, compressed (its bytes are near-random, about 7 bits of information a byte); not read yet |
+| `maps` | 33,046 | MAP1–MAP15.MTP | the 15 DOS maps one after the other, the same total size (below) |
+| `demofile` | 1,023 | DEMOFILE | same size; about two thirds of the bytes differ, so recorded differently or in another order; not read yet |
+| `snd` | 65,532 | none (DOS plays the speaker from tables in BTECH.EXE) | a short header, then 8-bit signed samples: the Amiga's sampled sound |
+| `battletech` | 204,784 | BTECH.EXE | a 68000 program (AmigaDOS load file: three hunks of 165,104, 35,432 and 4 bytes) |
+
+**The pictures and tile sheets.** Each Amiga .cmp and .icn is the DOS container with a
+palette in front:
+
+    +0   16 words, big-endian: the picture's own palette, one 0x0RGB Amiga colour each
+    +32  the DOS .CMP container: length (big-endian here), type byte, run-length stream
+
+The run-length code is the DOS one (docs/formats/cmp.md), with the 0 code's 16-bit count
+big-endian. Every stream unpacks to exactly 32,000 bytes and ends at the file's end, as the
+DOS ones do; `map.icn` is type 0, stored without compression (21,760 bytes, 170 tiles). The
+32,000 bytes are four bit planes of 8,000 bytes, one after the other (the Amiga's own
+display form), not the DOS two-pixels-a-byte form. Type 1 is row order within each plane;
+type 2 is column order, as in DOS.
+
+How close the art is to DOS, as the share of pixels that agree once each Amiga colour is
+matched to its most frequent DOS colour: the Infocom logo and the screen frame 100%, the
+tiny land sheet, the animated tiles and the stats screen 98–99%, the 'Mech shapes, the
+ending and the star league sheet 94–96%. So these are the DOS pictures in the Amiga's
+colours. The title screen (38%) is redrawn. The town and destroyed-town tile sheets
+(`bttltech.icn` 64%, `destruct.icn` 56%) keep the DOS tile numbering and layout (250 tiles of
+16x16, tile n at plane offset n x 32) but are shaded with more colours, so several Amiga
+colours stand for one DOS colour: the Amiga's own tile art.
+
+**The maps.** `maps` is MAP1–MAP15.MTP concatenated, in DOS order and sizes. The only
+differences: in maps 1–14 the four tables of 16 words at 0x185–0x204 (the entrances'
+positions) are big-endian, and one people's name field in map 2 differs. Every cell byte is
+the same as DOS. So the maps fill fully.
+
+**Dialogue and text.** The interface text is in the program file, uncompressed: 145 of the
+151 interface texts in data/text/interface.json appear in `battletech` letter for letter.
+The other six are to be found (worded differently or built from pieces). The place scripts'
+dialogue is in `builds.bld`, compressed; its decompressor is in the 68000 program, to be read
+statically. The script bytecode inside is expected to be the DOS one (the maps' entrance
+tables name the same place numbers).
+
+**Tables, font, palettes, sound sequences.** In the program's data hunk, as in BTECH.EXE's
+data segment. The 68000 program gets its own version-checked span table, like
+formats::OriginalExe, mapping each DOS span ID to its Amiga address. Not read yet.
+
+**Saved games.** `Game1`–`Game6` on the [a] to [h SSC] disks are players' saves (the plain
+disk has none). Each is 3,929 bytes, 16 more than a DOS save (docs/formats/save.md), with the
+same first-byte mark; the extra 16 bytes are not read yet.
+
+**The variants.** All seven disks carry the same game data, byte for byte: every .cmp, .icn,
+`animation.anm`, `builds.bld`, `maps`, `snd` and `demofile`. They differ in:
+
+- the program `battletech`: the same on five disks; [a4] and [h Madwand] each have a changed
+  copy (same size), probably a patched start-up;
+- players' saves (`Game1`–`Game6`) on six of them;
+- extra files from whoever made the copy: extra start-up files on [a4], an intro and three
+  small extra files on [h Madwand], a longer start-up script with a text file on
+  [h SSC], a directory cache on [a2], and different icons.
+
+So one data layout serves every Amiga copy; the program file needs a span table for each of
+its three builds (or only the five-disk build, with the other two recognised and reported).
+
+**What the Amiga can fill.** Maps: all. Pictures and tile sheets: all twelve, in the Amiga's
+own colours and, for the title and the town tiles, the Amiga's own art. Interface text: at
+least 145 of 151 directly. Place pictures, place scripts and their dialogue, the demo, the
+font, the palettes and the tables: present, in forms still to be read. Sound: the Amiga's
+own samples, an option beside the DOS speaker sound.
+
+## Commodore 64
+
+**Container.** Two standard 1541 disk images (35 tracks, 683 sectors), each with a normal
+CBM DOS directory: 56 files on disk 1, 97 on disk 2, every file a PRG (two-byte load
+address, then the bytes) whose sector chain reads cleanly. The directory names show a
+cracked release; the files themselves are the game's.
+
+**Files.** Named by short codes, the same codes as the Apple II's:
+
+| C64 files | Count | What they are (by name, size and load address) |
+|---|---|---|
+| `BA`–`BZ` | 25 | place scripts, one per place (`B` + a letter), 0.2–5.4K each; there is no `BX` |
+| `OA.ANM`–`OV.ANM` | 22 | place pictures: letters A–V for DOS's O0–O21 |
+| `MA`–`MZ` | 26 | maps, 1,024 bytes each: 32x32 cells, one byte a cell |
+| `G0`–`G7` | 8 | saved games, 1,696 bytes each |
+| `TB`–`TM` | 12 | small text-sized records, about 190 bytes each (probably each map's names and entrances, which DOS keeps in the .MTP header) |
+| `SETA`–`SETE`, `ICNA`–`ICND`, `COLA`–`COLD`, `BSET`/`BCHR`/`BCOL` | | character sets, tile definitions and colour tables (2K, 2K and 128 bytes each): the tile art |
+| `TPAG`/`TCHR`/`TCOL`, `EMBM`/`EMSM`/`EMCM` | | two full-screen pictures, each as an 8,000-byte bitmap with two 1,000-byte colour maps (the C64 multicolour bitmap form): by their names, probably the title and the ending |
+| `MECHS`, `DET.SCRN`, `I0`, `SPEC`, `INT`, `CBT`, `CCODE`, `CREATE`, `MAKEPLAYER`, `VIEW`, `CVIEW`, `LC`, `BEGTXT`, `SP.TXT`, `F/X`, `ZAP`, `S0`, `D`, `DEMO`, `BOOT`, `WESTWOOD` | | the 'Mech data, the combat and special code overlays, the start-up, and text pieces |
+
+**The maps.** DOS has 15 maps: four of 64x64 cells, eight of 32x32, two of 8x8 and a 15th of
+its own form. Cut into 32x32 pages that makes 26, the number of `M` files. Four pages are
+confirmed: `MV`–`MY` are map 14's four quarters, cell for cell (row order, no header). The
+other 22 do not match DOS cell for cell in row order; they are the same size and are
+expected to be the other maps' pages in another tile numbering or order. To be read. The DOS
+maps' names and entrance tables (the .MTP header) are probably in the twelve `T` files.
+
+**Tiles.** The C64 draws its maps with character-set tiles in its own art: the `SET`, `ICN`
+and `COL` files. Its tiles are its own, coarser pictures, mapped to the same map cells.
+
+**Dialogue and text.** Not stored as plain text: only 2 of the 151 interface texts appear
+letter for letter (in upper case, in two of the start-up text files). The place scripts
+(`B` files) are compressed or encoded (about 6.6 bits of information a byte, against 4.7 for
+DOS's deciphered scripts). The code that unpacks them is in the 6502 overlays, to be read
+statically.
+
+**What the C64 can fill.** Expected: every map (from the pages), the place pictures (22, the
+same count as DOS), the place scripts (25 of DOS's 26 by count: if the letters follow the DOS
+place numbers, A for 0 to Z for 25, the missing `X` is place 0x17, one of the short ones; to be
+confirmed), the title and ending pictures, the tiles in its own art. Not
+expected in DOS form: the DOS tile sheets' 16x16 four-bit tiles (the C64 has its own tile
+form instead), the speaker sound sequences (the C64 has its own sound chip music and effects),
+and the font (the C64 uses its own character set). The interface text and tables live in
+the code overlays, encoded; how much of the DOS text ID set they hold is not known yet.
+
+## Apple II
+
+**Container.** Two 140K disks in DOS 3.3 sector order, but not DOS 3.3: they use **RDOS
+3.3**, a small disk system of its own (its signature is at the start of track 1). Its
+catalog is on track 1, 32-byte entries from offset 32: a 24-character name in high-bit
+ASCII, a type letter, a sector count, a load address, a length in bytes and a starting
+sector (absolute, sectors 0–559). Each file is contiguous from its starting sector. Disk 1
+holds 42 files, disk 2 80, and the files fill both disks.
+
+**Files.** The same codes as the C64: `BA`–`BZ` (25 scripts, no `BX`, as on the C64),
+`OA.ANM`–`OV.ANM` (21 place pictures: there is no `OB.ANM`), a 393-byte file `B`, `MA`–`MZ` (26 maps of 1,024 bytes), `G0`–`G4` (5 saves), `TB`–`TM`, `COLA`–`COLD`,
+`MECHS`, `DET.SCRN`, `SPEC`, `VIEW`, `LC`, plus its own: `BTECH` (the main program, 23,808
+bytes), `CBT0`–`CBT4` (combat code), `I0`–`I3` and `SET1` (tile and icon art), `TITLE` (the
+title picture), `TRADEM`, `LAM`, and the boot files.
+
+**Compared with the C64.** Most script files have exactly the C64's sizes (four of the 25
+differ by a few to a few hundred bytes), and the map pages are all 1,024 bytes; but almost every byte differs, with no
+one-to-one byte mapping between the two. So each machine stores the same records in its own
+encoding (text in each machine's character code, tiles in each machine's numbering), or
+with a different key. One small file, `TL`, is identical on both. Of the four map pages that
+match DOS on the C64, the Apple II's matches only partly (68% for one quarter): its maps are
+encoded differently too.
+
+**Tiles.** Its own hi-res art (the `I` and `SET1` files), coarser again.
+
+**Dialogue and text.** None of the 151 interface texts appears letter for letter, in plain
+or high-bit ASCII. Text and scripts are compressed or encoded, as on the C64.
+
+**The variants.** Disk 1 [cr] and disk 2 [cr] are cracked copies; disk 2 [a] is another dump.
+Their files have not been compared one by one yet (the next step's table records each
+variant's files by size and hash).
+
+**What the Apple II can fill.** As the C64, with its own art.
+
+## Asset and text families by version
+
+| Family | DOS | Amiga | C64 | Apple II |
+|---|---|---|---|---|
+| Full-screen pictures (logo, title, stats, ending, frame) | 7 .CMP | 7, DOS container with a palette, bit planes | title and ending as multicolour bitmaps; the others not seen as files | `TITLE`; others not seen as files |
+| Tile sheets | 5 .ICN | 5, same container, same tile numbering | its own character-set tiles | its own hi-res tiles |
+| Place pictures | O0–O21.ANM | inside `animation.anm` | OA–OV.ANM (22) | 21: no OB.ANM |
+| Place scripts and dialogue | 26 .BLD, enciphered | inside `builds.bld`, compressed | 25 `B` files, encoded | 25 `B` files, encoded |
+| Maps | 15 .MTP | `maps`: the same 15, three tables big-endian | 26 pages of 32x32; names and entrances probably in `T` files | as the C64, encoded differently |
+| Interface text | BTECH.EXE | the 68000 program, 145/151 plain | code overlays, encoded | code overlays, encoded |
+| Font | BTECH.EXE | the program (to find) | the C64's own characters | the Apple's own |
+| Tables ('Mechs, combat, prices) | BTECH.EXE | the program's data hunk | `MECHS` and the overlays | `MECHS` and the overlays |
+| Sound | speaker sequences in BTECH.EXE | `snd`: 8-bit samples | its own sound chip routines | the speaker, its own routines |
+| Demo | DEMOFILE | `demofile` (same size, another form) | `DEMO` | not seen |
+| Saves | Game1–6, 3,913 bytes | Game1–6, 3,929 bytes | G0–G7, 1,696 bytes | G0–G4, 1,696 bytes |
+
+## What can't be filled from the DOS ID set, so far
+
+- **C64 and Apple II have their own art and screens.** Where DOS has a picture or tile with no
+  counterpart (the frame, the 'Mech shapes sheet, the stats screen, the tiny-land sheet), the
+  8-bit versions draw that screen differently. The proposal: those asset IDs get the version's
+  own drawing where it has one, and the version's screen layout data says which IDs it uses,
+  so the logic is untouched and the renderer draws what that copy has.
+- **The font** on the 8-bit versions is the machine's character set, not an imported 8x8
+  table. The proposal: import it the same way, as {"FONT", char} glyphs, from wherever each
+  machine's program keeps it.
+- **Speaker sound.** Only DOS has the speaker sequences as tables. The Amiga has samples; the
+  8-bit versions have their own sound code. The proposal: per-version sound IDs, and a
+  version without an importable sound plays the DOS-shaped silence-and-tone events through
+  its own provider (the sound stays an option).
+- **One of DOS's 26 place scripts** has no `B` file of its own on the 8-bit versions (no `BX`),
+  and the Apple II has no `OB.ANM` place picture. Whether those places are merged into others,
+  drawn another way or absent from those versions is the first thing to find there.
+
+## Next
+
+1. Container readers for nested zips, ADF/OFS, D64 and RDOS DSK, and a known-versions table
+   that recognises each copy and variant by its files' sizes and hashes, so `--status` and
+   `--setup` name it (and say it can't be played yet).
+2. The Amiga import: the pictures and tiles (understood), the maps (understood), the 68000
+   program's span table, then `animation.anm`, `builds.bld`, `demofile` and `snd`.
+3. The C64, then the Apple II: their containers are understood; their encodings are next.
