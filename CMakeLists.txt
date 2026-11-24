@@ -52,6 +52,8 @@ endif()
 # Readers for the original's files, documented in docs/formats/. Standard C++ only.
 add_library(chrformats STATIC
   src/formats/adf.cpp
+  src/formats/amiga_bld.cpp
+  src/formats/amiga_program.cpp
   src/formats/anm.cpp
   src/formats/bld.cpp
   src/formats/cells.cpp
@@ -140,6 +142,7 @@ enable_testing()
 
 add_executable(chrtests
   tests/test_main.cpp
+  tests/test_amiga.cpp
   tests/test_bld.cpp
   tests/test_anm.cpp
   tests/test_fight.cpp

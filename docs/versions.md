@@ -48,7 +48,7 @@ needs to boot (a start-up script and two small system commands).
 | `infocom.cmp`, `bttitle.cmp`, `BTBORDER.CMP`, `tinyland.cmp`, `mechshap.cmp`, `btstats.cmp`, `endmech.cmp` | 0.3–24K | the seven .CMP | Amiga form of the DOS picture (below) |
 | `bttltech.icn`, `destruct.icn`, `starleag.icn`, `map.icn`, `animate.icn` | 3–28K | the five .ICN | Amiga form of the DOS tile sheet (below) |
 | `animation.anm` | 134,378 | O0–O21.ANM (22 files, 129,536 bytes together) | one bundle; the place pictures inside it are not read yet |
-| `builds.bld` | 55,861 | the 26 .BLD (85,379 bytes together) | one bundle, compressed (its bytes are near-random, about 7 bits of information a byte); not read yet |
+| `builds.bld` | 55,861 | the 26 .BLD (85,379 bytes together) | the 26 scripts in one file, DOS's cipher, the text packed in letter pairs (docs/formats/amiga.md) |
 | `maps` | 33,046 | MAP1–MAP15.MTP | the 15 DOS maps one after the other, the same total size (below) |
 | `demofile` | 1,023 | DEMOFILE | same size; about two thirds of the bytes differ, so recorded differently or in another order; not read yet |
 | `snd` | 65,532 | none (DOS plays the speaker from tables in BTECH.EXE) | a short header, then 8-bit signed samples: the Amiga's sampled sound |
@@ -84,9 +84,10 @@ the same as DOS. So the maps fill fully.
 **Dialogue and text.** The interface text is in the program file, uncompressed: 145 of the
 151 interface texts in data/text/interface.json appear in `battletech` letter for letter.
 The other six are to be found (worded differently or built from pieces). The place scripts'
-dialogue is in `builds.bld`, compressed; its decompressor is in the 68000 program, to be read
-statically. The script bytecode inside is expected to be the DOS one (the maps' entrance
-tables name the same place numbers).
+dialogue is in `builds.bld` (docs/formats/amiga.md): DOS's scripts, enciphered the same way,
+with their text packed in letter pairs from two tables in the program. Laid out again in DOS
+form they are DOS's scripts, every text the same, apart from the two differences under
+"Amiga rules" below. So the Amiga fills every place text ID.
 
 **Tables, font, palettes, sound sequences.** In the program's data hunk, as in BTECH.EXE's
 data segment. The 68000 program gets its own version-checked span table, like
@@ -111,9 +112,25 @@ its three builds (or only the five-disk build, with the other two recognised and
 
 **What the Amiga can fill.** Maps: all. Pictures and tile sheets: all twelve, in the Amiga's
 own colours and, for the title and the town tiles, the Amiga's own art. Interface text: at
-least 145 of 151 directly. Place pictures, place scripts and their dialogue, the demo, the
-font, the palettes and the tables: present, in forms still to be read. Sound: the Amiga's
+least 145 of 151 directly. Place scripts and their dialogue: all 26, every text (above).
+Place pictures, the demo, the font, the palettes and the tables: present, in forms still to
+be read. Sound: the Amiga's
 own samples, an option beside the DOS speaker sound.
+
+## Amiga rules
+
+Where the Amiga's game differs from DOS's, the rebuild plays DOS's by default, so a player
+with the Amiga copy plays the same game as one with the DOS copy. The setting `amiga_rules`
+(off by default) plays the Amiga copy's own instead. Each difference, matched by place and by
+its instruction's offset in the Amiga script:
+
+| Where | Amiga | DOS (the default) |
+|---|---|---|
+| JAIL, the sound at offset 2401 | effect 18 | effect 17 |
+| THEATER, the `pay` at offset 240 | charges the player | no charge there (the instruction is left out) |
+
+THEATER also leaves out four of DOS's sound instructions; with `amiga_rules` off those four
+sounds stay silent for now, as on the Amiga.
 
 ## Commodore 64
 
@@ -229,7 +246,7 @@ folder or a zip, is recognised as before, by its BTECH.EXE.
 | Full-screen pictures (logo, title, stats, ending, frame) | 7 .CMP | 7, DOS container with a palette, bit planes | title and ending as multicolour bitmaps; the others not seen as files | `TITLE`; others not seen as files |
 | Tile sheets | 5 .ICN | 5, same container, same tile numbering | its own character-set tiles | its own hi-res tiles |
 | Place pictures | O0–O21.ANM | inside `animation.anm` | OA–OV.ANM (22) | 21: no OB.ANM |
-| Place scripts and dialogue | 26 .BLD, enciphered | inside `builds.bld`, compressed | 25 `B` files, encoded | 25 `B` files, encoded |
+| Place scripts and dialogue | 26 .BLD, enciphered | inside `builds.bld`, enciphered, text in letter pairs | 25 `B` files, encoded | 25 `B` files, encoded |
 | Maps | 15 .MTP | `maps`: the same 15, three tables big-endian | 26 pages of 32x32; names and entrances probably in `T` files | as the C64, encoded differently |
 | Interface text | BTECH.EXE | the 68000 program, 145/151 plain | code overlays, encoded | code overlays, encoded |
 | Font | BTECH.EXE | the program (to find) | the C64's own characters | the Apple's own |

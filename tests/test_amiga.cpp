@@ -1,0 +1,159 @@
+// The Amiga readers (formats/amiga_program.h, formats/amiga_bld.h) on data made here, byte by
+// byte: a load file, a scripts bundle, letter-pair tables and a script. No game files.
+#include <array>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "formats/amiga_bld.h"
+#include "formats/amiga_program.h"
+#include "formats/cmp.h"
+#include "test.h"
+
+using namespace chr::formats;
+
+namespace {
+
+using Bytes = std::vector<std::uint8_t>;
+
+void put32(Bytes& b, std::uint32_t v) {
+    for (int s = 24; s >= 0; s -= 8) b.push_back(std::uint8_t(v >> s));
+}
+
+// A load file: a code hunk of 2 longs with one relocation, a data hunk of 1 long stored (3 in
+// memory), a BSS hunk of 4 longs.
+Bytes load_file() {
+    Bytes b;
+    put32(b, 0x3F3), put32(b, 0), put32(b, 3), put32(b, 0), put32(b, 2);
+    put32(b, 2), put32(b, 3), put32(b, 4);
+    put32(b, 0x3E9), put32(b, 2), put32(b, 0x4E714E75), put32(b, 0x00000004);
+    put32(b, 0x3EC), put32(b, 1), put32(b, 1), put32(b, 4), put32(b, 0);
+    put32(b, 0x3F2);
+    put32(b, 0x3EA), put32(b, 1), put32(b, 0x11223344);
+    put32(b, 0x3F2);
+    put32(b, 0x3EB), put32(b, 4);
+    put32(b, 0x3F2);
+    return b;
+}
+
+std::uint8_t encipher(std::uint8_t plain) { return std::uint8_t((plain ^ 0xE9) - 0x29); }
+
+}  // namespace
+
+TEST(amiga_hunks_are_read_as_stored) {
+    const auto hunks = read_amiga_hunks(load_file());
+    CHECK(hunks.size() == 3);
+    CHECK(hunks[0].kind == AmigaHunk::Kind::Code && hunks[0].size == 8 && hunks[0].bytes.size() == 8);
+    CHECK(hunks[0].bytes[7] == 4);  // the relocation is not applied
+    CHECK(hunks[1].kind == AmigaHunk::Kind::Data && hunks[1].size == 12 && hunks[1].bytes == Bytes({0x11, 0x22, 0x33, 0x44}));
+    CHECK(hunks[2].kind == AmigaHunk::Kind::Bss && hunks[2].size == 16 && hunks[2].bytes.empty());
+}
+
+TEST(amiga_hunks_refuse_what_is_not_a_load_file) {
+    auto throws = [](const Bytes& b) {
+        try {
+            read_amiga_hunks(b);
+        } catch (const FormatError&) {
+            return true;
+        }
+        return false;
+    };
+    Bytes b = load_file();
+    b[3] = 0xF4;
+    CHECK(throws(b));
+    Bytes cut = load_file();
+    cut.resize(40);
+    CHECK(throws(cut));
+    Bytes big = load_file();
+    big[39] = 9;  // the code hunk claims 9 longs stored, more than its size
+    CHECK(throws(big));
+    // A load file, but not version 2.3's program.
+    bool refused = false;
+    try {
+        AmigaProgram p(load_file());
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
+}
+
+TEST(amiga_place_script_is_found_and_deciphered) {
+    Bytes builds{0x55};  // something before the first script
+    Bytes offsets;
+    const Bytes one{0xFD, 0xFF}, two{0xFB, 0xFF};
+    for (int place = 0; place < 26; ++place) {
+        const Bytes& s = place == 1 ? two : one;
+        put32(offsets, std::uint32_t(builds.size()));
+        builds.push_back(std::uint8_t(s.size() >> 8)), builds.push_back(std::uint8_t(s.size()));
+        for (std::uint8_t c : s) builds.push_back(encipher(c));
+    }
+    CHECK(amiga_place_script(builds, offsets, 0) == one);
+    CHECK(amiga_place_script(builds, offsets, 1) == two);
+    bool refused = false;
+    try {
+        amiga_place_script(Bytes(builds.begin(), builds.begin() + 3), offsets, 25);
+    } catch (const FormatError&) {
+        refused = true;
+    }
+    CHECK(refused);
+}
+
+namespace {
+
+// Made-up letter tables: first letters A-P, second letters a-z then digits, repeating.
+struct Pairs {
+    std::array<std::uint8_t, 16> first{};
+    std::array<std::uint8_t, 128> second{};
+    Pairs() {
+        for (int i = 0; i < 16; ++i) first[std::size_t(i)] = std::uint8_t('A' + i);
+        for (int i = 0; i < 128; ++i) second[std::size_t(i)] = std::uint8_t(i % 36 < 26 ? 'a' + i % 36 : '0' + i % 36 - 26);
+    }
+    AmigaTextPairs tables() const { return {first, second}; }
+};
+
+}  // namespace
+
+TEST(amiga_text_pairs_expand_and_control_arguments_stay) {
+    const Pairs p;
+    // 0x80: first[0], second[0]; 0x9B: first[3] ('D'), second[0x1B] ('1'); 0x09 takes 0x85 raw.
+    const std::string packed{char(0x80), 'x', char(0x9B), 0x09, char(0x85), char(0x13), char(0xC0)};
+    CHECK(expand_amiga_text(packed, p.tables()) == std::string("Aax") + "D1" + "\x09" + char(0x85) + "\x13" + char(0xC0));
+}
+
+TEST(amiga_script_is_laid_out_in_dos_form) {
+    const Pairs p;
+    // 0: if_flag 3 -> 12      (F7 03 lo hi)
+    // 4: sound 18             (E4 12)
+    // 6: print, packed text   (FC 80 81 00): two pairs, expanded to four letters
+    // 10: pay 5               (EE 05 00)
+    // 13: menu 0 -> 4, 17     (F9 00 lo hi lo hi)
+    // 19: goto -> 6           (F8 lo hi)
+    // 22: end                 (FF)
+    // The if_flag's target, 12, is inside the pay: an odd jump, but the offset still moves with it.
+    const Bytes packed{0xF7, 0x03, 12, 0, 0xE4, 18, 0xFC, 0x80, 0x81, 0x00, 0xEE, 0x05, 0x00,
+                       0xF9, 0x00, 4,  0, 17,   0, 0xF8, 6,    0,    0xFF};
+    const std::array<MenuRecord, 1> menus{{{0, 0, 2, 0, 0}}};
+    const Bytes out = relay_amiga_script(packed, p.tables(), menus);
+    // The text grows by 2, so everything after offset 9 moves by 2.
+    const Bytes want{0xF7, 0x03, 14, 0, 0xE4, 18, 0xFC, 'A', 'a', 'A', 'b', 0x00, 0xEE, 0x05, 0x00,
+                     0xF9, 0x00, 4,  0, 19,   0, 0xF8, 6,   0,   0xFF};
+    CHECK(out == want);
+
+    // Edits: the sound becomes 17, the pay goes (jumps to it land on what follows).
+    const std::array<ScriptEdit, 2> edits{{{4, 0xE4, ScriptEdit::Kind::SetByte, 17}, {10, 0xEE, ScriptEdit::Kind::Drop, 0}}};
+    const Bytes edited = relay_amiga_script(packed, p.tables(), menus, edits);
+    const Bytes want_edited{0xF7, 0x03, 12, 0, 0xE4, 17, 0xFC, 'A', 'a', 'A', 'b', 0x00,
+                            0xF9, 0x00, 4,  0, 16,   0,  0xF8, 6,   0,   0xFF};
+    CHECK(edited == want_edited);
+
+    // An edit naming an instruction that isn't there, or one of another kind, is refused.
+    for (const ScriptEdit& bad : {ScriptEdit{5, 0xE4, ScriptEdit::Kind::SetByte, 1}, ScriptEdit{4, 0xEE, ScriptEdit::Kind::Drop, 0}}) {
+        bool refused = false;
+        try {
+            relay_amiga_script(packed, p.tables(), menus, std::span<const ScriptEdit>(&bad, 1));
+        } catch (const FormatError&) {
+            refused = true;
+        }
+        CHECK(refused);
+    }
+}

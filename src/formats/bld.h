@@ -81,6 +81,8 @@ struct Instruction {
     std::vector<int> words;          // word operands, unsigned 16-bit, in order
     std::string text;                // Print: the text, without its NUL
     std::vector<int> targets;        // where it may jump (Menu, SwitchFlag: the table)
+    std::vector<int> target_at;      // where each target's word is in the script, in the same order
+    int text_at = -1;                // Print: where its text starts
     int next = 0;                    // the offset after it
     bool falls_through = true;       // false for End, Goto, Menu, SwitchFlag
 };

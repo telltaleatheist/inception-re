@@ -82,6 +82,7 @@ Instruction decode(const std::vector<std::uint8_t>& script, int at, std::span<co
     if (in.raw < 0xE4) return in;
     in.op = static_cast<Op>(in.raw);
     int p = at + 1;
+    int last_word_at = -1;
     for (const char k : info(*in.op).operands) {
         switch (k) {
         case 'b':
@@ -89,10 +90,12 @@ Instruction decode(const std::vector<std::uint8_t>& script, int at, std::span<co
             break;
         case 'w':
             in.words.push_back(word_at(script, p));
+            last_word_at = p;
             p += 2;
             break;
         case 's': {
             const int start = p;
+            in.text_at = start;
             while (byte_at(script, p) != 0) ++p;
             in.text.assign(script.begin() + start, script.begin() + p);
             ++p;
@@ -102,7 +105,10 @@ Instruction decode(const std::vector<std::uint8_t>& script, int at, std::span<co
             const int menu = static_cast<std::int8_t>(in.bytes.back());
             if (menu < 0 || menu >= static_cast<int>(menus.size()))
                 throw FormatError("a script asks for menu " + std::to_string(menu));
-            for (int i = 0; i < menus[std::size_t(menu)].items; ++i, p += 2) in.targets.push_back(word_at(script, p));
+            for (int i = 0; i < menus[std::size_t(menu)].items; ++i, p += 2) {
+                in.targets.push_back(word_at(script, p));
+                in.target_at.push_back(p);
+            }
             break;
         }
         case 'T': {
@@ -112,6 +118,7 @@ Instruction decode(const std::vector<std::uint8_t>& script, int at, std::span<co
             int end = -1;
             do {
                 const int target = word_at(script, p);
+                in.target_at.push_back(p);
                 p += 2;
                 in.targets.push_back(target);
                 if (target >= p && (end < 0 || target < end)) end = target;
@@ -129,6 +136,7 @@ Instruction decode(const std::vector<std::uint8_t>& script, int at, std::span<co
         break;
     case Op::Goto:
         in.targets.push_back(in.words.back());
+        in.target_at.push_back(last_word_at);
         in.falls_through = false;
         break;
     case Op::IfPartyX:
@@ -140,6 +148,7 @@ Instruction decode(const std::vector<std::uint8_t>& script, int at, std::span<co
     case Op::IfYes:
     case Op::IfFlag:
         in.targets.push_back(in.words.back());
+        in.target_at.push_back(last_word_at);
         break;
     default:
         break;
