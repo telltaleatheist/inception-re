@@ -61,10 +61,13 @@ Rebuild. After that it starts normally.
 
 ## Not yet played or heard by a person
 
-These were checked by automated tests only:
+Automated tests check these, but nobody has gone through them yet:
 
-- An Amiga copy, at all: no one has played it, looked through its screens or
-  listened to its sounds. Please report anything that looks or sounds wrong.
+- The whole story, from start to end. Parts of the DOS version have been
+  played. An Amiga copy has been started and looked at, not played through.
+- An Amiga copy's sounds. In a recorded test fight they come at the moments
+  the DOS version's do, and they are louder. Please report anything that looks
+  or sounds wrong.
 - Setting the game up on the launcher's screens.
 - The Windows and Linux packages, which are built and smoke-tested
   automatically.
