@@ -159,6 +159,23 @@ O13, O15) changes only how long the box animates. The one place that reads a pic
 list for anything else, the 'Mech that won't start (19b8:16b2), uses O0, which the Amiga leaves
 as DOS has it. Sound lengths get the same check when `snd` is read.
 
+## One source by ID
+
+The game and the asset provider read the player's copy through one interface,
+`formats::GameSource` (src/formats/game_source.h). It hands out each piece by what it is, in DOS
+1.03's working form: `script(file)` (a place's script, deciphered), `map(n)` (MAPn.MTP's
+bytes), `place_picture(n)` (O<n>.ANM decoded), `picture(name)` and `tile_sheet(name)` (a .CMP
+or .ICN decoded, by its DOS name, which is also its asset ID), `demo()` (DEMOFILE) and
+`title_tune()` (WWOODBT.SIF). Nothing missing is an empty answer; a broken file throws, as the
+readers do. `describe()` names the copy for messages.
+
+`DosGameSource` is the DOS copy: the only place a game file is looked up by name in a folder.
+The game logic (src/game) and the platform (src/platform) hold a source, never a path. An Amiga
+source will hand out the same forms from its own files (the readers in docs/formats/amiga.md),
+with `amiga_rules` deciding the edits, and its pictures will bring their own palettes as the
+copy's colours. The importer still reads BTECH.EXE and the .BLD files from the folder for the
+text and tables, as before.
+
 ## Commodore 64
 
 **Container.** Two standard 1541 disk images (35 tracks, 683 sectors), each with a normal

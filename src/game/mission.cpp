@@ -1,7 +1,6 @@
 // The training missions' driver (docs/combat.md 1.3): a mission's set-up,
 // the walk it shares with every mode, and the results.
 #include "formats/anm.h"
-#include "formats/game_files.h"
 #include "formats/mtp.h"
 #include "game/text_provider.h"
 #include "game/tile_animation.h"
@@ -220,12 +219,12 @@ void Town::mission_draw() {
 // DG:014c is set.
 bool Town::load_town_map(int number, int grid) {
     const std::string name = "MAP" + std::to_string(number) + ".MTP";
-    const auto path = game_dir_ ? formats::find_game_file(*game_dir_, name) : std::nullopt;
-    if (!path) {
+    const auto bytes = source_ ? source_->map(number) : std::nullopt;
+    if (!bytes) {
         log_.push_back(name + ": not found");
         return false;
     }
-    map_ = formats::decode_mtp(formats::read_file(*path));
+    map_ = formats::decode_mtp(*bytes);
     map_number_ = number;
     tile_sheet_ = tile_sheet_for_map(number);
     blocking_ = blocking_tile(number);
@@ -411,9 +410,9 @@ bool Town::jail_bays(MissionWalk& w, KeySource& keys) {
 // the picture box cleared. 1000:28cc asks for the disk; there are no disks.
 bool Town::failed_start() {
     int last = 0;
-    if (game_dir_)
-        if (const auto path = formats::find_game_file(*game_dir_, "O0.ANM")) {
-            const auto anm = formats::read_anm(*path);
+    if (source_)
+        if (const auto picture = source_->place_picture(0)) {
+            const auto& anm = *picture;
             int ticks = 0;
             for (std::size_t k = 0; k < anm.sequence.size() && k < anm.delays.size(); ++k) {
                 if (k > 0 && anm.sequence[k] >= 0x49) break;

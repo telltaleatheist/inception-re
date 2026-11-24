@@ -47,6 +47,7 @@
 #endif
 
 #include "formats/game_files.h"
+#include "formats/game_source.h"
 #include "formats/import.h"
 #include "formats/mtp.h"
 #include "formats/palette.h"
@@ -321,16 +322,16 @@ bool save_screenshot(SDL_Renderer* renderer, const std::string& path) {
 
 // Map `number` and where the party starts on it: the new-game start for
 // map 1, the map's middle for the others.
-bool load_map(const std::filesystem::path& game_dir, int number, chr::formats::MtpMap& map,
+bool load_map(const chr::formats::GameSource& source, int number, chr::formats::MtpMap& map,
               chr::formats::MapPosition& start) {
     const std::string name = "MAP" + std::to_string(number) + ".MTP";
     try {
-        const auto path = chr::formats::find_game_file(game_dir, name);
-        if (!path) {
-            std::fprintf(stderr, "chr: %s not found in %s\n", name.c_str(), game_dir.string().c_str());
+        const auto bytes = source.map(number);
+        if (!bytes) {
+            std::fprintf(stderr, "chr: %s not found in %s\n", name.c_str(), source.describe().c_str());
             return false;
         }
-        map = chr::formats::decode_mtp(chr::formats::read_file(*path));
+        map = chr::formats::decode_mtp(*bytes);
         start = chr::game::new_game_position();
         if (number != 1)
             start = {std::uint16_t(map.block_x * 16 + map.width),
@@ -454,7 +455,8 @@ int main(int argc, char** argv) {
     // game begins on map 1.
     const bool start_up = options.map == 0;
     if (start_up) options.map = 1;
-    if (!load_map(options.game_dir, options.map, map, start)) status = 1;
+    const auto source = std::make_shared<const chr::formats::DosGameSource>(options.game_dir);
+    if (!load_map(*source, options.map, map, start)) status = 1;
     chr::game::TextTable overrides;
     if (status == 0 && !options.text_file.empty()) {
         try {
@@ -484,7 +486,7 @@ int main(int argc, char** argv) {
     }
     if (status == 0) {
         const auto original_palette = chr::formats::standard_palette_ega(tables);
-        chr::platform::OriginalAssets assets(options.game_dir, options.data_dir, original_palette,
+        chr::platform::OriginalAssets assets(source, options.data_dir, original_palette,
                                              {{"ENDMECH.CMP", chr::formats::palette_ega(tables.endmech_palette)}});
         const auto palette = chr::platform::screen_colours(assets, original_palette);
         chr::platform::Renderer renderer(sdl_renderer, assets);
@@ -528,10 +530,10 @@ int main(int argc, char** argv) {
         chr::game::MapText map_text(map, options.map);
         for (int n = 1; n <= 15; ++n) {
             if (n == options.map) continue;
-            const auto path = chr::formats::find_game_file(options.game_dir, "MAP" + std::to_string(n) + ".MTP");
-            if (!path) continue;
+            const auto bytes = source->map(n);
+            if (!bytes) continue;
             try {
-                map_text.add(chr::formats::decode_mtp(chr::formats::read_file(*path)), n);
+                map_text.add(chr::formats::decode_mtp(*bytes), n);
             } catch (const std::exception&) {
             }
         }
@@ -539,7 +541,7 @@ int main(int argc, char** argv) {
         auto replay = [&]() -> bool {
             try {
                 town = std::make_unique<chr::game::Town>(map, options.map, start, texts, tables);
-                town->set_game_dir(options.game_dir);
+                town->set_source(source);
                 town->set_save_dir(options.save_dir.empty() ? options.data_dir : options.save_dir);
                 if (rules) town->set_rules(&*rules);
                 town->set_show_quiz(options.show_quiz);

@@ -8,6 +8,7 @@
 
 #include "formats/cmp.h"
 #include "formats/font_file.h"
+#include "formats/game_source.h"
 #include "formats/icn.h"
 #include "formats/palette.h"
 #include "platform/asset_provider.h"
@@ -16,10 +17,10 @@ namespace chr::platform {
 
 class OriginalAssets final : public AssetProvider {
 public:
-    // Pictures come from the game folder; the font from the data folder the
-    // importer wrote (formats/import.h). `palette` colours the pictures,
+    // Pictures come from the player's game (formats/game_source.h); the font
+    // from the data folder the importer wrote (formats/import.h). `palette` colours the pictures,
     // except a .CMP named in `picture_palettes`, which is coloured with its own.
-    OriginalAssets(std::filesystem::path game_dir, std::filesystem::path data_dir, formats::Palette16 palette,
+    OriginalAssets(std::shared_ptr<const formats::GameSource> source, std::filesystem::path data_dir, formats::Palette16 palette,
                    std::map<std::string, formats::Palette16> picture_palettes = {});
     // Also answers {"FONT", c}, the font's character c from the imported
     // font file (white on transparent, for the renderer to colour), and
@@ -38,7 +39,7 @@ private:
     const formats::TileSheet* sheet(const std::string& file);
     const formats::CmpPicture* picture(const std::string& file);
 
-    std::filesystem::path game_dir_;
+    std::shared_ptr<const formats::GameSource> source_;
     std::map<std::string, formats::TileSheet> sheets_;  // decoded once per file
     std::map<std::string, formats::CmpPicture> pictures_;
     const formats::Font* font();

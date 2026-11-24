@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <string>
 
-#include "formats/game_files.h"
 #include "game/movement.h"
 #include "game/town.h"
 
@@ -147,12 +146,12 @@ std::optional<int> Town::draw_overhead(formats::MapPosition party, formats::MapP
                     if (!middle) continue;
                     // 1000:40bd: the header, then the cells over it.
                     const std::string name = "MAP" + std::to_string(map) + ".MTP";
-                    const auto path = game_dir_ ? formats::find_game_file(*game_dir_, name) : std::nullopt;
-                    if (!path) {
+                    const auto stored = source_ ? source_->map(map) : std::nullopt;
+                    if (!stored) {
                         log_.push_back("overhead map: " + name + " not found");
                         continue;
                     }
-                    const auto file = formats::read_file(*path);
+                    const auto& file = *stored;
                     const std::span<const std::uint8_t> bytes(file);
                     const std::size_t want = std::size_t(tables_.overhead_cell_bytes[m]);
                     put(offset, bytes.first(std::min(kMtpHeader, bytes.size())));

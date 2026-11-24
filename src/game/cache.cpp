@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "formats/game_files.h"
 #include "game/town.h"
 
 namespace chr::game {
@@ -324,8 +323,8 @@ bool Town::cache_puzzle_check(KeySource& keys) {
 // MAP15.MTP: the second level's twelve blocks, 0x300 bytes with no header,
 // over the first twelve of the cache's.
 bool Town::load_lower_level() {
-    const auto path = game_dir_ ? formats::find_game_file(*game_dir_, "MAP15.MTP") : std::nullopt;
-    const auto bytes = path ? formats::read_file(*path) : std::vector<std::uint8_t>{};
+    const auto map = source_ ? source_->map(15) : std::nullopt;
+    const auto bytes = map ? *map : std::vector<std::uint8_t>{};
     if (bytes.size() < kLowerBytes) {
         log_.push_back("MAP15.MTP: not found");
         return false;

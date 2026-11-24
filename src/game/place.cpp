@@ -9,7 +9,6 @@
 
 #include "formats/anm.h"
 #include "formats/bld.h"
-#include "formats/game_files.h"
 #include "game/movement.h"
 #include "game/town.h"
 #include "game/training_quiz.h"
@@ -108,9 +107,9 @@ bool Town::visit_place(int entrance, KeySource& keys) {
 // Loads script `file` (17dc:1d30) and runs it from offset 0 to its `end`.
 bool Town::run_script(int file, KeySource& keys) {
     const std::string name(formats::kBldFiles[std::size_t(file)]);
-    const auto path = formats::find_game_file(*game_dir_, name + ".BLD");
-    if (!path) throw std::runtime_error(name + ".BLD is missing from " + game_dir_->string());
-    const auto script = formats::read_bld(*path);
+    const auto found = source_->script(file);
+    if (!found) throw std::runtime_error(name + ".BLD is missing from " + source_->describe());
+    const auto& script = *found;
     // DGROUP:141a, the picture by script number, was part of BTECH.EXE; it is
     // now imported (tables.json: place_pictures).
     if (const int picture = tables_.place_pictures[std::size_t(file)]; picture != 0) show_picture(picture, 1);
@@ -2123,10 +2122,10 @@ void Town::show_picture(int number, int mode) {
 // times. Each frame is an event held for its wait (273d:0006 counts a 16-bit
 // word down to 0).
 void Town::play_picture(int number) {
-    if (!game_dir_) return;
-    const auto path = formats::find_game_file(*game_dir_, "O" + std::to_string(number) + ".ANM");
-    if (!path) return;
-    const auto anm = formats::read_anm(*path);
+    if (!source_) return;
+    const auto picture = source_->place_picture(number);
+    if (!picture) return;
+    const auto& anm = *picture;
     const auto hold = [this](int frames) {
         if (const int n = frames & 0xffff; n != 0) hold_screen(n);
     };

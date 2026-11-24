@@ -256,7 +256,7 @@ bool play_map1(const std::string& script, std::unique_ptr<Town>& town, Map1& m,
     if (overrides) layers.insert(layers.begin(), overrides);
     m.texts = std::make_unique<LayeredText>(layers);
     town = std::make_unique<Town>(m.map, 1, new_game_position(), *m.texts, *m.tables);
-    if (game_files) town->set_game_dir(dir);
+    if (game_files) town->set_source(std::make_shared<const formats::DosGameSource>(dir));
     if (with_rules) {
         m.rules = formats::read_rules(data);
         town->set_rules(&*m.rules);

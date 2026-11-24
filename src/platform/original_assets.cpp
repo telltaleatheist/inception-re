@@ -41,22 +41,32 @@ Image from_colour_numbers(const std::vector<std::uint8_t>& numbers, int width, i
     return image;
 }
 
+// n of the name "O<n>.ANM" (any case), the place picture's number.
+std::optional<int> place_picture_number(const std::string& file) {
+    if (file.size() < 6 || (file[0] != 'O' && file[0] != 'o')) return std::nullopt;
+    int n = 0;
+    std::size_t i = 1;
+    for (; i < file.size() && std::isdigit(static_cast<unsigned char>(file[i])); ++i) n = n * 10 + (file[i] - '0');
+    if (i == 1 || i > 3 || file.size() != i + 4) return std::nullopt;
+    return n;
+}
+
 }  // namespace
 
-OriginalAssets::OriginalAssets(std::filesystem::path game_dir, std::filesystem::path data_dir,
+OriginalAssets::OriginalAssets(std::shared_ptr<const formats::GameSource> source, std::filesystem::path data_dir,
                                formats::Palette16 palette,
                                std::map<std::string, formats::Palette16> picture_palettes)
-    : game_dir_(std::move(game_dir)), data_dir_(std::move(data_dir)), palette_(palette),
+    : source_(std::move(source)), data_dir_(std::move(data_dir)), palette_(palette),
       picture_palettes_(std::move(picture_palettes)) {}
 
 const formats::TileSheet* OriginalAssets::sheet(const std::string& file) {
     if (auto it = sheets_.find(file); it != sheets_.end()) return &it->second;
-    const auto path = formats::find_game_file(game_dir_, file);
-    if (!path) {
-        last_error_ = file + " not found in " + game_dir_.string();
+    auto found = source_->tile_sheet(file);
+    if (!found) {
+        last_error_ = file + " not found in " + source_->describe();
         return nullptr;
     }
-    return &sheets_.emplace(file, formats::decode_icn(formats::read_file(*path))).first->second;
+    return &sheets_.emplace(file, std::move(*found)).first->second;
 }
 
 const formats::Font* OriginalAssets::font() {
@@ -76,12 +86,12 @@ const formats::Font* OriginalAssets::font() {
 const formats::CmpPicture* OriginalAssets::picture(const std::string& file) {
     auto it = pictures_.find(file);
     if (it == pictures_.end()) {
-        const auto path = formats::find_game_file(game_dir_, file);
-        if (!path) {
-            last_error_ = file + " not found in " + game_dir_.string();
+        auto found = source_->picture(file);
+        if (!found) {
+            last_error_ = file + " not found in " + source_->describe();
             return nullptr;
         }
-        it = pictures_.emplace(file, formats::decode_cmp(formats::read_file(*path))).first;
+        it = pictures_.emplace(file, std::move(*found)).first;
     }
     return &it->second;
 }
@@ -142,21 +152,17 @@ std::optional<Image> OriginalAssets::image(const AssetId& id) {
                 }
             return image;
         }
-        const auto path = formats::find_game_file(game_dir_, id.file);
-        if (!path) {
-            last_error_ = id.file + " not found in " + game_dir_.string();
-            return std::nullopt;
-        }
         if (has_extension(id.file, ".CMP")) {
+            const auto* found = picture(id.file);
+            if (!found) return std::nullopt;
             if (id.index != 0) {
                 last_error_ = to_string(id) + ": a .CMP holds one picture";
                 return std::nullopt;
             }
-            const auto picture = formats::decode_cmp(formats::read_file(*path));
             // The standard 256K EGA/VGA palette (formats/palette.h), from the
             // import, unless the picture has its own.
             const auto own = picture_palettes_.find(id.file);
-            return from_colour_numbers(picture.pixels(), formats::kCmpWidth, formats::kCmpHeight,
+            return from_colour_numbers(found->pixels(), formats::kCmpWidth, formats::kCmpHeight,
                                        own != picture_palettes_.end() ? own->second : palette_);
         }
         if (has_extension(id.file, ".ICN")) {
@@ -169,13 +175,18 @@ std::optional<Image> OriginalAssets::image(const AssetId& id) {
         if (has_extension(id.file, ".ANM")) {
             // {"O17.ANM", k}: frame k of a place's picture, as shown.
             // Frame 0xffff is the picture as it ends.
-            const auto anm = formats::read_anm(*path);
-            const std::size_t frame = id.index == 0xffff ? anm.frames.size() - 1 : id.index;
-            if (frame >= anm.frames.size()) {
-                last_error_ = to_string(id) + ": the picture has " + std::to_string(anm.frames.size()) + " frames";
+            const auto number = place_picture_number(id.file);
+            const auto anm = number ? source_->place_picture(*number) : std::nullopt;
+            if (!anm) {
+                last_error_ = id.file + " not found in " + source_->describe();
                 return std::nullopt;
             }
-            return from_colour_numbers(anm.frames[frame], formats::kAnmSize, formats::kAnmSize,
+            const std::size_t frame = id.index == 0xffff ? anm->frames.size() - 1 : id.index;
+            if (frame >= anm->frames.size()) {
+                last_error_ = to_string(id) + ": the picture has " + std::to_string(anm->frames.size()) + " frames";
+                return std::nullopt;
+            }
+            return from_colour_numbers(anm->frames[frame], formats::kAnmSize, formats::kAnmSize,
                                        palette_);
         }
         last_error_ = to_string(id) + ": no reader for this file type yet";

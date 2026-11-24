@@ -2,7 +2,6 @@
 // (docs/startup.md). The hardware questions the original asks first in text
 // mode (the graphics adapter, the disk drives) belong to the platform and
 // are not rebuilt.
-#include "formats/game_files.h"
 #include "game/map_view.h"
 #include "game/money.h"
 #include "game/records.h"
@@ -82,8 +81,8 @@ int DemoKeys::frames_to_next() const {
 // clears again.
 void Town::start_demo(ScriptKeys& input) {
     std::vector<std::uint8_t> bytes;
-    if (game_dir_)
-        if (const auto path = formats::find_game_file(*game_dir_, "DEMOFILE")) bytes = formats::read_file(*path);
+    if (source_)
+        if (auto demo = source_->demo()) bytes = std::move(*demo);
     if (bytes.empty()) log_.push_back("demo: no DEMOFILE, so only the end mark");
     random_ = Random({0x25, 0x13, 0x90});  // 1000:522c
     demo_.emplace(std::move(bytes), input);
@@ -120,11 +119,10 @@ bool Town::run_demo() {
 // speaker (on Tandy graphics, DG:4fba = 1, its three voices instead: not
 // rebuilt, docs/sound.md) until a key or its end.
 std::vector<MusicStep> Town::title_tune() const {
-    if (!game_dir_) return {};
-    const auto path = formats::find_game_file(*game_dir_, "WWOODBT.SIF");
-    if (!path) return {};
-    const auto bytes = formats::read_file(*path);
-    return tune_steps(bytes, tables_.music_note_hz);
+    if (!source_) return {};
+    const auto tune = source_->title_tune();
+    if (!tune) return {};
+    return tune_steps(*tune, tables_.music_note_hz);
 }
 
 std::optional<AssetId> Town::full_screen() const {

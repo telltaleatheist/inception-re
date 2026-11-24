@@ -480,7 +480,7 @@ public:
             town_.log_.push_back("entered place " + std::to_string(place) + " (" +
                                  lookup(town_.texts_, place_text_id(town_.map_number_, place)) + ")");
             // BTECH.EXE 17dc:0008 runs the place right here, inside the step.
-            if (town_.game_dir_) town_.visit_place(place, keys_);
+            if (town_.source_) town_.visit_place(place, keys_);
             town_.step_mechs_ = town_.active_mechs();
         }
         return *answer;
@@ -822,7 +822,7 @@ std::optional<StepResult> Town::step_party(Step step, KeySource& keys) {
         return std::nullopt;
     }
     // Without the game folder the place can't run, and the walk stops at it.
-    if (r.entered && !game_dir_) return std::nullopt;
+    if (r.entered && !source_) return std::nullopt;
     // 1000:218f moves y, then x; a move into the next area moves the grids
     // over (287f:158c and the others) before the other axis.
     const auto area_of = [](std::uint16_t x, std::uint16_t y) { return ((y >> 8) & 0xf0) | ((x >> 8) & 0x0f); };

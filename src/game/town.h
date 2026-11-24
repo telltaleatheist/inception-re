@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <memory>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -17,6 +18,7 @@
 
 #include "formats/tables.h"
 #include "game/asset_id.h"
+#include "formats/game_source.h"
 #include "formats/mtp.h"
 #include "formats/rules.h"
 #include "game/combat.h"
@@ -271,7 +273,7 @@ public:
     std::optional<PlacePicture> picture() const { return picture_; }
     // Where the player's .BLD files are. Without it the walk stops at an
     // entrance after "yes".
-    void set_game_dir(std::filesystem::path dir) { game_dir_ = std::move(dir); }
+    void set_source(std::shared_ptr<const formats::GameSource> source) { source_ = std::move(source); }
     // Where the saved games GameN go (--save-dir; the data folder by
     // default, docs/formats/save.md).
     void set_save_dir(std::filesystem::path dir) { save_dir_ = std::move(dir); }
@@ -382,7 +384,7 @@ private:
     // out, or the walk stopped at a place it can't run.
     bool stopped() const {
         return question_open_ || place_open_ || start_up_open_ || fight_unfinished_ || quit_ ||
-               (entered_place_ && !game_dir_);
+               (entered_place_ && !source_);
     }
     // The start-up's screens, in order (game/startup.cpp).
     enum class Stage { Infocom, Title, Demo, Question, Town };
@@ -659,7 +661,7 @@ private:
     std::optional<PlacePicture> picture_;
     std::optional<AssetId> screen_picture_;  // a script's full-screen picture (special 45)
     int place_number_ = 0;  // F:4584: the entrance last entered
-    std::optional<std::filesystem::path> game_dir_;
+    std::shared_ptr<const formats::GameSource> source_;  // the player's game, none in some tests
     std::filesystem::path save_dir_ = ".";
 
     // The fight's state (game/fight.h).
