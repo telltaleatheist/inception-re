@@ -2,7 +2,9 @@
 
 #include "formats/amiga_program_data.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <set>
 
 #include "formats/amiga_program.h"
 #include "formats/cmp.h"  // FormatError
@@ -13,10 +15,123 @@ namespace chr::formats {
 
 namespace {
 
-std::string_view dos_hash(std::string_view id) {
+const ExeSpan& dos_span(std::string_view id) {
     for (const auto& span : OriginalExe::table())
-        if (span.kind == ExeSpan::Kind::Text && span.name == id) return span.sha256;
-    throw FormatError("the DOS import table has no text " + std::string(id));
+        if (span.name == id) return span;
+    throw FormatError("the DOS import table has no piece " + std::string(id));
+}
+
+std::uint32_t long_at(std::span<const std::uint8_t> b, std::size_t at) {
+    if (b.size() < 4 || at > b.size() - 4) throw FormatError("an Amiga table runs past its hunk's data");
+    return std::uint32_t(b[at]) << 24 | std::uint32_t(b[at + 1]) << 16 | std::uint32_t(b[at + 2]) << 8 | b[at + 3];
+}
+
+std::span<const std::uint8_t> bytes_at(std::span<const std::uint8_t> b, std::size_t at, std::size_t n) {
+    if (at > b.size() || n > b.size() - at) throw FormatError("an Amiga table runs past its hunk's data");
+    return b.subspan(at, n);
+}
+
+// DOS's far pointer as the unpacked program stores it: the segment before the load segment
+// 0x1000 is added.
+void put_far(std::vector<std::uint8_t>& out, std::uint16_t segment, std::uint32_t offset) {
+    const std::uint16_t stored = std::uint16_t(segment - 0x1000);
+    for (const unsigned v : {unsigned(offset), unsigned(stored)}) {
+        out.push_back(std::uint8_t(v));
+        out.push_back(std::uint8_t(v >> 8));
+    }
+}
+
+const AmigaTable& amiga_table(std::string_view id) {
+    for (const AmigaTable& t : amiga_tables())
+        if (t.id == id) return t;
+    throw FormatError("the Amiga table list has no " + std::string(id));
+}
+
+std::size_t pointer_count(const AmigaTable& t) { return dos_span(t.id).size / 4; }
+
+// The pose scripts, by their Amiga addresses: each one's bytes run to the next script's start,
+// and DOS lays the same scripts out in the same order, each padded with a 0 to an even length.
+struct PoseScripts {
+    std::map<std::uint32_t, std::uint32_t> dos_offset;  // Amiga address -> DG offset
+    std::vector<std::uint8_t> dos;
+};
+
+PoseScripts pose_scripts(std::span<const std::uint8_t> hunk) {
+    std::set<std::uint32_t> starts;
+    for (const std::string_view id : {"tables.mech_poses", "tables.person_poses"}) {
+        const AmigaTable& t = amiga_table(id);
+        for (std::size_t i = 0; i < pointer_count(t); ++i) starts.insert(long_at(hunk, t.offset + 4 * i));
+    }
+    const ExeSpan& span = dos_span("tables.pose_scripts");
+    PoseScripts out;
+    for (auto it = starts.begin(); it != starts.end(); ++it) {
+        const auto next = std::next(it);
+        out.dos_offset[*it] = std::uint32_t(span.offset + out.dos.size());
+        // The last one fills what is left of DOS's table.
+        const std::size_t n = next != starts.end() ? *next - *it : span.size - std::min<std::size_t>(span.size, out.dos.size());
+        const auto script = bytes_at(hunk, *it, n);
+        out.dos.insert(out.dos.end(), script.begin(), script.end());
+        if (out.dos.size() % 2) out.dos.push_back(0);
+        if (out.dos.size() > span.size) throw FormatError("the Amiga pose scripts are longer than DOS's");
+    }
+    return out;
+}
+
+// The table in DOS's form, before its edits.
+std::vector<std::uint8_t> dos_form(const AmigaTable& t, std::span<const std::uint8_t> hunk) {
+    const ExeSpan& span = dos_span(t.id);
+    std::vector<std::uint8_t> out;
+    const auto reversed = [&](std::size_t n) {
+        const auto b = bytes_at(hunk, t.offset, span.size);
+        for (std::size_t i = 0; i + n <= b.size(); i += n)
+            for (std::size_t k = n; k-- > 0;) out.push_back(b[i + k]);
+    };
+    switch (t.form) {
+    case AmigaTable::Form::Bytes: {
+        const auto b = bytes_at(hunk, t.offset, span.size);
+        out.assign(b.begin(), b.end());
+        break;
+    }
+    case AmigaTable::Form::Words: reversed(2); break;
+    case AmigaTable::Form::Longs: reversed(4); break;
+    case AmigaTable::Form::Weapons:
+        for (std::size_t at = t.offset; out.size() < span.size; at += 18) {
+            const auto record = bytes_at(hunk, at, 17);
+            out.insert(out.end(), record.begin(), record.end());
+        }
+        break;
+    case AmigaTable::Form::TemplatePointers: {
+        const ExeSpan& templates = dos_span("rules.mech_templates");
+        const std::uint32_t first = amiga_table("rules.mech_templates").offset;
+        for (std::size_t i = 0; i < pointer_count(t); ++i)
+            put_far(out, templates.segment, templates.offset + long_at(hunk, t.offset + 4 * i) - first);
+        break;
+    }
+    case AmigaTable::Form::PiecePointers:
+        for (std::size_t i = 0; i < pointer_count(t); ++i) {
+            const std::uint32_t to = long_at(hunk, t.offset + 4 * i);
+            const ExeSpan* piece = nullptr;
+            for (const std::string_view id : {"tables.frame_pieces_0", "tables.frame_pieces_1", "tables.frame_pieces_2"})
+                if (amiga_table(id).offset == to) piece = &dos_span(id);
+            if (!piece) throw FormatError("an Amiga frame style points at no piece table");
+            put_far(out, piece->segment, piece->offset);
+        }
+        break;
+    case AmigaTable::Form::PosePointers: {
+        const PoseScripts scripts = pose_scripts(hunk);
+        for (std::size_t i = 0; i < pointer_count(t); ++i)
+            put_far(out, dos_span("tables.pose_scripts").segment, scripts.dos_offset.at(long_at(hunk, t.offset + 4 * i)));
+        break;
+    }
+    case AmigaTable::Form::PoseScripts: out = pose_scripts(hunk).dos; break;
+    }
+    return out;
+}
+
+std::string hunk_address(unsigned hunk, unsigned offset) {
+    char address[16];
+    std::snprintf(address, sizeof address, "%u:%04x", hunk, offset);
+    return address;
 }
 
 // A text from `offset` in `hunk`, read as DOS's printer reads it, its bytes as stored.
@@ -43,18 +158,30 @@ AmigaProgramData::AmigaProgramData(std::span<const std::uint8_t> file) : sha256_
         }
         std::vector<std::uint8_t> bytes(text.begin(), text.end());
         bytes.push_back(0);
-        const std::string_view expected = t.sha256.empty() ? dos_hash(t.id) : t.sha256;
+        const std::string_view expected = t.sha256.empty() ? dos_span(t.id).sha256 : t.sha256;
         if (sha256_hex(bytes).substr(0, 16) != expected) {
             if (differing++ < 5) differ += (differ.empty() ? "" : ", ") + std::string(t.id);
             continue;
         }
-        char address[16];
-        std::snprintf(address, sizeof address, "%u:%04x", unsigned(t.hunk), unsigned(t.offset));
-        addresses_.emplace(t.id, address);
+        addresses_.emplace(t.id, hunk_address(t.hunk, t.offset));
+        pieces_.emplace(t.id, std::move(bytes));
+    }
+    for (const AmigaTable& t : amiga_tables()) {
+        std::vector<std::uint8_t> bytes = dos_form(t, program.hunk(t.hunk));
+        for (std::size_t i = 0; i < t.edit_count; ++i) {
+            std::uint8_t& b = bytes.at(t.edits[i].at);
+            b = t.edits[i].flip ? std::uint8_t(b ^ t.edits[i].value) : t.edits[i].value;
+        }
+        const std::string_view expected = t.sha256.empty() ? dos_span(t.id).sha256 : t.sha256;
+        if (sha256_hex(bytes).substr(0, 16) != expected) {
+            if (differing++ < 5) differ += (differ.empty() ? "" : ", ") + std::string(t.id);
+            continue;
+        }
+        addresses_.emplace(t.id, hunk_address(t.hunk, t.offset));
         pieces_.emplace(t.id, std::move(bytes));
     }
     if (differing)
-        throw FormatError("the Amiga program's texts differ from version 2.3's (" + std::to_string(differing) +
+        throw FormatError("the Amiga program's texts or tables differ from version 2.3's (" + std::to_string(differing) +
                           ": " + differ + (differing > 5 ? ", ..." : "") + ")");
 }
 

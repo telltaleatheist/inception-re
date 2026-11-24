@@ -2,6 +2,7 @@
 // byte: a load file, a scripts bundle, letter-pair tables, a script, pictures, tile sheets, maps
 // and place pictures.
 // No game files.
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -343,5 +344,29 @@ TEST(amiga_texts_cover_the_dos_import_table) {
     CHECK(same_order);
     bool sane = true;
     for (const auto& t : amiga) sane = sane && t.hunk <= 1 && t.flip_count <= t.flips.size() && (t.sha256.empty() || t.sha256.size() == 16);
+    CHECK(sane);
+}
+
+TEST(amiga_tables_are_in_the_dos_import_table) {
+    // In the DOS table's order, each once, with edits inside the table; the tables not read yet
+    // are named here, so a table can't be left out unnoticed.
+    const std::vector<std::string_view> not_yet{"tables.palette", "tables.endmech_palette", "tables.stats_palette",
+                                                "tables.stats_pulse", "tables.overhead_colours",
+                                                "tables.sound_lists", "tables.music_note_hz"};
+    std::vector<std::string_view> dos;
+    for (const auto& span : OriginalExe::table())
+        if (span.kind == ExeSpan::Kind::Table &&
+            std::find(not_yet.begin(), not_yet.end(), span.name) == not_yet.end())
+            dos.push_back(span.name);
+    const auto amiga = amiga_tables();
+    bool same_order = amiga.size() == dos.size();
+    for (std::size_t i = 0; same_order && i < amiga.size(); ++i) same_order = amiga[i].id == dos[i];
+    CHECK(same_order);
+    bool sane = true;
+    for (const auto& t : amiga) {
+        sane = sane && t.hunk <= 1 && t.edit_count <= t.edits.size() && (t.sha256.empty() || t.sha256.size() == 16);
+        for (const auto& span : OriginalExe::table())
+            for (std::size_t i = 0; span.name == t.id && i < t.edit_count; ++i) sane = sane && t.edits[i].at < span.size;
+    }
     CHECK(sane);
 }

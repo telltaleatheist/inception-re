@@ -1,6 +1,6 @@
 // The Amiga 2.3 program's pieces by the DOS import table's IDs (formats/program_data.h): what
 // the importer takes from an Amiga copy, in DOS 1.03's forms (docs/formats/amiga.md, "The
-// texts").
+// texts" and "The tables").
 #pragma once
 
 #include <array>
@@ -33,10 +33,40 @@ struct AmigaText {
 // One entry for every text in the DOS import table, in its order.
 std::span<const AmigaText> amiga_texts();
 
+// Where one of the DOS import table's tables is in the Amiga program, and how it becomes DOS's.
+struct AmigaTable {
+    enum class Form : std::uint8_t {
+        Bytes,             // as stored
+        Words,             // big-endian words
+        Longs,             // big-endian longs
+        Weapons,           // records of 18 bytes; DOS's are their first 17
+        TemplatePointers,  // pointers to the 'Mech templates
+        PiecePointers,     // pointers to the three frame piece tables
+        PosePointers,      // pointers to the pose scripts
+        PoseScripts,       // the pose scripts; DOS pads each to an even length
+    };
+    struct Edit {
+        std::uint16_t at = 0;    // in the DOS form
+        std::uint8_t value = 0;  // DOS's value there
+        bool flip = false;       // `value` is XORed in instead (a letter's case)
+    };
+    std::string_view id;  // the DOS import table's
+    std::uint8_t hunk = 0;
+    std::uint32_t offset = 0;
+    Form form = Form::Bytes;
+    // The DOS form's expected hash. Empty: the DOS table's own, because the result is DOS's table.
+    std::string_view sha256 = {};
+    std::array<Edit, 2> edits = {};
+    std::uint8_t edit_count = 0;
+};
+
+// The tables that can be read so far, in the DOS import table's order.
+std::span<const AmigaTable> amiga_tables();
+
 class AmigaProgramData final : public ProgramData {
 public:
     // Reads and checks the program `battletech` (formats/amiga_program.h), then every text
-    // against its hash. Throws FormatError naming the texts that differ.
+    // and table against its hash. Throws FormatError naming those that differ.
     explicit AmigaProgramData(std::span<const std::uint8_t> file);
 
     std::span<const std::uint8_t> get(std::string_view name) const override;

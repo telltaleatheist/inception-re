@@ -153,9 +153,9 @@ records, so menus 0 and 1's highlight colours (word 5) are also windows 9 and 10
 columns. Windows 0-8 are DOS's byte for byte. All that differs is the menus' highlight colour,
 the Amiga's own colour number in all 40 non-empty records (a colour, so it follows the copy), and
 with it those two starting columns (3 where DOS has 14: a place on screen, so DOS's must stay).
-The two uses come from the same bytes but are to be handed out apart: the menus read from the
-`menus` span as stored (`amiga_menus` does), and the windows from a copy of the `windows` span
-with word 6 of records 9 and 10 set to DOS's 14 (not written yet: nothing reads that span).
+The two uses come from the same bytes but are handed out apart: the menus from the `menus`
+bytes as stored (`amiga_menus`, and `tables.menus` below), and `tables.windows` from a copy of
+the windows' bytes with word 6 of records 9 and 10 set to DOS's 14.
 `amiga_menus` reads the menus as DOS's records; the scripts' menu instructions need their item
 counts to be laid out.
 
@@ -192,6 +192,8 @@ Amiga colour one DOS colour and the other way round), in all seven copies:
 
 (Each change is one byte of the piece's stored data, at a random place, changed at random: seen if
 the piece is then no longer exact, refused if the reader throws.) These are tests of the readers.
+(O19's one is the length of its last run made longer: a frame ends at 3872 bytes even inside a run,
+in DOS's 287f:23ec too, so the pixels are the same.)
 (The changes were made in the plain copy; the art files are the same in all seven.) Nothing of the
 same strength covers the row-order pictures (type 1: the screen frame and the tiny land sheet), the
 compressed tile sheets or the place pictures of more than one frame: they have no exact piece, so
@@ -223,3 +225,49 @@ or, for the six below, to its own.
   DOS's text.
 
 Checked in all seven copies: 532 texts equal DOS's and 6 differ only in colour numbers.
+
+## The tables
+
+`AmigaProgramData` also hands out 113 of the DOS import table's 120 tables by the same IDs, in
+DOS's form (src/formats/amiga_tables.cpp says where each is). 109 hash to the DOS table's own hash
+once in that form; 4 have a hash of their own.
+
+The forms:
+
+- Words and longs are big-endian.
+- The weapons are records of 18 bytes, DOS's 17 and one more.
+- The 'Mech templates are DOS's at 1:02d6, 0x7d bytes each. Template 6's name differs in the case
+  of one letter; the reader flips it back.
+- DOS's far pointers are longs holding an offset in the data hunk: the encounter templates
+  (1:08a6), the frame styles (1:1898) and the two pose tables (1:0b5e, 1:114a).
+- The 48 pose scripts they point at (from 1:106c) are DOS's in DOS's order, without the 0 DOS pads
+  each odd one with. So a script's DOS address follows from the lengths before it.
+- `tables.walking_keys` has the Amiga's own code for east; the reader puts DOS's back, because the
+  game's keys are DOS's codes.
+- The four actuator tables have 7 entries where DOS has 8. The index is a die's 3 to 6, so entry 7
+  is never read; the reader writes DOS's 0 in three, and in `leg_actuator_keep` the next table's
+  first byte is the same as DOS's entry 7.
+
+Four tables are the Amiga's own:
+
+| Table | Differs at | Why it can't change play |
+|---|---|---|
+| `rules.armour_prices` | entry 0 | special 9 (24d3:09fa) indexes it by the armour menus' item, and ARMOR.BLD sends item 0 to its end |
+| `tables.treatment_cost` | entry 0 | 24d3:0d48 skips a treatment of 0 |
+| `tables.upgrade_price` | entry 8 | special 19 reads it into F:0076, but REPAIR leaves for any case above 7 before spending it |
+| `tables.menus` | the highlight colours | colour follows the copy |
+
+`rules.personal_armour`'s entry 0 is not read either: 24d3:0a3c has the same index as the prices,
+and the three other readers (1000:3a49, 1000:3acd, 15ab:1a8f) come after a test that the type is
+not 0. The reader writes DOS's 0 there. These readers were found by the tables' literal offsets,
+so a read through a computed pointer wouldn't show.
+
+Some short tables have their bytes in several places in the data hunk; their addresses were taken
+from the order of the tables around them ("by neighbours"), not from the code that reads them:
+`alley_offset_x/y`, `overhead_block_x/y`, `overhead_blocks_across/down`, `path_quarters`,
+`person_water`, `person_quarters`, `step_x/y`, `los_step_x/y`, `los_area_x/y`, `mech_cell_odd_x/y`.
+Each place holds the same bytes, and the data hunk's hash is fixed, so a wrong choice would give the
+same table; only its address here, and the claim that the Amiga reads it there, would be wrong.
+
+Not read yet: the three palettes, `stats_pulse` and `overhead_colours` (colours), `sound_lists` and
+`music_note_hz` (sound), and the font.

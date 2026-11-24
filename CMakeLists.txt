@@ -58,6 +58,7 @@ add_library(chrformats STATIC
   src/formats/amiga_picture.cpp
   src/formats/amiga_program.cpp
   src/formats/amiga_program_data.cpp
+  src/formats/amiga_tables.cpp
   src/formats/amiga_texts.cpp
   src/formats/amiga_source.cpp
   src/formats/game_source.cpp
