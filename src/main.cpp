@@ -1,5 +1,5 @@
 // chr: the rebuild's program. It starts as the original does (the Infocom
-// screen, the title, "Is this your first time playing?") and goes on to the
+// screen, the title, the first-time question, intro.first_time) and goes on to the
 // new game's town, walking with the arrow keys and Home/PgUp/End/PgDn. With
 // --map N it skips the start-up and begins on map N.
 //

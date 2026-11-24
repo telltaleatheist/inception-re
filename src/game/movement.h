@@ -46,7 +46,7 @@ int blocking_tile(int map_number);
 enum class StepOutcome {
     Moved,
     Blocked,    // a character would stand on a blocking tile
-    TooDeep,    // the block it would enter is deep water ("The water is too deep that way.")
+    TooDeep,    // the block it would enter is deep water (its message: walk.too_deep)
 };
 
 // BTECH.EXE 1000:1c12 (Ghidra FUN_1000_1c12)

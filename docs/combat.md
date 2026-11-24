@@ -125,7 +125,7 @@ itself is in 2.6.
 
 ### 1.2.2 Mission 2 fought by the computer (rebuilt)
 
-With "Should the computer fight?" answered Yes, at every combat messages level and with combat
+With the question whether the computer should fight answered Yes, at every combat messages level and with combat
 graphics off or on, the whole fight runs from random draws alone: the planner (section 4), the rounds (section 3) and
 the end tests (2.8), up to kind 1's line sending the party back to base (2.12). Rebuilt in
 `src/game/combat.cpp` (the rules) and `Town::fight_rounds` (the loop), and matched on the
@@ -225,7 +225,7 @@ pass counts. The callers: special 1 (modes 0-7 from flag 00), ARENA.BLD's specia
 | 1 | A marked spot. One r & 7 picks a spot from DG:1632 / DG:163a (`tables.marked_spot_x/y`, a cell column and row in the area); that cell of the map store (P:101d + block x 64 + cell) is saved and set to tile 0x50. With a Locust a message (DG:1434, `mission.failed`) and a key come first. Then `218f(0)`. The task is done, after a tick, when the party's cell ((x & 0x7f) / 2, (y & 0x7f) / 2) is the one below the spot or below and to the left: a message and a key, DG:14ef (`mission.no_hands`) with a Locust, else DG:152a (`mission.hands`), and then the map cell is put back. Only the map store: the cell window keeps tile 0x50 until the next step builds it (`287f:1314` at the end of `218f`). | the 'Mech is not a Locust (it has no hands; the script says so). The cell is put back again. Either way Piloting (character 0 byte 8) + 1 if below 3. |
 | 2 | Target practice. One enemy 'Mech (`0d49(1, 0)`), then its record 4 is disarmed: both actuator bytes 0x24 / 0x25, all ten ammunition bytes 0x27-0x30 and both MP bytes 0x31 / 0x32 set to 0. It cannot move, kick or fire. Fight kind 1. | as below |
 | 3 | 3-6 enemy people (`0d49(0, (r & 3) + 3)`: the random count is pushed first, so it is the second argument), fight kind 1. | as below |
-| 4-7 | 1-4 enemy 'Mechs (`0d49(mode - 3, 0)`), fight kind 1. Mode 4 alone sets F:0090 = 1 (no "computer fights for you" question, no Computer order): the switch (17dc:086f) sends mode 4 to 17dc:0765, which sets it, and modes 5-7 to 0770, just after. Mode 6: one r, the raid if r & 1. Mode 7: always the raid. In the raid F:3772 = 1 and the 16 cells P:101d + 0ff0..0fff are set to tile 0x40 (a gap in a wall: a guess; map 11's load in the fight replaces them). F:0090 = 0 afterwards. | as below |
+| 4-7 | 1-4 enemy 'Mechs (`0d49(mode - 3, 0)`), fight kind 1. Mode 4 alone sets F:0090 = 1 (no question offering the computer's control, no Computer order): the switch (17dc:086f) sends mode 4 to 17dc:0765, which sets it, and modes 5-7 to 0770, just after. Mode 6: one r, the raid if r & 1. Mode 7: always the raid. In the raid F:3772 = 1 and the 16 cells P:101d + 0ff0..0fff are set to tile 0x40 (a gap in a wall: a guess; map 11's load in the fight replaces them). F:0090 = 0 afterwards. | as below |
 | 8 | The Arena: `0d49(0x81, 0)`: one enemy 'Mech by the bit-0x80 branch of 1.4 (two, the second the spectator, when F:d452..d455 holds an ff), figure 0 active, fight kind 2. | not set by this mode |
 | 9 | The jail break: Jason alone on foot, a fight of kind 3 every 81 ticks, and the four bays on row 702d (1.7). | not set by this mode |
 
@@ -636,7 +636,7 @@ instead.
   - On foot: the weapon's target now and its range band, with a yes/no to change it; then the
     picker for slot 0.
 - **Kick** (`203b:2231`, rebuilt, `Town::kick_order`): window 4 cleared. With both hip
-  actuators (bit 3 of bytes 0x24 and 0x25), "Choose the 'Mech to kick" and the target picker for
+  actuators (bit 3 of bytes 0x24 and 0x25), the prompt to choose the 'Mech to kick and the target picker for
   weapon 0x20 into slot 11; without, a message and a key. Either way the orders menu's last item
   (menu 3, F:00c8) is set to Kick, so the bar comes back on it. The weapons list also uses slots
   0-11, one per listed weapon, and the round reads slot 11 of a 'Mech as the Kick: a 'Mech with
@@ -689,7 +689,7 @@ instead.
     `Town::redraw_map_screen(true)`).
 
 The menu's loop, as rebuilt (`Town::orders_menu`): each pass prints the unit's heading in
-window 4 (`15ab:18e8`), then either "The computer is moving" (DG:3a42) and the planner with show
+window 4 (`15ab:18e8`), then either the notice that the computer is moving (DG:3a42) and the planner with show
 (a unit under F:3994) or the unit's screen (`203b:1774`), then the menu in window 3: ten items for a
 'Mech (DG:3a6f), eight on foot (DG:3abc). The bar goes on Begin Fight only on the menu's first pass
 in a round; after that it stays on the item last chosen. Next Unit puts it back on Next Unit
@@ -1508,7 +1508,7 @@ mistake; "quirk" means it may be intended.
 | 11 | The stop point steps diagonally in a fixed direction, so it can overshoot the target's row or column. Quirk. | `1e31:03ab` | `fix_planner_stop_point` |
 | 12 | The computer fires every weapon at every range and always tries the Kick. Behaviour; kept, no switch. | `1e31:03ab` | none |
 | 13 | Planning an enemy person against a 'Mech sets F:3992 = 0, wiping a retreat set by a party person; planning a party person against a 'Mech sets it to 1, which the mission driver reads as fleeing. Probable. | `1e31:03ab`, `17dc:0629` | `fix_retreat_flag` |
-| 14 | Under computer control, an auto-retreat value of 2 is later read as "left the raid area". Probable. | `203b:000a` | `fix_auto_retreat` |
+| 14 | Under computer control, an auto-retreat value of 2 is later read as having left the raid area. Probable. | `203b:000a` | `fix_auto_retreat` |
 | 15 | The flee draw is made in kinds 2 and 3, where fleeing is refused. Kept for the draw order. | `203b:000a` | none |
 | 16 | A waypoint in area rows 8-15 is never recognised as a duplicate (sign extension), so it is added again. Harmless. `chain_waypoints_edge` checks the second copy against the original. | `203b:1c1f` | `fix_waypoint_compare` |
 | 17 | A 13th waypoint is written into the next figure's first order (each Move adds one, so thirteen Moves reach it). Kept: the rebuild holds that order, and the `waypoints` sequence matches the original's write. The fix drops the waypoint and logs it. | `203b:1c1f` | `fix_order_bound` |
@@ -1537,7 +1537,7 @@ mistake; "quirk" means it may be intended.
 | 40 | REPAIR's weapon repairs (special 18): one payment of 300 C-Bills clears bit 0x80 on every destroyed weapon of the chosen type, but the type's count goes down by one only. A 'Mech with two or more of a type destroyed sees the type listed again, and paying for it again mends nothing. Kept. The fix: the type's count drops to 0 with the payment. | `19b8:0002` | `fix_repair_type_count` |
 | 41 | REPAIR's weapon repairs (special 18): after a payment, the test for any destroyed weapon left counts types 0x10-0x1f and not 0x20 (the SRM 6), though the list and the counts run to 0x20. With only SRM 6s left the weapons are called all fixed and the stage ends; they stay destroyed (a later visit lists them again). Kept. The fix: type 0x20 counted too. | `19b8:06f9` | `fix_repair_last_type` |
 | 42 | After the leader falls in an Arena fight with the theft, the party is left at y ffff (Jason's killed figure's row), and the step out of the Arena keeps it (docs/movement.md). The window there is block row 15: each block is read at the centre grid's start plus row x 8 (a byte), so rows 14-16 read the grids after the centre one in memory, not the map. Kept. No fix switch: no position or map belongs to y ffff, so there is no correct reading to switch to (`chain_arena_leader_poked`). | `287f:1314`, `287f:13d9` | none |
-| 43 | A computer-planned flight (a party person planned against a 'Mech, no party 'Mech left) keeps its draw r & 3 as the flight's value, which the raid reads as "the way out was reached" when it is 2: the raid's way-out text after a flight that did not reach it. Any other kind just takes the fled ending. No reference case reaches it (open item 21). | `203b:000a` (0b8a, 1792) | `fix_computer_flight` |
+| 43 | A computer-planned flight (a party person planned against a 'Mech, no party 'Mech left) keeps its draw r & 3 as the flight's value, which the raid reads as its way out reached when it is 2: the raid's way-out text after a flight that did not reach it. Any other kind just takes the fled ending. No reference case reaches it (open item 21). | `203b:000a` (0b8a, 1792) | `fix_computer_flight` |
 
 The switches are `game/fixes.h`. Each is off by default, except where the original reads or
 writes memory the rebuild does not hold, or never returns: bugs 18, 26 and 32 take the fixed
@@ -1727,7 +1727,7 @@ sequence compares the scene with the original's, over the whole screen and the s
 | `15ab:0002` | FUN_15ab_0002 | repairs and scrap |
 | `15ab:04f9` | FUN_15ab_04f9 | salvage |
 | `15ab:094b` | FUN_15ab_094b | loot |
-| `15ab:0b5e` | FUN_15ab_0b5e | "computer fights for you?" |
+| `15ab:0b5e` | FUN_15ab_0b5e | the question offering the computer's control of the fight |
 | `15ab:0d3d` | FUN_15ab_0d3d | the random encounter's set-up |
 | `15ab:1467` | FUN_15ab_1467 | the scan list |
 | `203b:000a` | FUN_203b_000a | the fight |

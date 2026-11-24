@@ -242,7 +242,7 @@ bool Town::run_start_up(ScriptKeys& input) {
         stage_ = Stage::Question;
         new_game_screen();
     }
-    // "Is this your first time playing?" Yes goes to the town; No asks
+    // The first-time question (intro.first_time): Yes goes to the town; No asks
     // whether to load a saved game.
     const auto first = yes_no(true, input);
     if (!first) return false;

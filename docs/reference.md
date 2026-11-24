@@ -241,8 +241,8 @@ made fresh by every run and never kept anywhere else.
 
 ## The start-up, as captured
 
-1. Text mode: "Which graphics adapter do you have?" (3: 256K EGA/VGA), then "How many disk
-   drives?" (3: hard disk), then a note about where saved games go; a key goes on. The rebuild
+1. Text mode: the graphics adapter question (3: 256K EGA/VGA), then the disk drives
+   question (3: hard disk), then a note about where saved games go; a key goes on. The rebuild
    leaves these to the platform (docs/startup.md).
 2. The Infocom/Westwood screen, then the title; a key each. Rig cases `start_infocom`,
    `start_title`.
@@ -379,7 +379,7 @@ then in the ruined town, outdoors (flag 04). It walks out north, 244 steps found
 chr, into area 0xbc: the grids move a row and the new area's terrain is drawn. Four random
 encounters come up on the way (flag 24 is 0x3f), none in reach, so the soldiers are rolled and
 placed and the party walks on. One step west from there meets a fifth in reach: four soldiers
-("Attacking force: 4 humans."). Declining doesn't evade them, the computer fights with no
+(the attacking force message, fight.attackers, counting four people). Declining doesn't evade them, the computer fights with no
 messages and no graphics, and Jason, alone on foot, is killed in round 5; the chain ends at the
 game-over box. That branch is its own sequence, `chain_death` (campaign tier too), from the same
 captured prefix. `chain_mech_poked` (campaign tier) branches from the same prefix after the

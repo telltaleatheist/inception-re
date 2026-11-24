@@ -458,7 +458,7 @@ private:
     struct MissionWalk {
         int mode = 0;
         bool done = false;    // [bp-2]: the mission's task is done
-        bool warned = false;  // [bp-e]: "Don't come back here..." shown
+        bool warned = false;  // [bp-e]: the warning not to come back has been shown
         int count = 0;        // [bp-14]: the course's ticks
         std::optional<std::uint8_t> saved_cell;  // [bp-18]: a map cell the mission changed
         std::size_t cell = 0;                    // [bp-4]: that cell, in the map store
