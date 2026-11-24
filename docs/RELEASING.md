@@ -45,6 +45,12 @@ reports its number as the program's version (`chi-v1.0.0` reports `1.0.0`).
 A test build takes any other label with `-test` in it, so it is never taken
 for a release.
 
+The program file also carries the full label for the family launcher, whose
+ADD FROM FILE reads it without running the program: the NUL-ended string
+`MW3-PROGRAM-VERSION:<label>` (`chi_version_tag` in src/main.cpp, from the
+`CHR_VERSION_TAG` CMake setting, "dev" by default). Every package checks its
+program for it, the Mac app in each architecture's slice.
+
 | Platform | Made on | Files |
 |---|---|---|
 | macOS | a Mac | `CHI-Rebuild-<label>-mac.dmg`: `Inception Rebuild.app`, signed ad hoc, universal (arm64 and x86_64) from macOS 12 |

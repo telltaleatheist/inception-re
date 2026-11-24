@@ -67,6 +67,14 @@
 #include "platform/sound_player.h"
 #include "platform/text_layer.h"
 
+#ifndef CHR_VERSION_TAG
+#define CHR_VERSION_TAG "dev"
+#endif
+
+// The family launcher's marker: its ADD FROM FILE reads the release tag from this string in the
+// program file, without running it (docs/RELEASING.md).
+extern "C" const char chi_version_tag[] = "MW3-PROGRAM-VERSION:" CHR_VERSION_TAG;
+
 namespace {
 
 struct Options {
@@ -357,6 +365,8 @@ int key_code(SDL_Keycode key) {
 }  // namespace
 
 int main(int argc, char** argv) {
+    // A read the compiler must make: no linker drops the marker as unreferenced.
+    { const volatile char* marker = chi_version_tag; (void)marker[0]; }
     Options options;
     if (!parse(argc, argv, options)) return 2;
     if (options.help) {

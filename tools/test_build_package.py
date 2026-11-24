@@ -89,6 +89,8 @@ class LinuxLayout(unittest.TestCase):
                        '[ "$1" = --help ] && { echo "usage: chi --status | --setup"; exit 0; }\n'
                        '[ "$1" = --status ] && { echo \'{"kit": 1, "game": "inception"}\'; exit 0; }\n'
                        'exit 2\n')
+        with open(program, "ab") as f:  # past the exit: the launcher's marker, as the real program holds it
+            f.write(b"MW3-PROGRAM-VERSION:1-test\0")
         program.chmod(0o755)
         write(root / "build/sdl3/libSDL3.so.0.4.12", "fixture library")
         (root / "build/sdl3/libSDL3.so.0").symlink_to("libSDL3.so.0.4.12")
@@ -119,6 +121,24 @@ class LinuxLayout(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(RuntimeError, "needs an icon"):
                 self.build(Path(d), installer=True)
+
+
+class Marker(unittest.TestCase):
+    def test_the_marker_holds_the_full_label_and_its_nul(self):
+        with tempfile.TemporaryDirectory() as d:
+            program = Path(d) / "chi"
+            program.write_bytes(b"\x7fELF...MW3-PROGRAM-VERSION:chi-v0.1.0\0...")
+            build_package.check_marker(program, "chi-v0.1.0")
+            for other in ("chi-v0.1", "0.1.0", "chi-v0.1.1"):
+                with self.assertRaisesRegex(RuntimeError, "marker"):
+                    build_package.check_marker(program, other)
+
+    def test_the_build_is_given_the_full_label(self):
+        with patch.object(build_package, "run") as run:
+            build_package.configure_and_build(Path("r"), Path("b"), Path("s"), "chi-v0.1.0")
+        configure = run.call_args_list[0].args
+        self.assertIn("-DCHR_VERSION_TAG=chi-v0.1.0", configure)
+        self.assertIn("-DCHR_VERSION=0.1.0", configure)
 
 
 class Archives(unittest.TestCase):

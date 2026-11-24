@@ -85,7 +85,7 @@ def program_version(label):
 def configure_and_build(root, build, sdl, label, universal=True):
     # CHR_GAME_DIR empty: a package has no built-in game folder (docs/setup.md).
     args = ["cmake", "-S", str(root), "-B", str(build), f"-DCHR_SDL_SOURCE_DIR={sdl}", "-DCHR_TRIM_PATHS=ON",
-            f"-DCHR_VERSION={program_version(label)}", "-DCHR_GAME_DIR="]
+            f"-DCHR_VERSION={program_version(label)}", f"-DCHR_VERSION_TAG={label}", "-DCHR_GAME_DIR="]
     if os.name == "nt":
         args += ["-A", "x64", "-DCHR_WINDOWS_GUI=ON"]
     elif sys.platform == "darwin":
@@ -121,6 +121,26 @@ def archive_licences(build, notices):
         if not (licences / source).is_file():
             raise RuntimeError(f"Missing licence: {licences / source} ({lib} is not the pinned static build)")
         shutil.copy2(licences / source, notices / name)
+
+
+# The family launcher's ADD FROM FILE reads a program's release tag from this NUL-ended string in the
+# file, without running it (mech3-re's mw3_version_tag); chi's is in src/main.cpp.
+MARKER = b"MW3-PROGRAM-VERSION:"
+
+
+def check_marker(binary, label):
+    """`binary` holds the launcher's marker with this package's full label."""
+    if MARKER + label.encode() + b"\0" not in Path(binary).read_bytes():
+        raise RuntimeError(f"{Path(binary).name} lacks the launcher's marker {(MARKER + label.encode()).decode()}")
+
+
+def check_marker_slices(binary, label, archs):
+    """Each architecture of a universal Mac program holds the marker (lipo -thin, one by one)."""
+    with tempfile.TemporaryDirectory(prefix="chi-slice-") as scratch:
+        for arch in archs:
+            thin = Path(scratch) / arch
+            run("lipo", str(binary), "-thin", arch, "-output", str(thin))
+            check_marker(thin, label)
 
 
 def stage_common(root, build, sdl, resources):
@@ -217,6 +237,7 @@ def package_windows(root, build, sdl, output, label, game, installer):
     stage.mkdir(parents=True)
     binary = configure_and_build(root, build, sdl, label)
     shutil.copy2(binary, stage / f"{PROGRAM}.exe")
+    check_marker(stage / f"{PROGRAM}.exe", label)
     sdl_dll = [p for p in build.rglob("SDL3.dll") if p.is_file()]
     if not sdl_dll:
         raise RuntimeError("Missing runtime dependency: SDL3.dll")
@@ -316,6 +337,7 @@ def package_linux(root, build, sdl, output, label, game, installer, tools):
     stage.mkdir(parents=True)
     binary = configure_and_build(root, build, sdl, label)
     shutil.copy2(binary, stage / PROGRAM)
+    check_marker(stage / PROGRAM, label)
     soname = needed_sdl(stage / PROGRAM)
     found = [p for p in build.rglob(soname) if p.exists()]
     if not found:
@@ -367,6 +389,7 @@ def appimage(root, stage, output, label, game, sdl, tools):
                LD_LIBRARY_PATH=os.pathsep.join([str(stage.resolve()), os.environ.get("LD_LIBRARY_PATH", "")]))
     run(str(tools / "linuxdeploy-x86_64.AppImage"), "--appdir", str(appdir), "-e", str(bin_dir / PROGRAM),
         "-d", str(root / "tools/package/chi.desktop"), "-i", str(icon), env=env)
+    check_marker(bin_dir / PROGRAM, label)
     smoke(bin_dir / PROGRAM, game)
     check_paths(root, appdir, root, sdl)
     image = output / f"{STEM}-{label}-x86_64.AppImage"
@@ -460,6 +483,9 @@ def package_mac(root, build, sdl, output, label, game, universal=True):
         raise RuntimeError("Missing runtime dependency: libSDL3")
     if universal:
         check_archs([exe, *frameworks.iterdir()], MAC_ARCHS)
+        check_marker_slices(exe, label, MAC_ARCHS)
+    else:
+        check_marker(exe, label)
 
     stage_common(root, build, sdl, resources)
     shutil.copy2(root / "tools/package/chi.icns", resources / "chi.icns")

@@ -126,6 +126,7 @@ if(NOT EXISTS "${CMAKE_SOURCE_DIR}/extern/re-setup-kit/CMakeLists.txt")
 endif()
 add_subdirectory(extern/re-setup-kit "${CMAKE_BINARY_DIR}/re-setup-kit")
 set(CHR_VERSION "dev" CACHE STRING "The program's version, as --status reports it (packages set it)")
+set(CHR_VERSION_TAG "dev" CACHE STRING "The package's full label, in the launcher's version marker (packages set it)")
 
 # The setup recipe (src/setup/setup.h): no SDL.
 add_library(chrsetup STATIC src/setup/setup.cpp)
@@ -208,7 +209,7 @@ if(SDL3_FOUND)
   add_custom_command(TARGET chr POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/text/interface.json"
             "$<TARGET_FILE_DIR:chr>/data/text/interface.json")
-  target_compile_definitions(chr PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}")
+  target_compile_definitions(chr PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}" CHR_VERSION_TAG="${CHR_VERSION_TAG}")
   # The program itself, walking known routes on map 1 with no window (SDL's
   # dummy video driver). They need the game files.
   if(EXISTS "${CHR_GAME_DIR}/MAP1.MTP")
