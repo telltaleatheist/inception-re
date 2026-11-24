@@ -9,7 +9,7 @@ One platform per run, this machine's (docs/RELEASING.md):
   Windows  CHI-Rebuild-<label>-win64.zip          chi.exe and SDL3.dll at the top level
            CHI-Rebuild-<label>-Setup.exe          with --installer (Inno Setup)
   Linux    CHI-Rebuild-<label>-linux-x86_64.tar.gz   chi and libSDL3.so.0 (the checks' form)
-           CHI-Rebuild-<label>-x86_64.AppImage    with --installer: usr/bin/chi (needs an icon, --appimage-tools)
+           CHI-Rebuild-<label>-x86_64.AppImage    with --installer: usr/bin/chi (--appimage-tools)
 The build's program stays chr, which the tools and the reference rig run; the
 package names it chi. Every file made gets a .sha256 beside it; sums.py writes
 a release's SHA256SUMS over all of them.
@@ -344,11 +344,10 @@ def package_linux(root, build, sdl, output, label, game, installer, tools):
 def appimage(root, stage, output, label, game, sdl, tools):
     """CHI-Rebuild-<label>-x86_64.AppImage: usr/bin/chi with data/ beside it (SDL_GetBasePath), the
     notices in usr/share/doc/chi, the libraries by linuxdeploy. `tools` holds linuxdeploy-x86_64.AppImage
-    and appimagetool-x86_64.AppImage. The desktop entry wants an icon, and the packages have none yet:
-    tools/package/chi.png is used when there is one, else the AppImage is refused (docs/RELEASING.md)."""
+    and appimagetool-x86_64.AppImage. The desktop entry's icon is tools/package/chi.png (ICONS.md)."""
     icon = root / "tools/package/chi.png"
     if not icon.is_file():
-        raise RuntimeError("The AppImage needs an icon (tools/package/chi.png), and the packages have none yet")
+        raise RuntimeError("The AppImage needs an icon: tools/package/chi.png is missing")
     if not tools:
         raise RuntimeError("--appimage-tools DIR (linuxdeploy and appimagetool) is needed for the AppImage")
     tools = Path(tools).resolve()
@@ -460,11 +459,12 @@ def package_mac(root, build, sdl, output, label, game, universal=True):
         check_archs([exe, *frameworks.iterdir()], MAC_ARCHS)
 
     stage_common(root, build, sdl, resources)
+    shutil.copy2(root / "tools/package/chi.icns", resources / "chi.icns")
     minos = re.search(r"minos (\S+)", subprocess.run(["otool", "-l", str(exe)], capture_output=True, text=True,
                                                       check=True).stdout)
     version = program_version(label)
     plist = {"CFBundleName": APP_NAME, "CFBundleDisplayName": APP_NAME, "CFBundleIdentifier": BUNDLE_ID,
-             "CFBundleExecutable": PROGRAM, "CFBundlePackageType": "APPL",
+             "CFBundleExecutable": PROGRAM, "CFBundlePackageType": "APPL", "CFBundleIconFile": "chi",
              "CFBundleShortVersionString": version, "CFBundleVersion": version, "CFBundleDevelopmentRegion": "en",
              "CFBundleInfoDictionaryVersion": "6.0", "LSMinimumSystemVersion": minos.group(1) if minos else "12.0",
              "LSApplicationCategoryType": "public.app-category.games", "NSHighResolutionCapable": True,

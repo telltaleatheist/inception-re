@@ -198,6 +198,12 @@ if(SDL3_FOUND)
   if(WIN32 AND CHR_WINDOWS_GUI)
     set_target_properties(chr PROPERTIES WIN32_EXECUTABLE ON)
   endif()
+  # The program's icon on Windows (tools/package/ICONS.md): the first icon resource is the one shown.
+  if(WIN32)
+    file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/chi.rc"
+         CONTENT "1 ICON \"${CMAKE_SOURCE_DIR}/tools/package/chi.ico\"\n" @ONLY)
+    target_sources(chr PRIVATE "${CMAKE_BINARY_DIR}/chi.rc")
+  endif()
   # The repo's default interface texts, next to the program (docs/text.md).
   add_custom_command(TARGET chr POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/text/interface.json"

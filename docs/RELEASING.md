@@ -30,8 +30,11 @@ first start finds or asks for the player's copy (docs/setup.md), copies it
 into the player's folder, and imports the text and tables from its BTECH.EXE
 there.
 
-There is no icon yet. The packages ship without one until the project
-decides on original art.
+The packages carry the project's own icon, a hawk's head in a crescent on a
+steel and crimson patch: `tools/package/chi.png` (the AppImage's desktop
+entry), `chi.ico` (chi.exe's resource and Setup.exe) and `chi.icns` (the
+Mac app's `CFBundleIconFile`). It holds nothing from the game; where it came
+from is in `tools/package/ICONS.md`.
 
 ## Names
 
@@ -96,8 +99,7 @@ of what the compiler writes (`CHR_TRIM_PATHS`).
   `linuxdeploy-x86_64.AppImage` and `appimagetool-x86_64.AppImage`. The
   AppImage holds `usr/bin/chi` with `data/` beside it, and the notices in
   `usr/share/doc/chi`. Its desktop entry (`tools/package/chi.desktop`)
-  needs an icon, so until there is one (`tools/package/chi.png`), the
-  AppImage step is refused.
+  names the icon, `tools/package/chi.png`.
 
 A started program with nothing on its command line (a shortcut, the
 launcher, a double-click) has no console. Its log goes to `chi.log` in the

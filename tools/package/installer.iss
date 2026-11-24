@@ -8,7 +8,7 @@
 ; (install\), the imported text, the saves and the log live in
 ; %APPDATA%\BattleTech\Inception Rebuild, which the uninstaller and every
 ; update leave alone. No file of the original game is in the installer.
-; No icon yet: Inno Setup's own.
+; The installer and the program carry the project's icon (ICONS.md).
 
 #ifndef AppVersion
   #define AppVersion "dev"
@@ -45,6 +45,7 @@ OutputBaseFilename={#Stem}-Setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile=chi.ico
 #if FileExists(AddBackslash(Dist) + "LICENSE")
 LicenseFile={#Dist}\LICENSE
 #endif
