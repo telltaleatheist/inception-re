@@ -157,6 +157,14 @@ TEST(music_ends_with_its_data) {
     CHECK(shifted.size() == 2 && shifted[0].divisor == 0x10000 && shifted[1].divisor == 0x10000);
 }
 
+TEST(title_waits_as_long_as_dos) {
+    // 284b:0298: the step that ends the tune comes 1 + 4 x steps ticks after its start, and DOS's
+    // 4,352 steps last 17,409 ticks of 1193182 / 4095 a second.
+    CHECK(title_wait_ticks(kDosTuneSteps) == 17409);
+    CHECK(title_wait_ms(kDosTuneSteps) > 59747.0 && title_wait_ms(kDosTuneSteps) < 59749.0);
+    CHECK(title_wait_ticks(0) == 1 && title_wait_ticks(10) == 41);
+}
+
 TEST(music_steps_are_four_ticks) {
     CHECK(music_step_ms() > 13.727 && music_step_ms() < 13.729);
     const std::vector<std::uint8_t> tune = {8 * 12, 8 * 12, 0x90, 0x81, 8 * 12 + 1};

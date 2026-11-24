@@ -728,8 +728,7 @@ int main(int argc, char** argv) {
             } else if (town && frames > 0 && town->title_tune_playing() && options.screenshot.empty()) {
                 // When the tune has played to its end with no key, the demo.
                 title_frames += frames;
-                const double tune_ms = double(town->title_tune().size()) * chr::game::music_step_ms();
-                if (title_frames * 1000.0 >= tune_ms * chr::game::kVgaRefreshHz) {
+                if (title_frames * 1000.0 >= town->title_wait_ms() * chr::game::kVgaRefreshHz) {
                     chr::game::ScriptItem item;
                     item.tune_end = true;
                     keys.push_back(item);

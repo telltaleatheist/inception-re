@@ -80,6 +80,17 @@ inside `Random::at_town_start`.
 The title's tune plays while the title waits (docs/sound.md, "The title music"). When it ends
 (59.7 s on the speaker) with no key, the demo plays ("The demo", below).
 
+The wait (`1000:4874`) is the tune's own length. It ends when a key is waiting or when the tune's
+step routine is the idle one again (`284b:033c`), and nothing else counts: no polls and no BIOS
+ticks. The tune runs from the timer interrupt, so its length is 1 + 4 x 4352 = 17,409 ticks from its
+start, 59.748 s (the first step comes after 1 tick, and the step that reads the end mark puts the
+idle routine back). Then `1000:5131` asks for a key once more, which would start a new game, and
+with none the demo starts. The rebuild (`title_wait_ms`, src/game/music.cpp) uses the tune's ticks,
+rounded up to the next frame in interactive play, and DOS's tune's length for a copy that has no
+WWOODBT.SIF, Amiga's or a DOS folder without the file (a wait taken from its tune alone would be
+none, and the demo would start at once). No run of the original compares the wait's length: `sound_title` stops after 4126 steps, and
+the rig's `demo` gives chr its `tune-end` from the script. A unit test checks the 17,409 ticks.
+
 ### The demo
 
 When the title's tune runs out with no key, the game plays its demo: the keys in the player's
@@ -144,4 +155,4 @@ reaches its end mark long before.
 positions 47, 198, 374, 563, 713 and 782, the last after the demo ended), with chr given the same
 frames: the state (random numbers, C-Bills, party, walkers, flags, 'Mechs, characters, menus)
 matches line for line at five; at 563 the capture fell inside a pass, one step before chr's.
-The rig has no demo sequence yet; one needs new runs of the original.
+The rig's `demo` sequence (docs/reference.md, "Waiting") compares it with a run of the original.

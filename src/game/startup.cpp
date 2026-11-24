@@ -125,6 +125,12 @@ std::vector<MusicStep> Town::title_tune() const {
     return tune_steps(*tune, tables_.music_note_hz);
 }
 
+// BTECH.EXE 1000:4874 (in Ghidra FUN_1000_476d): the wait ends with the tune.
+double Town::title_wait_ms() const {
+    const auto tune = source_ ? source_->title_tune() : std::nullopt;
+    return game::title_wait_ms(tune ? tune_steps(*tune, tables_.music_note_hz).size() : std::size_t(kDosTuneSteps));
+}
+
 std::optional<AssetId> Town::full_screen() const {
     if (stage_ == Stage::Infocom) return assets::kInfocomLogo;
     if (stage_ == Stage::Title) return assets::kTitleScreen;

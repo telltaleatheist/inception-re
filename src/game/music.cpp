@@ -36,6 +36,10 @@ std::vector<MusicStep> tune_steps(std::span<const std::uint8_t> tune, std::span<
     return steps;
 }
 
+int title_wait_ticks(std::size_t steps) { return 1 + kMusicTicksPerStep * int(steps); }
+
+double title_wait_ms(std::size_t steps) { return 1000.0 * title_wait_ticks(steps) * kMusicTimerCount / kTimerHz; }
+
 double music_step_ms() {
     return 1000.0 * kMusicTicksPerStep * kMusicTimerCount / kTimerHz;
 }

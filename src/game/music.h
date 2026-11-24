@@ -36,6 +36,16 @@ std::vector<MusicStep> tune_steps(std::span<const std::uint8_t> tune, std::span<
 // How long a step lasts, in ms.
 double music_step_ms();
 
+// The steps of DOS 1.03's WWOODBT.SIF: the title's wait for a copy that has no tune.
+inline constexpr int kDosTuneSteps = 4352;
+
+// BTECH.EXE 284b:0298: the timer ticks from the tune's start to the step that reads its end
+// mark, where the title's wait ends (1000:4874). The first step comes after 1 tick and each
+// next one, the end among them, kMusicTicksPerStep later.
+int title_wait_ticks(std::size_t steps);
+// The same in ms.
+double title_wait_ms(std::size_t steps);
+
 // The steps as heard: each step's tone, or silence for a rest.
 std::vector<SoundSegment> music_segments(std::span<const MusicStep> steps);
 

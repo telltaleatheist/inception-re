@@ -260,6 +260,9 @@ public:
     // The title's tune, from the player's WWOODBT.SIF (game/music.h); empty
     // without the game folder or the file.
     std::vector<MusicStep> title_tune() const;
+    // How long the title waits with no key before the demo, in ms: the tune's length, or DOS's
+    // tune's for a copy that has no tune (the demo's time is the same whatever the copy).
+    double title_wait_ms() const;
     // The tune plays while the title waits for its key (1000:476d).
     bool title_tune_playing() const { return start_up_open_ && stage_ == Stage::Title; }
     const std::vector<ShownSprite>& sprites() const { return screen_sprites_; }

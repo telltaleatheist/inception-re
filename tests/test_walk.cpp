@@ -703,6 +703,14 @@ TEST(demo_plays_and_the_title_comes_back) {
     const auto& log = town->log();
     CHECK(std::find(log.begin(), log.end(), "demo end") != log.end());
     CHECK(town->title_tune_playing());
+    // The player's tune gives the wait, and without one it is DOS's, not none at all.
+    CHECK(town->title_tune().size() == std::size_t(kDosTuneSteps));
+    CHECK(town->title_wait_ms() == title_wait_ms(kDosTuneSteps));
+    Map1 no_files;
+    std::unique_ptr<Town> silent;
+    if (!play_map1("", silent, no_files, nullptr, true, false, true)) return;
+    CHECK(silent->title_tune().empty());
+    CHECK(silent->title_wait_ms() == title_wait_ms(kDosTuneSteps));
     // A key the player presses ends it after that pass.
     Map1 m3;
     play("enter tune-end idle:100 x idle:10", town, m3);

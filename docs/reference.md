@@ -81,10 +81,13 @@ are links to the stock app's. It is signed ad hoc, since the plist is part of th
 the copy's binary is the stock one but for its signature. The cache key still hashes the stock
 binary, so cached captures stay valid.
 
-Proven: one DOSBox-X at a time, on the stock binary. The system lists it as BackgroundOnly, and a
-watcher driven by the system's own app-activation notifications saw no change of front app during
-a run whose cases all matched. Not proven: several at once, `--sound` (the patched build), and a
-stop by SIGTERM.
+Proven on the stock binary: one DOSBox-X at a time, and four at once (`--jobs 4`, 62 cases, all
+matching). The system lists each as BackgroundOnly, and watchers driven by the system's own
+app-activation notifications and a 20 ms frontmost poll logged no DOSBox-X, Python or chr coming to
+the front. The only front changes in the four-at-once run were from the editor to a browser and
+back, which look like the user's own switching but can't be attributed from a log. A stop by
+SIGTERM to `check.py` mid-run ended it in 0.3 s with no DOSBox-X left and no change of front app.
+Not proven: `--sound` (the patched build).
 
     tools/reference/compare.py OUT/NAME.bin chr-screenshot.bmp --diff diff.png
     tools/reference/check.py --chr build/chr --game-dir DIR --data-dir DIR --work DIR
@@ -225,10 +228,14 @@ the `--full` tier, and `demo` is still waiting:
   key, and the sequence captures five of them.
 - `demo` (19 compared of 21) still waits: in the original run the demo had not started at
   `demo_01` and `demo_02` (both captures are the held title; by `demo_03` it was playing), so
-  those two fail and the other 17 match. It holds the title past its tune, then captures every 60
-  polls while DEMOFILE plays (docs/startup.md). The original holds with idle passes. chr holds
-  with its script item `tune-end`, which goes to chr only as `chr:tune-end`. A `chr:KEY` is the
-  reverse of `orig:KEY`. The demo's passes and chr's frames don't line up, so a case marked
+  those two fail and the other 17 match. The hold is a number of polls, but the wait it stands for
+  is the tune's length in timer ticks (docs/startup.md), so a fixed count can't be exact: the demo
+  began at about poll 441,110 in one run and 441,320 in another. The planned fix is a feeder item
+  that waits, counting no polls, until F:3938 is set. It changes SNAP, which is in the cache key,
+  so it rides along with the next change to SNAP. It holds the title past its tune, then captures
+  every 60 polls while DEMOFILE plays (docs/startup.md). The original holds with idle passes. chr
+  holds with its script item `tune-end`, which goes to chr only as `chr:tune-end`. A `chr:KEY` is
+  the reverse of `orig:KEY`. The demo's passes and chr's frames don't line up, so a case marked
   `demo_to` passes `--demo-to N` to chr. N is the number of DEMOFILE bytes whose keys the original
   had acted on at its capture (`state demo`).
 
