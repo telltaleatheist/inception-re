@@ -1,0 +1,54 @@
+name: names probe
+# What the program does on Windows with names that have letters outside
+# ASCII (tools/names_probe/probe.py). It reports in its log and its summary;
+# nothing is uploaded, and it isn't for main.
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev1/names-probe]
+permissions:
+  contents: read
+concurrency:
+  group: names-probe-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  # SDL 3.4.12, as docs/RELEASING.md pins it.
+  SDL_COMMIT: f87239e71e42da91ca317a12eefb82cfbf3393eb
+jobs:
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        # 2022 is where the packages are made; 2025 is newer Windows, where a
+        # program may ask for a page other than UTF-8.
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: libsdl-org/SDL
+          ref: ${{ env.SDL_COMMIT }}
+          path: build-deps/SDL
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build, with the package's flags (no archive libraries)
+        shell: bash
+        run: |
+          cmake -S . -B build-package -A x64 -DCHR_SDL_SOURCE_DIR="$PWD/build-deps/SDL" -DCHR_TRIM_PATHS=ON \
+            -DCHR_VERSION=names-probe -DCHR_VERSION_TAG=names-probe-test -DCHR_GAME_DIR= -DCHR_WINDOWS_GUI=ON \
+            -DCHR_NAMES_PROBE=ON
+          cmake --build build-package --config Release --target chr names_probe_legacy names_probe_utf8 --parallel 4
+          # Not every system's tools may take this page: the probe says when it isn't there.
+          cmake --build build-package --config Release --target names_probe_ja --parallel 4 || echo "the Japanese programs were not built"
+          [ -f build-package/Release/SDL3.dll ] || cp "$(find build-package -name SDL3.dll | head -1)" build-package/Release/
+          ls build-package/Release
+      - name: The probe
+        shell: bash
+        run: python -I tools/names_probe/probe.py build-package/Release "$RUNNER_TEMP/names"
