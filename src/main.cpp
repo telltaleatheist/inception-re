@@ -68,6 +68,7 @@
 #include "platform/renderer.h"
 #include "platform/save_files.h"
 #include "platform/sdl_setup.h"
+#include "platform/sitting.h"
 #include "platform/sound_player.h"
 #include "platform/text_layer.h"
 
@@ -97,6 +98,8 @@ struct Options {
     bool fight_state = false;  // with it, the fight's tables
     int event = -1;            // --event N
     int step_hold = 1;         // --step-hold N
+    bool keep_places = false;  // --keep-places: the script's items one by one, each place kept (platform/sitting.h)
+    std::string loop_keys;     // --loop-keys KEYS: keys pressed in the window's loop, one every kLoopKeyFrames
     int loop_ms = 0;           // --loop-ms N: the window's loop runs N ms after the script, under a headless driver
     std::optional<std::size_t> demo_to;  // --demo-to N: the demo stops at byte N (DemoKeys::stop_at)
     bool list_events = false;
@@ -120,7 +123,7 @@ void usage(std::FILE* out, const char* argv0) {
     std::fprintf(out, "usage: %s --status | --setup\n"
                  "       %s --setup --describe | --search | --look PICK | --install PICK [--folder DIR]\n"
                  "       %s [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
-                 "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--loop-ms N] [--demo-to N]\n"
+                 "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--loop-ms N] [--loop-keys KEYS] [--keep-places] [--demo-to N]\n"
                  "           [--state] [--show-quiz]\n"
                  "  --show-quiz: show the training center's quiz (no check: the right part is\n"
                  "           picked and any answer goes on); by default it is skipped\n"
@@ -173,6 +176,10 @@ bool parse(int argc, char** argv, Options& options) {
             options.step_hold = std::max(1, std::atoi(argv[++i]));
         } else if (arg == "--loop-ms" && i + 1 < argc) {
             options.loop_ms = std::max(0, std::atoi(argv[++i]));
+        } else if (arg == "--loop-keys" && i + 1 < argc) {
+            options.loop_keys = argv[++i];
+        } else if (arg == "--keep-places") {
+            options.keep_places = true;
         } else if (arg == "--events") {
             options.list_events = true;
         } else if (arg == "--sound-log") {
@@ -324,6 +331,9 @@ void print_fight_state(const chr::game::Town& town) {
 
 // A screenshot's pixels for each screen unit: 960x600, whatever the display.
 constexpr int kScreenshotScale = 3;
+// Passes of the main loop with no key before the place is kept (platform/sitting.h): ten seconds.
+constexpr long kKeepPlacePasses = 600;
+constexpr int kLoopKeyFrames = 4;  // --loop-keys
 
 bool save_screenshot(chr::platform::Renderer& renderer, const std::string& path) {
     SDL_Surface* shot = renderer.read_frame();
@@ -479,7 +489,7 @@ int main(int argc, char** argv) {
     bool audio_opened = false;  // --audio-report
     chr::formats::MtpMap map;
     chr::formats::MapPosition start;
-    std::deque<chr::game::ScriptItem> keys;  // every key and idle stretch so far, the script's first
+    std::deque<chr::game::ScriptItem> keys;  // the script's
     // Without --map the program starts up as the original does, and the new
     // game begins on map 1.
     const bool start_up = options.map == 0;
@@ -524,9 +534,8 @@ int main(int argc, char** argv) {
 
         // The town takes keys and idle passes as they come. A question asks
         // for its answer in the middle of a turn; when it is left waiting,
-        // the town is played again from the start with the answer (replay),
+        // the town is played again with the answer (platform/sitting.h),
         // which keeps the logic a plain sequence.
-        std::unique_ptr<chr::game::Town> town;
         chr::game::TextTable imported;
         try {
             imported = chr::game::TextTable::load(chr::formats::imported_text_path(options.data_dir));
@@ -572,44 +581,68 @@ int main(int argc, char** argv) {
         chr::platform::SaveFiles save_files(options.save_dir.empty() ? options.data_dir : options.save_dir);
         chr::platform::SaveJournal saves(save_files);
         bool strayed = false;  // a replay that asked for other saves has been reported
-        auto replay = [&]() -> bool {
-            saves.rewind();
+        chr::platform::Sitting sitting([&] {
+            auto begun = std::make_unique<chr::game::Town>(map, options.map, start, texts, tables);
+            begun->set_source(source);
+            begun->set_saves(&saves);
+            if (rules) begun->set_rules(&*rules);
+            begun->set_show_quiz(options.show_quiz);
+            if (options.demo_to) begun->set_demo_stop(*options.demo_to);
+            if (start_up) begun->start_up();
+            else begun->draw_panel(true);
+            for (const auto& [f, v] : options.set_flags) begun->set_flag_when_town_starts(f, v);
+            return begun;
+        }, saves);
+        const auto& town = sitting.town();
+        // What can't be gone on with: said, and the title is shown.
+        const auto tried = [&](const auto& what) -> bool {
             try {
-                town = std::make_unique<chr::game::Town>(map, options.map, start, texts, tables);
-                town->set_source(source);
-                town->set_saves(&saves);
-                if (rules) town->set_rules(&*rules);
-                town->set_show_quiz(options.show_quiz);
-                if (options.demo_to) town->set_demo_stop(*options.demo_to);
-                if (start_up) town->start_up();
-                else town->draw_panel(true);
-                for (const auto& [f, v] : options.set_flags) town->set_flag_when_town_starts(f, v);
-                chr::game::ScriptKeys source(keys);
-                source.set_poke([&](bool character, int r, int b, int v) {
-                    if (r == -4) town->poke_position(b, v);
-                    else if (r == -3) town->poke_heat(b, v);
-                    else if (r == -2) town->poke_random(v);
-                    else if (r < 0) town->poke_cbills(v);
-                    else if (character) town->poke_character(r, b, v);
-                    else town->poke_mech(r, b, v);
-                });
-                town->run(source);
-                if (saves.strayed() && !strayed) {
-                    strayed = true;
-                    std::fprintf(stderr, "chr: played again, the game asked for other saves than it had; they were left alone\n");
-                }
-                return true;
+                what();
             } catch (const std::exception& e) {
                 std::fprintf(stderr, "chr: %s\n", e.what());
-                town.reset();
                 return false;
             }
+            if (saves.strayed() && !strayed) {
+                strayed = true;
+                std::fprintf(stderr, "chr: played again, the game asked for other saves than it had; they were left alone\n");
+            }
+            return true;
+        };
+        const auto replay = [&] { return tried([&] { sitting.play(); }); };
+        // What the script showed and logged.
+        std::vector<chr::game::ShownEvent> shown;
+        std::vector<std::string> log;
+        const auto list_shown = [&] {
+            shown.insert(shown.end(), town->events().begin(), town->events().end());
+            log.insert(log.end(), town->log().begin(), town->log().end());
+        };
+        const auto play_script = [&] {
+            if (!options.keep_places) {
+                for (const auto& item : keys) sitting.add(item);
+                if (!replay()) return false;
+                list_shown();
+                return true;
+            }
+            int places = 0;
+            const bool done = tried([&] {
+                sitting.play();
+                for (const auto& item : keys) {
+                    if (town->at_main_loop()) {
+                        list_shown();
+                        places += sitting.keep_place();
+                    }
+                    sitting.take(item);
+                }
+            });
+            if (done) list_shown();
+            std::fprintf(stderr, "chr: %d places kept\n", places);
+            return done;
         };
         if (options.map != 0 && status == 0) {
-            if (!replay()) {
+            if (!play_script()) {
                 status = 1;
             } else if (!options.script.empty()) {
-                for (const auto& line : town->log()) std::printf("%s\n", line.c_str());
+                for (const auto& line : log) std::printf("%s\n", line.c_str());
                 if (town->question_open()) std::printf("(waiting for an answer)\n");
                 if (town->place_open()) std::printf("(waiting in a place)\n");
                 if (town->poll_open()) std::printf("(polling for a key)\n");
@@ -648,7 +681,7 @@ int main(int argc, char** argv) {
                     if (m.rest) std::printf("music-step rest %d\n", m.divisor);
                     else std::printf("music-step tone %d\n", m.divisor);
                 }
-                for (const auto& e : town->events()) {
+                for (const auto& e : shown) {
                     if (e.screen || e.wait_ms <= 0) continue;
                     std::printf("sound %d\n", e.sound);
                     for (const auto& s : town->sound_steps(e.sound)) {
@@ -660,7 +693,7 @@ int main(int argc, char** argv) {
                 }
             }
             if (options.list_events) {
-                for (const auto& e : town->events()) {
+                for (const auto& e : shown) {
                     if (!e.screen) std::printf("event sound %d\n", e.sound);
                     else std::printf("event screen %d retraces, %zu sprites, %zu lines%s\n", e.retraces,
                                      e.screen->sprites.size(), e.screen->lines.size(), e.screen->picture ? ", a picture" : "");
@@ -692,10 +725,24 @@ int main(int argc, char** argv) {
         std::size_t sounded = played;  // the events before it have had their sound started
         bool music_on = false;  // the title's tune has been started
         const auto playing = [&] { return town && played < town->events().size(); };
-        // A stretch of `n` retraces with no key.
-        const auto pass_time = [&](int n) {
-            if (!keys.empty() && keys.back().idle > 0) keys.back().idle += n;
-            else keys.push_back({0, n});
+        // What the loop played and started, and what there was to: --loop-keys reports them.
+        // The script's own are not the loop's to play.
+        const auto sounds_in = [&](std::size_t n) {
+            const auto first = town->events().begin();
+            return std::size_t(std::count_if(first, first + std::ptrdiff_t(n), [](const auto& e) { return !e.screen && e.wait_ms > 0; }));
+        };
+        struct {
+            std::size_t shown = 0, sounds = 0, played = 0, started = 0, places = 0;
+        } totals;
+        totals.played = played, totals.started = town ? sounds_in(played) : 0;
+        // At the main loop what was shown has all been played, and a replay starts here from now on.
+        const auto keep_place = [&] {
+            if (playing()) return;
+            const auto& events = town->events();
+            const std::size_t all = events.size(), sounds = sounds_in(events.size());
+            if (!sitting.keep_place()) return;
+            totals.shown += all, totals.sounds += sounds, ++totals.places;
+            played = sounded = 0;
         };
         // What the window's time goes to.
         enum class Doing {
@@ -729,11 +776,14 @@ int main(int argc, char** argv) {
                     // The game waits while a sound plays (docs/sound.md).
                     const auto& e = town->events()[played];
                     if (played >= sounded) {
-                        if (sound_player && !e.screen && e.wait_ms > 0) sound_player->play(e.sound);
+                        if (!e.screen && e.wait_ms > 0) {
+                            ++totals.started;
+                            if (sound_player) sound_player->play(e.sound);
+                        }
                         sounded = played + 1;
                     }
                     if (!pace.take(chr::platform::event_ms(e, options.step_hold))) return;
-                    ++played;
+                    ++played, ++totals.played;
                 }
                 if (keys_meanwhile) {
                     keys_meanwhile = false;
@@ -741,7 +791,7 @@ int main(int argc, char** argv) {
                 } else if (town->poll_open() && !town->poll_waits()) {
                     // 203b:1015 asked whether a key is waiting: none was,
                     // and the asking took no time.
-                    pass_time(1);
+                    sitting.add_time(1);
                     replay();
                 }
                 break;
@@ -749,11 +799,11 @@ int main(int argc, char** argv) {
                 // Asked again and again, it is asked once a retrace.
                 if (town->poll_waits()) {
                     if (const int n = pace.take_retraces(); n > 0) {
-                        pass_time(n);
+                        sitting.add_time(n);
                         replay();
                     }
                 } else if (pace.take(chr::game::kRetraceMs)) {
-                    pass_time(1);
+                    sitting.add_time(1);
                     replay();
                     if (!playing()) pace.take_retraces();
                 }
@@ -761,7 +811,7 @@ int main(int argc, char** argv) {
             case Doing::Demo:     // the demo's keys keep its time (docs/startup.md, "The demo")
             case Doing::Infocom:  // it goes by itself after a while: time is input there too
                 if (const int n = pace.take_retraces(); n > 0) {
-                    pass_time(n);
+                    sitting.add_time(n);
                     replay();
                 }
                 break;
@@ -770,17 +820,16 @@ int main(int argc, char** argv) {
                 if (pace.take(town->title_wait_ms())) {
                     chr::game::ScriptItem item;
                     item.tune_end = true;
-                    keys.push_back(item);
+                    sitting.add(item);
                     replay();
                 }
                 break;
             case Doing::Town: {
-                int n = 0;
-                while (doing() == Doing::Town && pace.take(chr::game::kRetraceMs)) {
-                    town->idle_pass();
-                    ++n;
-                }
-                if (n > 0) pass_time(n);
+                // A stretch with no key is a replay's too.
+                if (sitting.time() >= kKeepPlacePasses) keep_place();
+                tried([&] {
+                    while (doing() == Doing::Town && pace.take(chr::game::kRetraceMs)) sitting.pass();
+                });
                 break;
             }
             }
@@ -795,6 +844,18 @@ int main(int argc, char** argv) {
         }
         bool reported = false;
         bool skipped = false;  // a frame that couldn't be drawn has been reported
+        const auto pressed = [&](int k) {
+            if (town && playing()) {
+                sitting.add({k, 0});
+                keys_meanwhile = true;
+            } else if (town) {
+                keep_place();
+                tried([&] { sitting.key(k); });
+            }
+        };
+        std::deque<chr::game::ScriptItem> loop_keys;
+        if (!options.loop_keys.empty()) loop_keys = chr::game::parse_key_script(options.loop_keys);
+        int frames = 0;
         Uint64 last = SDL_GetTicksNS();
         const Uint64 loop_started = last;
         while (running) {
@@ -805,18 +866,15 @@ int main(int argc, char** argv) {
                 if (event.type == SDL_EVENT_QUIT) running = false;
                 if (event.type != SDL_EVENT_KEY_DOWN) continue;
                 if (event.key.key == SDLK_ESCAPE) running = false;
-                if (const int k = key_code(event.key.key); k != 0 && town && playing()) {
-                    keys.push_back({k, 0});
-                    keys_meanwhile = true;
-                } else if (k != 0 && town) {
-                    keys.push_back({k, 0});
-                    if (town->question_open() || town->place_open() || town->start_up_open()) {
-                        replay();
-                    } else {
-                        chr::game::ScriptKeys none({});
-                        town->key(k, none);
-                    }
-                }
+                if (const int k = key_code(event.key.key); k != 0) pressed(k);
+            }
+            if (!loop_keys.empty() && ++frames % kLoopKeyFrames == 0) {
+                const auto item = loop_keys.front();
+                loop_keys.pop_front();
+                if (item.key != 0) pressed(item.key);
+                else if (town) tried([&] { sitting.take(item); });
+            } else if (loop_keys.empty() && !options.loop_keys.empty() && !playing() && !keys_meanwhile) {
+                running = false;
             }
             const Uint64 now = SDL_GetTicksNS();
             // What a key started has had no time yet.
@@ -897,6 +955,11 @@ int main(int argc, char** argv) {
             }
             renderer.end_frame();
             if (running) SDL_Delay(16);
+        }
+        if (!options.loop_keys.empty() && town) {
+            totals.shown += town->events().size(), totals.sounds += sounds_in(town->events().size());
+            std::printf("loop %zu places, %zu of %zu events played, %zu of %zu sounds started, %zu keys left\n", totals.places, totals.played,
+                        totals.shown, totals.started, totals.sounds, loop_keys.size());
         }
     }
 

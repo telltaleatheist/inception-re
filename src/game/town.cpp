@@ -267,6 +267,18 @@ Town::Town(const formats::MtpMap& map, int map_number, formats::MapPosition star
     record_party_places();
 }
 
+bool Town::at_main_loop() const {
+    return stage_ == Stage::Town && main_loop_started_ && !demo_ && !poll_open_ && !stopped();
+}
+
+std::unique_ptr<Town> Town::copy() const {
+    if (!at_main_loop()) throw std::logic_error("a Town is copied at the main loop only");
+    std::unique_ptr<Town> town(new Town(*this));
+    town->terrain_.copied(map_, town->map_, town->fixes_);
+    town->round_keys_ = nullptr;
+    return town;
+}
+
 void Town::load_terrain() {
     terrain_.generate(((position_.y & 0xf000) | (position_.x & 0x0f00)) >> 8);
     terrain_.place_map(map_, 4);

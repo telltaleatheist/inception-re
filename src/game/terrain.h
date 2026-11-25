@@ -26,6 +26,9 @@ public:
     static constexpr std::size_t kMapStoreBytes = 0x1000;  // P:101d: 64 blocks of a map
 
     Terrain(const formats::Tables& tables, const Fixes& fixes);
+    // A copy of the terrain drawn from `from` is its new owner's: drawn from `to`, with `fixes`.
+    void copied(const formats::MtpMap& from, const formats::MtpMap& to, const Fixes& fixes);
+    const formats::MtpMap* placed_map() const { return map_; }
 
     // BTECH.EXE 287f:104e (Ghidra FUN_287f_104e)
     // The nine grids around `area` (0xYX), each made from the heights of
@@ -164,7 +167,7 @@ private:
     void make_grid(int k, int area);
 
     const formats::Tables& tables_;
-    const Fixes& fixes_;
+    const Fixes* fixes_;
     std::array<std::uint8_t, 256> noise_{};
     std::array<std::uint8_t, kGrids * kGridBlocks> grids_{};
     std::array<std::uint8_t, kGrids * kGridBlocks> masks_{};

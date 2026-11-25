@@ -31,12 +31,15 @@ private:
 // Each read and write of a sitting, in order. A Town played again from the
 // start (docs/resuming.md) does the same ones in the same order: the nth is
 // done the first time, and after that answered with what it answered then. It
-// lasts as long as the sitting's keys do.
+// lasts as long as the sitting's keys do (platform/sitting.h).
 class SaveJournal : public game::SaveStore {
 public:
     explicit SaveJournal(game::SaveStore& saves) : saves_(&saves) {}
     // A new Town starts: its reads and writes are the first again.
     void rewind() { next_ = 0; }
+    // What was read and written so far is not asked for again: after a
+    // rewind() the next action is the first one after this.
+    void settle();
     std::optional<std::vector<std::uint8_t>> read(int slot) override;
     bool write(int slot, std::span<const std::uint8_t> file) override;
     // Whether a Town played again ever asked for another read or write than

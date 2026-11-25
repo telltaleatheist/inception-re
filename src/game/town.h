@@ -189,9 +189,15 @@ public:
     // tables (imported, formats/tables.h); both must outlive the Town.
     Town(const formats::MtpMap& map, int map_number, formats::MapPosition start,
          const TextProvider& texts, const formats::Tables& tables);
-    // The terrain points at the town's own map.
-    Town(const Town&) = delete;
     Town& operator=(const Town&) = delete;
+    // The main loop waits for its next key, with nothing of a question, a place, a fight or the start-up
+    // under way: everything is in the Town's members (docs/resuming.md, "Saved games").
+    bool at_main_loop() const;
+    // The Town as it is, at the main loop: what it does next is what this one would do. It has the same
+    // saves and the same texts, tables, rules and game files; the rest is its own.
+    std::unique_ptr<Town> copy() const;
+    // The events and the log so far, which the logic never reads, are done with.
+    void forget_shown() { events_.clear(), log_.clear(); }
 
     // Begins with the program's start-up (game/startup.cpp): the Infocom
     // screen, the title and the first-time question, before the town. Call
@@ -385,6 +391,8 @@ public:
     bool townspeople_away() const { return townspeople_away_; }
 
 private:
+    // Its terrain still points at the other's map: copy().
+    Town(const Town&) = default;
     class Question;
     // Nothing more happens: a question or a place waits for keys that ran
     // out, or the walk stopped at a place it can't run.

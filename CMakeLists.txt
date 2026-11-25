@@ -175,6 +175,7 @@ add_executable(chrtests
   # The effects as samples and the saves on disk: plain C++, no SDL.
   src/platform/original_assets.cpp
   src/platform/save_files.cpp
+  src/platform/sitting.cpp
   src/platform/sound_wave.cpp
 )
 target_link_libraries(chrtests PRIVATE chrgame)
@@ -209,6 +210,7 @@ if(SDL3_FOUND)
     src/platform/renderer.cpp
     src/platform/save_files.cpp
     src/platform/sdl_setup.cpp
+    src/platform/sitting.cpp
     src/platform/sound_player.cpp
     src/platform/sound_wave.cpp
     src/platform/text_layer.cpp
@@ -302,6 +304,13 @@ if(SDL3_FOUND)
           --program $<TARGET_FILE:chr> --game ${CHR_GAME_DIR} --data ${CMAKE_BINARY_DIR}/chr-data
           --work ${CMAKE_BINARY_DIR}/save_replay_work)
       set_tests_properties(save_replay PROPERTIES TIMEOUT 300)
+      # The place kept (docs/resuming.md): some of the rig's scripts, played both ways (--all: every one).
+      add_test(NAME keep_places
+        COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_SOURCE_DIR}/tests/keep_places_test.py
+          --program $<TARGET_FILE:chr> --game ${CHR_GAME_DIR} --data ${CMAKE_BINARY_DIR}/chr-data
+          --work ${CMAKE_BINARY_DIR}/keep_places_work
+          town training mission course raid orders comstar shops settings demo save_startup chain_save)
+      set_tests_properties(keep_places PROPERTIES TIMEOUT 300)
     endif()
     add_test(NAME reference_compare
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/reference/check.py
