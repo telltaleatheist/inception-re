@@ -158,6 +158,7 @@ add_executable(chrtests
   tests/test_anm.cpp
   tests/test_fight.cpp
   tests/test_quiz.cpp
+  tests/test_saves.cpp
   tests/test_rules.cpp
   tests/test_tables.cpp
   tests/test_interface_text.cpp
@@ -169,8 +170,9 @@ add_executable(chrtests
   tests/test_text.cpp
   tests/test_walk.cpp
   tests/test_colours.cpp
-  # The effects as samples: plain C++, no SDL.
+  # The effects as samples and the saves on disk: plain C++, no SDL.
   src/platform/original_assets.cpp
+  src/platform/save_files.cpp
   src/platform/sound_wave.cpp
 )
 target_link_libraries(chrtests PRIVATE chrgame)
@@ -203,6 +205,7 @@ if(SDL3_FOUND)
     src/platform/quiz_layer.cpp
     src/platform/stats_layer.cpp
     src/platform/renderer.cpp
+    src/platform/save_files.cpp
     src/platform/sdl_setup.cpp
     src/platform/sound_player.cpp
     src/platform/sound_wave.cpp
@@ -274,6 +277,14 @@ if(SDL3_FOUND)
       COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_SOURCE_DIR}/tests/status_setup_test.py
         --program $<TARGET_FILE:chr> --work ${CMAKE_BINARY_DIR}/status_setup_work --game ${CHR_GAME_DIR})
     set_tests_properties(status_setup PROPERTIES TIMEOUT 300)
+    # The saves and the window's loop.
+    if(EXISTS "${CHR_GAME_DIR}/MAP1.MTP")
+      add_test(NAME save_replay
+        COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_SOURCE_DIR}/tests/save_replay_test.py
+          --program $<TARGET_FILE:chr> --game ${CHR_GAME_DIR} --data ${CMAKE_BINARY_DIR}/chr-data
+          --work ${CMAKE_BINARY_DIR}/save_replay_work)
+      set_tests_properties(save_replay PROPERTIES TIMEOUT 300)
+    endif()
     add_test(NAME reference_compare
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/reference/check.py
         --chr $<TARGET_FILE:chr> --game-dir ${CHR_GAME_DIR}

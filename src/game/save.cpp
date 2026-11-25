@@ -1,8 +1,6 @@
 #include "game/save.h"
 
 #include <algorithm>
-#include <fstream>
-#include <iterator>
 #include <optional>
 #include <vector>
 
@@ -158,7 +156,8 @@ bool Town::load_game(KeySource& keys) {
     if (*slot != save::kSlots) {
         // 1000:28cc(3) and the INFOCOM.CMP check with its disk prompt
         // (1000:2913) ask for the game's disk: no disks in the rebuild.
-        const auto file = read_save(*slot);
+        // 287f:33d0 (open, 0x8000) and 287f:3580.
+        const auto file = saves_ ? saves_->read(*slot) : std::nullopt;
         bool wait_key = false;
         if (!file) {
             clear_window();
@@ -182,7 +181,7 @@ bool Town::load_game(KeySource& keys) {
             return true;
         }
         // 1b5d:0004: a game saved in the cache goes into it again.
-        if ((*file)[0] == save::kMark && !read_saved_game(*file) && !enter_cache(keys)) return false;
+        if (!file->empty() && (*file)[0] == save::kMark && !read_saved_game(*file) && !enter_cache(keys)) return false;
         // 1000:34d3: the 'Mech figures 0-3, after a load or a file that is
         // not a saved game.
         for (int i = 0; i < 4; ++i) {
@@ -199,13 +198,6 @@ bool Town::load_game(KeySource& keys) {
     redraw_map_screen();  // 1e31:032f(0)
     draw_panel(true);     // 1000:4cac(1); 1000:28cc(1) asks for no disk
     return true;
-}
-
-// GameN's bytes, or nothing when it cannot be opened (287f:33d0, 0x8000).
-std::optional<std::vector<std::uint8_t>> Town::read_save(int slot) const {
-    std::ifstream in(save_dir_ / save::file_name(slot), std::ios::binary);
-    if (!in) return std::nullopt;
-    return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(in), {});
 }
 
 // BTECH.EXE 1000:3383..34cc: a saved game read back (its mark checked).
@@ -253,14 +245,7 @@ bool Town::write_save(int slot) {
     std::copy(block.begin(), block.end(), file.begin() + 1);
     put16(&file[1 + save::kBlockSize], position_.x);
     put16(&file[3 + save::kBlockSize], position_.y);
-    const auto path = save_dir_ / save::file_name(slot);
-    std::error_code ec;
-    std::filesystem::create_directories(save_dir_, ec);
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    if (!out) return false;
-    out.write(reinterpret_cast<const char*>(file.data()), std::streamsize(file.size()));
-    out.close();
-    if (!out) return false;
+    if (!saves_ || !saves_->write(slot, file)) return false;
     log_.push_back("saved " + save::file_name(slot));
     return true;
 }

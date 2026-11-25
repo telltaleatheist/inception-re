@@ -35,6 +35,7 @@
 #include "game/movement.h"
 #include "game/random.h"
 #include "game/save.h"
+#include "game/save_store.h"
 #include "game/sound.h"
 #include "game/records.h"
 #include "game/shown.h"
@@ -277,9 +278,9 @@ public:
     // Where the player's .BLD files are. Without it the walk stops at an
     // entrance after "yes".
     void set_source(std::shared_ptr<const formats::GameSource> source) { source_ = std::move(source); }
-    // Where the saved games GameN go (--save-dir; the data folder by
-    // default, docs/formats/save.md).
-    void set_save_dir(std::filesystem::path dir) { save_dir_ = std::move(dir); }
+    // Where the saved games GameN are (docs/formats/save.md). Without it no
+    // load finds one and no save is written.
+    void set_saves(SaveStore* saves) { saves_ = saves; }
     // F:c614-d557 as the original holds it, for a save (game/save.cpp).
     save::Block save_block() const;
     void load_block(const save::Block& b);
@@ -541,7 +542,6 @@ private:
     std::optional<int> draw_overhead(formats::MapPosition party, formats::MapPosition cursor, KeySource& keys);
     bool save_game(KeySource& keys);
     bool load_game(KeySource& keys);
-    std::optional<std::vector<std::uint8_t>> read_save(int slot) const;
     bool read_saved_game(const std::vector<std::uint8_t>& file);
     bool write_save(int slot);
     void redraw_map_screen(bool fight = false);
@@ -665,7 +665,7 @@ private:
     std::optional<AssetId> screen_picture_;  // a script's full-screen picture (special 45)
     int place_number_ = 0;  // F:4584: the entrance last entered
     std::shared_ptr<const formats::GameSource> source_;  // the player's game, none in some tests
-    std::filesystem::path save_dir_ = ".";
+    SaveStore* saves_ = nullptr;
 
     // The fight's state (game/fight.h).
     const formats::Rules* rules_ = nullptr;

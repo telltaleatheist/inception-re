@@ -98,7 +98,8 @@ switch off nothing changes.
 **Where the files go.** In the player's data folder by default (where the imported text is,
 docs/import.md), or wherever `--save-dir DIR` says. The names are the original's, `Game1` to
 `Game6`, and the bytes are the original's, so pointing `--save-dir` at the game's own folder
-lets the rebuild and the original read each other's saves.
+lets the rebuild and the original read each other's saves. Each is read or written once, however
+often the sitting is played again (docs/resuming.md).
 
 **A short file** is read as far as it goes: the original does not check the reads' counts, so
 whatever the file leaves out stays as it was in memory, and the rebuild does the same.

@@ -20,7 +20,8 @@
 // --step-hold N holds each step the original showed without a wait (a
 // missile's, an explosion's) N display frames (default 1). In a window the town runs at the
 // original's pace, one main-loop pass per display frame of a VGA card
-// (game/clock.h).
+// (game/clock.h). --loop-ms N, a test aid: with --script and a headless video
+// driver, the window's loop runs N ms after the script.
 //
 // The game folder is --game-dir, else the CHR_GAME_DIR environment variable,
 // else the setup's (platform/sdl_setup.h): the one remembered in the data
@@ -66,6 +67,7 @@
 #include "platform/quiz_layer.h"
 #include "platform/stats_layer.h"
 #include "platform/renderer.h"
+#include "platform/save_files.h"
 #include "platform/sdl_setup.h"
 #include "platform/sound_player.h"
 #include "platform/text_layer.h"
@@ -96,6 +98,7 @@ struct Options {
     bool fight_state = false;  // with it, the fight's tables
     int event = -1;            // --event N
     int step_hold = 1;         // --step-hold N
+    int loop_ms = 0;           // --loop-ms N: the window's loop runs N ms after the script, under a headless driver
     std::optional<std::size_t> demo_to;  // --demo-to N: the demo stops at byte N (DemoKeys::stop_at)
     bool list_events = false;
     bool sound_log = false;    // --sound-log: each effect's steps (docs/sound.md)
@@ -118,7 +121,7 @@ void usage(std::FILE* out, const char* argv0) {
     std::fprintf(out, "usage: %s --status | --setup\n"
                  "       %s --setup --describe | --search | --look PICK | --install PICK [--folder DIR]\n"
                  "       %s [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
-                 "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--demo-to N]\n"
+                 "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--loop-ms N] [--demo-to N]\n"
                  "           [--state] [--show-quiz]\n"
                  "  --show-quiz: show the training center's quiz (no check: the right part is\n"
                  "           picked and any answer goes on); by default it is skipped\n"
@@ -169,6 +172,8 @@ bool parse(int argc, char** argv, Options& options) {
             options.demo_to = std::size_t(std::strtoul(argv[++i], nullptr, 10));
         } else if (arg == "--step-hold" && i + 1 < argc) {
             options.step_hold = std::max(1, std::atoi(argv[++i]));
+        } else if (arg == "--loop-ms" && i + 1 < argc) {
+            options.loop_ms = std::max(0, std::atoi(argv[++i]));
         } else if (arg == "--events") {
             options.list_events = true;
         } else if (arg == "--sound-log") {
@@ -553,11 +558,16 @@ int main(int argc, char** argv) {
             }
         }
         const chr::game::LayeredText texts({&overrides, &imported, &map_text, &interface_default});
+        // The saves: what a replay reads and writes is done once.
+        chr::platform::SaveFiles save_files(options.save_dir.empty() ? options.data_dir : options.save_dir);
+        chr::platform::SaveJournal saves(save_files);
+        bool strayed = false;  // a replay that asked for other saves has been reported
         auto replay = [&]() -> bool {
+            saves.rewind();
             try {
                 town = std::make_unique<chr::game::Town>(map, options.map, start, texts, tables);
                 town->set_source(source);
-                town->set_save_dir(options.save_dir.empty() ? options.data_dir : options.save_dir);
+                town->set_saves(&saves);
                 if (rules) town->set_rules(&*rules);
                 town->set_show_quiz(options.show_quiz);
                 if (options.demo_to) town->set_demo_stop(*options.demo_to);
@@ -574,6 +584,10 @@ int main(int argc, char** argv) {
                     else town->poke_mech(r, b, v);
                 });
                 town->run(source);
+                if (saves.strayed() && !strayed) {
+                    strayed = true;
+                    std::fprintf(stderr, "chr: played again, the game asked for other saves than it had; they were left alone\n");
+                }
                 return true;
             } catch (const std::exception& e) {
                 std::fprintf(stderr, "chr: %s\n", e.what());
@@ -687,12 +701,14 @@ int main(int argc, char** argv) {
         // Escape: without a screenshot to take, it ends with the script.
         if (!options.script.empty() && options.screenshot.empty()) {
             const std::string_view driver = SDL_GetCurrentVideoDriver() ? SDL_GetCurrentVideoDriver() : "";
-            if (driver == "dummy" || driver == "offscreen") running = false;
+            if (driver == "dummy" || driver == "offscreen") running = running && options.loop_ms > 0;
         }
         bool reported = false;
         chr::game::FrameClock clock;
         Uint64 last = SDL_GetTicksNS();
+        const Uint64 loop_started = last;
         while (running) {
+            if (options.loop_ms > 0 && last - loop_started >= Uint64(options.loop_ms) * 1000000) break;
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 if (event.type == SDL_EVENT_QUIT) running = false;
