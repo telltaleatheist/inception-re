@@ -438,7 +438,9 @@ int begin(int argc, char** argv, Options& options) {
     // the launcher): no console, so the log goes beside the saves.
     if (argc == 1) {
         const auto log = options.data_dir / "chi.log";
-        if (std::freopen(log.string().c_str(), "w", stdout) && std::freopen(log.string().c_str(), "a", stderr))
+        // Both append, so neither writes over what the other wrote.
+        if (std::freopen(log.string().c_str(), "w", stdout) && std::freopen(log.string().c_str(), "a", stdout) &&
+            std::freopen(log.string().c_str(), "a", stderr))
             std::setvbuf(stderr, nullptr, _IONBF, 0);
     }
     if (options.save_dir.empty())
