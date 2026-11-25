@@ -1,6 +1,10 @@
-// Draws asset IDs on the original's 320x200 screen, scaled up to the window
-// by whole numbers with nearest-neighbour sampling. It gets every picture
-// through an AssetProvider and keeps a texture per ID.
+// Draws asset IDs on the original's 320x200 screen. A frame is drawn off the
+// window at a whole number of pixels for each screen unit, at least as many
+// as the window shows, and then scaled once, nearest-neighbour, to fill the
+// window as far as 16:10 allows (docs/window.md). So whatever is drawn only
+// ever meets a whole scale, and art finer than the original's keeps its
+// detail. It gets every picture through an AssetProvider and keeps a texture
+// per ID.
 #pragma once
 
 #include <cstdint>
@@ -20,14 +24,25 @@ namespace chr::platform {
 inline constexpr int kScreenWidth = 320;
 inline constexpr int kScreenHeight = 200;
 
+// Where the picture is in a window of this many pixels: as large as fits at
+// 16:10, in the middle.
+SDL_Rect picture_rect(int width, int height);
+// The pixels for each screen unit of the frame that `picture` is scaled
+// from: enough that it is never enlarged, but no frame side above
+// `max_side`, the largest texture (0: no limit).
+int frame_scale(const SDL_Rect& picture, int max_side);
+
 class Renderer {
 public:
-    Renderer(SDL_Renderer* sdl, AssetProvider& assets);
+    // With `fixed_scale`, every frame has that many pixels for each screen
+    // unit, whatever the window is (a screenshot's 960x600).
+    Renderer(SDL_Renderer* sdl, AssetProvider& assets, int fixed_scale = 0);
     ~Renderer();
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
 
-    void begin_frame();
+    // False (SDL_GetError) if there is nothing to draw the frame on.
+    bool begin_frame();
     // Draws the picture for `id` with its top-left corner at (x, y) in
     // 320x200 screen units. Returns false if no provider has it.
     bool draw(const AssetId& id, int x, int y);
@@ -40,8 +55,9 @@ public:
     // XORs `colour` into the palette index of every pixel drawn so far in a
     // rectangle (320x200 screen units), going by what each pixel shows: the
     // fallback for new art (map_layer's draw_xor_box works on the original's
-    // colour numbers). A colour shown by two numbers takes the first, and a
-    // colour not in `palette` is left as it is.
+    // colour numbers). It works on the frame's own pixels, so finer art keeps
+    // its detail. A colour shown by two numbers takes the first, and a colour
+    // not in `palette` is left as it is.
     bool xor_colours(int x, int y, int width, int height, int colour, const formats::Palette16& palette);
     // The provider's picture for `id` (kept after the first call), or null.
     const Image* source(const AssetId& id);
@@ -52,6 +68,9 @@ public:
     // Limits drawing to a rectangle of the 320x200 screen; clear_clip() lifts it.
     void clip(int x, int y, int width, int height);
     void clear_clip();
+    // The frame drawn so far, at its own size, or null. The caller frees it.
+    SDL_Surface* read_frame();
+    // Scales the frame to the window and shows it.
     void end_frame();
     // The size `id` covers on the 320x200 screen, or nothing if no provider has it.
     std::optional<std::pair<int, int>> logical_size(const AssetId& id);
@@ -61,6 +80,9 @@ private:
 
     SDL_Renderer* sdl_;
     AssetProvider& assets_;
+    const int fixed_scale_;
+    SDL_Texture* frame_ = nullptr;
+    int scale_ = 0;  // frame_'s pixels for each screen unit
     struct Entry {
         SDL_Texture* texture = nullptr;  // null: the provider had nothing
         float logical_width = 0, logical_height = 0;

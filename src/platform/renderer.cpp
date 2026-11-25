@@ -1,24 +1,62 @@
 #include "platform/renderer.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace chr::platform {
 
-Renderer::Renderer(SDL_Renderer* sdl, AssetProvider& assets) : sdl_(sdl), assets_(assets) {
-    SDL_SetRenderLogicalPresentation(sdl_, kScreenWidth, kScreenHeight,
-                                     SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+SDL_Rect picture_rect(int width, int height) {
+    int w = std::min(width, int(std::lround(double(height) * kScreenWidth / kScreenHeight)));
+    int h = std::min(height, int(std::lround(double(width) * kScreenHeight / kScreenWidth)));
+    // A window held to 16:10 has a whole number of points at each side, each
+    // up to three pixels: what that leaves is filled.
+    constexpr int kRounding = 3;
+    if (width - w <= kRounding) w = width;
+    if (height - h <= kRounding) h = height;
+    return {(width - w) / 2, (height - h) / 2, w, h};
+}
+
+int frame_scale(const SDL_Rect& picture, int max_side) {
+    const int scale = std::max((picture.w + kScreenWidth - 1) / kScreenWidth, (picture.h + kScreenHeight - 1) / kScreenHeight);
+    const int most = max_side > 0 ? max_side / kScreenWidth : scale;
+    return std::max(1, std::min(scale, most));
+}
+
+Renderer::Renderer(SDL_Renderer* sdl, AssetProvider& assets, int fixed_scale)
+    : sdl_(sdl), assets_(assets), fixed_scale_(fixed_scale) {
     SDL_SetDefaultTextureScaleMode(sdl_, SDL_SCALEMODE_NEAREST);
 }
 
 Renderer::~Renderer() {
+    SDL_SetRenderTarget(sdl_, nullptr);
+    if (frame_) SDL_DestroyTexture(frame_);
     for (auto& [id, entry] : cache_)
         if (entry.texture) SDL_DestroyTexture(entry.texture);
 }
 
-void Renderer::begin_frame() {
+bool Renderer::begin_frame() {
+    SDL_SetRenderTarget(sdl_, nullptr);
+    int scale = fixed_scale_;
+    if (scale == 0) {
+        int width = 0, height = 0;
+        if (!SDL_GetCurrentRenderOutputSize(sdl_, &width, &height)) return false;
+        const auto side = SDL_GetNumberProperty(SDL_GetRendererProperties(sdl_), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 0);
+        scale = frame_scale(picture_rect(width, height), int(side));
+    }
+    if (!frame_ || scale != scale_) {
+        if (frame_) SDL_DestroyTexture(frame_);
+        scale_ = scale;
+        frame_ = SDL_CreateTexture(sdl_, SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_TARGET, kScreenWidth * scale,
+                                   kScreenHeight * scale);
+        if (!frame_) return false;
+        SDL_SetTextureScaleMode(frame_, SDL_SCALEMODE_NEAREST);
+        SDL_SetTextureBlendMode(frame_, SDL_BLENDMODE_NONE);
+    }
+    // The scale belongs to the target, so it is set with the frame on.
+    if (!SDL_SetRenderTarget(sdl_, frame_) || !SDL_SetRenderScale(sdl_, float(scale_), float(scale_))) return false;
     SDL_SetRenderDrawColor(sdl_, 0, 0, 0, 255);
-    SDL_RenderClear(sdl_);
+    return SDL_RenderClear(sdl_);
 }
 
 SDL_Texture* Renderer::texture_for(const AssetId& id) {
@@ -90,42 +128,39 @@ std::optional<std::pair<int, int>> Renderer::logical_size(const AssetId& id) {
 }
 
 bool Renderer::xor_colours(int x, int y, int width, int height, int colour, const formats::Palette16& palette) {
-    // The output may be scaled: read the rectangle at the output's size and
-    // take one pixel per screen unit.
-    SDL_FRect shown{};
-    if (!SDL_GetRenderLogicalPresentationRect(sdl_, &shown) || shown.w <= 0) return false;
-    const float scale = shown.w / float(kScreenWidth);
-    SDL_SetRenderLogicalPresentation(sdl_, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED);
-    const SDL_Rect area{int(shown.x + x * scale), int(shown.y + y * scale), int(width * scale), int(height * scale)};
+    const SDL_Rect screen{0, 0, kScreenWidth, kScreenHeight}, wanted{x, y, width, height};
+    SDL_Rect box{};
+    if (!SDL_GetRectIntersection(&wanted, &screen, &box)) return true;
+    const SDL_Rect area{box.x * scale_, box.y * scale_, box.w * scale_, box.h * scale_};
     SDL_Surface* read = SDL_RenderReadPixels(sdl_, &area);
-    SDL_SetRenderLogicalPresentation(sdl_, kScreenWidth, kScreenHeight, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
     if (!read) return false;
     SDL_Surface* rgba = SDL_ConvertSurface(read, SDL_PIXELFORMAT_RGBA32);
     SDL_DestroySurface(read);
-    if (!rgba) return false;
-    std::vector<std::uint8_t> out(std::size_t(width * height * 4));
-    for (int py = 0; py < height; ++py)
-        for (int px = 0; px < width; ++px) {
-            const int sx = std::min(rgba->w - 1, int(px * scale)), sy = std::min(rgba->h - 1, int(py * scale));
-            const auto* p = static_cast<const std::uint8_t*>(rgba->pixels) + sy * rgba->pitch + sx * 4;
-            formats::Rgb c{p[0], p[1], p[2]};
+    if (!rgba || rgba->w != area.w || rgba->h != area.h) {
+        SDL_DestroySurface(rgba);
+        return false;
+    }
+    for (int py = 0; py < area.h; ++py)
+        for (int px = 0; px < area.w; ++px) {
+            auto* p = static_cast<std::uint8_t*>(rgba->pixels) + py * rgba->pitch + px * 4;
             for (int i = 0; i < 16; ++i)
-                if (palette[std::size_t(i)] == c) {
-                    c = palette[std::size_t(i ^ (colour & 15))];
+                if (palette[std::size_t(i)] == formats::Rgb{p[0], p[1], p[2]}) {
+                    const auto& c = palette[std::size_t(i ^ (colour & 15))];
+                    p[0] = c.r, p[1] = c.g, p[2] = c.b;
                     break;
                 }
-            auto* q = &out[std::size_t((py * width + px) * 4)];
-            q[0] = c.r, q[1] = c.g, q[2] = c.b, q[3] = 255;
+            p[3] = 255;
         }
+    SDL_Texture* t = SDL_CreateTexture(sdl_, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, area.w, area.h);
+    if (t) {
+        SDL_SetTextureScaleMode(t, SDL_SCALEMODE_NEAREST);
+        SDL_UpdateTexture(t, nullptr, rgba->pixels, rgba->pitch);
+        const SDL_FRect dst{float(box.x), float(box.y), float(box.w), float(box.h)};
+        SDL_RenderTexture(sdl_, t, nullptr, &dst);
+        SDL_DestroyTexture(t);
+    }
     SDL_DestroySurface(rgba);
-    SDL_Texture* t = SDL_CreateTexture(sdl_, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, width, height);
-    if (!t) return false;
-    SDL_SetTextureScaleMode(t, SDL_SCALEMODE_NEAREST);
-    SDL_UpdateTexture(t, nullptr, out.data(), width * 4);
-    const SDL_FRect dst{float(x), float(y), float(width), float(height)};
-    SDL_RenderTexture(sdl_, t, nullptr, &dst);
-    SDL_DestroyTexture(t);
-    return true;
+    return t != nullptr;
 }
 
 const Image* Renderer::source(const AssetId& id) {
@@ -145,6 +180,18 @@ void Renderer::draw_rgba(int x, int y, int width, int height, const std::vector<
     SDL_DestroyTexture(t);
 }
 
-void Renderer::end_frame() { SDL_RenderPresent(sdl_); }
+SDL_Surface* Renderer::read_frame() { return SDL_RenderReadPixels(sdl_, nullptr); }
+
+void Renderer::end_frame() {
+    SDL_SetRenderTarget(sdl_, nullptr);
+    SDL_SetRenderDrawColor(sdl_, 0, 0, 0, 255);
+    SDL_RenderClear(sdl_);
+    int width = 0, height = 0;
+    SDL_GetCurrentRenderOutputSize(sdl_, &width, &height);
+    const SDL_Rect picture = picture_rect(width, height);
+    const SDL_FRect dst{float(picture.x), float(picture.y), float(picture.w), float(picture.h)};
+    if (frame_ && picture.w > 0 && picture.h > 0) SDL_RenderTexture(sdl_, frame_, nullptr, &dst);
+    SDL_RenderPresent(sdl_);
+}
 
 }  // namespace chr::platform

@@ -323,8 +323,11 @@ void print_fight_state(const chr::game::Town& town) {
     std::printf("\n");
 }
 
-bool save_screenshot(SDL_Renderer* renderer, const std::string& path) {
-    SDL_Surface* shot = SDL_RenderReadPixels(renderer, nullptr);
+// A screenshot's pixels for each screen unit: 960x600, whatever the display.
+constexpr int kScreenshotScale = 3;
+
+bool save_screenshot(chr::platform::Renderer& renderer, const std::string& path) {
+    SDL_Surface* shot = renderer.read_frame();
     if (!shot) return false;
     const bool ok = SDL_SaveBMP(shot, path.c_str());
     SDL_DestroySurface(shot);
@@ -457,12 +460,20 @@ int main(int argc, char** argv) {
     }
     SDL_Window* window = nullptr;
     SDL_Renderer* sdl_renderer = nullptr;
-    const SDL_WindowFlags window_flags = headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_RESIZABLE;
+    const SDL_WindowFlags window_flags =
+        headless ? SDL_WINDOW_HIDDEN : SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     if (!SDL_CreateWindowAndRenderer("Inception Rebuild", 960, 600, window_flags,
                                      &window, &sdl_renderer)) {
         std::fprintf(stderr, "chr: can't open a window: %s\n", SDL_GetError());
         SDL_Quit();
         return 1;
+    }
+    // Held to the screen's shape while it is resized (docs/window.md). A
+    // system that can't leaves bars at two of the sides.
+    if (!headless) {
+        constexpr float kShape = float(chr::platform::kScreenWidth) / float(chr::platform::kScreenHeight);
+        SDL_SetWindowAspectRatio(window, kShape, kShape);
+        SDL_SetWindowMinimumSize(window, chr::platform::kScreenWidth, chr::platform::kScreenHeight);
     }
 
     int status = 0;
@@ -509,7 +520,7 @@ int main(int argc, char** argv) {
         const auto palette = chr::platform::screen_colours(assets, original_palette);
         if (const char* base = SDL_GetBasePath())
             assets.set_own_font(std::filesystem::path(base) / chr::formats::kOwnFontFile);
-        chr::platform::Renderer renderer(sdl_renderer, assets);
+        chr::platform::Renderer renderer(sdl_renderer, assets, headless ? kScreenshotScale : 0);
         const auto& title = chr::assets::kTitleScreen;
 
         // The town takes keys and idle passes as they come. A question asks
@@ -793,7 +804,11 @@ int main(int argc, char** argv) {
                 if (!tune && music_on) sound_player->stop_music();
                 music_on = tune;
             }
-            renderer.begin_frame();
+            if (!renderer.begin_frame()) {
+                std::fprintf(stderr, "chr: can't draw: %s\n", SDL_GetError());
+                status = 1;
+                break;
+            }
             bool drawn = true;
             if (const auto screen = town ? town->full_screen() : std::nullopt) {
                 drawn = renderer.draw(*screen, 0, 0);
@@ -840,7 +855,7 @@ int main(int argc, char** argv) {
                 if (!options.screenshot.empty()) running = false;
             }
             if (!options.screenshot.empty() && running) {
-                if (!save_screenshot(sdl_renderer, options.screenshot)) {
+                if (!save_screenshot(renderer, options.screenshot)) {
                     std::fprintf(stderr, "chr: screenshot: %s\n", SDL_GetError());
                     status = 1;
                 }

@@ -225,6 +225,13 @@ if(SDL3_FOUND)
     CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/save-test-scratch"
     CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
 
+  # What the platform draws, with SDL's software renderer on a surface: no window.
+  add_executable(rendertests tests/test_main.cpp tests/test_renderer.cpp)
+  target_link_libraries(rendertests PRIVATE chrplatform)
+  target_compile_definitions(rendertests PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}" CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/test-scratch"
+    CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
+  add_test(NAME rendertests COMMAND rendertests)
+
   add_executable(chr src/main.cpp)
   target_link_libraries(chr PRIVATE chrplatform)
   # Windows packages: a GUI program, so no console window opens (SDL_main.h's WinMain).
