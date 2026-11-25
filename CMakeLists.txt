@@ -159,6 +159,7 @@ add_executable(chrtests
   tests/test_fight.cpp
   tests/test_quiz.cpp
   tests/test_saves.cpp
+  tests/test_save_files.cpp
   tests/test_rules.cpp
   tests/test_tables.cpp
   tests/test_interface_text.cpp
@@ -214,6 +215,15 @@ if(SDL3_FOUND)
   target_include_directories(chrplatform PUBLIC src)
   target_link_libraries(chrplatform PUBLIC chrgame chrsetup rekit_sdl SDL3::SDL3)
   target_compile_definitions(chrplatform PRIVATE CHR_VERSION="${CHR_VERSION}")
+
+  # The tests of the saves that need no game folder, with the libraries chr is
+  # made of: what the packaging runs on each system (tools/build_package.py).
+  # chrtests has them too.
+  add_executable(savetests EXCLUDE_FROM_ALL tests/test_main.cpp tests/test_save_files.cpp)
+  target_link_libraries(savetests PRIVATE chrplatform)
+  target_compile_definitions(savetests PRIVATE CHR_DEFAULT_GAME_DIR=""
+    CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/save-test-scratch"
+    CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
 
   add_executable(chr src/main.cpp)
   target_link_libraries(chr PRIVATE chrplatform)

@@ -14,6 +14,9 @@ The build's program stays chr, which the tools and the reference rig run; the
 package names it chi. Every file made gets a .sha256 beside it; sums.py writes
 a release's SHA256SUMS over all of them.
 
+The saves' tests that need no game folder (savetests) are built and run with the
+program, and must pass; they are in no package.
+
 The smoke test starts the packaged program: --help must print its usage and
 --status its JSON line, and the setup served to the launcher must answer
 through pipes (tools/package/served_setup.py). With a game folder (--game, or CHR_GAME_DIR) it also
@@ -44,6 +47,7 @@ STEM = "CHI-Rebuild"
 APP_NAME = "Inception Rebuild"
 PROGRAM = "chi"   # the shipped program; the build's target stays chr
 TARGET = "chr"
+SAVE_TESTS = "savetests"   # run for every package, in none
 BUNDLE_ID = "io.github.inceptionre.chi"  # its own, so it never shares another game's settings
 TAG = re.compile(r"chi-v(\d+\.\d+\.\d+)")
 README = (
@@ -101,8 +105,29 @@ def configure_and_build(root, build, sdl, label, universal=True):
     else:
         args += ["-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_BUILD_RPATH=$ORIGIN", "-DCMAKE_BUILD_RPATH_USE_ORIGIN=ON"]
     run(*args)
-    run("cmake", "--build", str(build), "--config", "Release", "--target", TARGET, "--parallel", "4")
-    return build / f"Release/{TARGET}.exe" if os.name == "nt" else build / TARGET
+    run("cmake", "--build", str(build), "--config", "Release", "--target", TARGET, SAVE_TESTS, "--parallel", "4")
+    save_tests(built(build, SAVE_TESTS))
+    return built(build, TARGET)
+
+
+def built(build, target):
+    return build / f"Release/{target}.exe" if os.name == "nt" else build / target
+
+
+def save_tests(program):
+    """The tests of the saves that need no game folder (tests/test_save_files.cpp), in the same build as the
+    program. Any failure stops the packaging, and so does a run in which nothing was tested."""
+    print("Save tests, without those that play the game (tests/test_saves.cpp: they need its folder):", flush=True)
+    result = subprocess.run([str(program)], cwd=program.parent, capture_output=True, text=True, errors="replace",
+                            timeout=SMOKE_SECONDS)
+    print(result.stdout + result.stderr, end="", flush=True)
+    found = re.findall(r"^(\d+) tests, (\d+) checks, (\d+) skipped, (\d+) failures$", result.stdout, re.MULTILINE)
+    if result.returncode != 0 or len(found) != 1:
+        raise RuntimeError(f"The save tests failed ({result.returncode})")
+    tests, checks, skipped, failures = map(int, found[0])
+    if failures or not tests or not checks:
+        raise RuntimeError(f"The save tests failed: {tests} tests, {checks} checks, {failures} failures")
+    print(f"Save tests: {tests} tests, {checks} checks, {skipped} skipped, all passed", flush=True)
 
 
 # libarchive, zlib and liblzma, linked in statically (tools/deps/build_archive.sh and

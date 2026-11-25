@@ -147,9 +147,17 @@ and the AppImage, with linuxdeploy and appimagetool at pinned releases
 checked by SHA-256, the AppImage started without FUSE),
 Windows (Windows Server 2022, MSVC: the zip and Setup.exe) and macOS (the
 universal dmg). It runs by hand (workflow_dispatch), and on pushes to main
-that touch `src/`, `tools/`, `CMakeLists.txt`, `extern/` or the workflow.
+that touch `src/`, `tools/`, `tests/`, `CMakeLists.txt`, `extern/` or the workflow.
 Each job runs the unit tests, builds the static archive libraries from their
 pinned sources, then packages and smoke-tests with SDL at its pinned commit.
+The packaging builds `savetests` with the program, from the same libraries
+and with the same flags, and runs it: the saves on disk and their journal
+(tests/test_save_files.cpp). A failure, or a run that tests nothing, stops
+it, and the log has how many checks ran and what was skipped. It is in no
+package. The tests that play the game (tests/test_saves.cpp) need its folder
+and aren't in it; `ctest` runs them. On Windows the full disk and the folder
+nothing may be made in aren't tested, and the save held open by another
+program is, there alone.
 The jobs have no game folder, so their smoke test is `--help` and
 `--status`. They upload their files as workflow artifacts
 (`package-check-linux`, `-windows`, `-mac`, kept 7 days) and nothing else:

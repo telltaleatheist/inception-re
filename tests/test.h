@@ -19,6 +19,8 @@ struct Test {
 
 std::vector<Test>& registry();
 void fail(const char* file, int line, const std::string& what);
+// How many CHECKs have run, and how many skip()s were said.
+inline long checks = 0, skips = 0;
 // The game folder, or empty if it isn't there: tests that need it skip.
 std::string game_dir();
 void skip(const std::string& why);
@@ -48,5 +50,6 @@ struct Register {
     static void name()
 #define CHECK(cond)                                                            \
     do {                                                                       \
+        ++chrtest::checks;                                                     \
         if (!(cond)) chrtest::fail(__FILE__, __LINE__, #cond);                 \
     } while (0)

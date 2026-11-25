@@ -24,7 +24,10 @@ void fail(const char* file, int line, const std::string& what) {
     std::printf("  FAIL %s:%d: %s\n", file, line, what.c_str());
 }
 
-void skip(const std::string& why) { std::printf("  skipped: %s\n", why.c_str()); }
+void skip(const std::string& why) {
+    ++skips;
+    std::printf("  skipped: %s\n", why.c_str());
+}
 
 std::string game_dir() {
     std::string dir;
@@ -83,6 +86,7 @@ int main() {
             chrtest::fail(__FILE__, __LINE__, std::string("exception: ") + e.what());
         }
     }
-    std::printf("%zu tests, %d failures\n", chrtest::registry().size(), chrtest::failures);
-    return chrtest::failures == 0 ? 0 : 1;
+    std::printf("%zu tests, %ld checks, %ld skipped, %d failures\n", chrtest::registry().size(), chrtest::checks,
+                chrtest::skips, chrtest::failures);
+    return chrtest::failures == 0 && chrtest::checks > 0 ? 0 : 1;
 }

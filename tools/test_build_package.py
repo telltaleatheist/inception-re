@@ -136,8 +136,9 @@ class Marker(unittest.TestCase):
                     build_package.check_marker(program, other)
 
     def test_the_build_is_given_the_full_label(self):
-        with patch.object(build_package, "run") as run:
+        with patch.object(build_package, "run") as run, patch.object(build_package, "save_tests") as save_tests:
             build_package.configure_and_build(Path("r"), Path("b"), Path("s"), "chi-v0.1.0")
+        save_tests.assert_called_once()
         configure = run.call_args_list[0].args
         self.assertIn("-DCHR_VERSION_TAG=chi-v0.1.0", configure)
         self.assertIn("-DCHR_VERSION=0.1.0", configure)
@@ -188,6 +189,33 @@ class CheckPaths(unittest.TestCase):
                 result = self.check(d)
                 self.assertEqual(result.returncode, 1, name)
                 self.assertIn("original game", result.stdout)
+
+
+class SaveTests(unittest.TestCase):
+    GOOD = "saves_files\n11 tests, 79 checks, 1 skipped, 0 failures\n"
+
+    def answer(self, code, out):
+        result = subprocess.CompletedProcess([], code, stdout=out, stderr="")
+        with patch.object(build_package.subprocess, "run", return_value=result):
+            build_package.save_tests(Path("savetests"))
+
+    def test_a_run_that_passes_goes_on(self):
+        self.answer(0, self.GOOD)
+
+    def test_any_failure_and_nothing_tested_stop_the_packaging(self):
+        for code, out in [(1, self.GOOD), (0, ""), (0, "saves_files\n"), (-11, "saves_files\n"),
+                          (0, "11 tests, 79 checks, 0 skipped, 1 failures\n"),
+                          (0, "0 tests, 0 checks, 0 skipped, 0 failures\n"),
+                          (0, "11 tests, 0 checks, 11 skipped, 0 failures\n")]:
+            with self.assertRaisesRegex(RuntimeError, "save tests failed"):
+                self.answer(code, out)
+
+    def test_they_are_built_with_the_program(self):
+        with patch.object(build_package, "run") as run, patch.object(build_package, "save_tests"):
+            build_package.configure_and_build(Path("r"), Path("b"), Path("s"), "1-test")
+        target = run.call_args_list[-1].args
+        self.assertIn("chr", target)
+        self.assertIn("savetests", target)
 
 
 @unittest.skipIf(os.name == "nt", "a shell script stands in for the program")
