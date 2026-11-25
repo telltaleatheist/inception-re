@@ -9,7 +9,7 @@ with the original by the rig's `start_*` cases (docs/reference.md): all match pi
    saved games. These choose the original's drivers and disks. The rebuild has neither, so they
    are not rebuilt.
 2. **The Infocom/Westwood screen** (in `1527:0044`, at 1527:0131..0216): INFOCOM.CMP over the whole
-   screen. The keyboard is emptied, then the screen stays up for at most 700 display frames,
+   screen. The keyboard is emptied, then the screen stays up for at most 700 retraces,
    one `273d:0006` wait each, or until a key (`273d:002f`, which only looks).
 3. **The title** (`1000:46a7`): BTTITLE.CMP with its palette.
 4. **`1000:50c8`**, the rest of the start-up:
@@ -86,7 +86,7 @@ ticks. The tune runs from the timer interrupt, so its length is 1 + 4 x 4352 = 1
 start, 59.748 s (the first step comes after 1 tick, and the step that reads the end mark puts the
 idle routine back). Then `1000:5131` asks for a key once more, which would start a new game, and
 with none the demo starts. The rebuild (`title_wait_ms`, src/game/music.cpp) uses the tune's ticks,
-rounded up to the next frame in interactive play, and DOS's tune's length for a copy that has no
+compared in milliseconds in interactive play, and DOS's tune's length for a copy that has no
 WWOODBT.SIF, Amiga's or a DOS folder without the file (a wait taken from its tune alone would be
 none, and the demo would start at once). No run of the original compares the wait's length: `sound_title` stops after 4126 steps, and
 the rig's `demo` gives chr its `tune-end` from the script. A unit test checks the 17,409 ticks.
@@ -104,9 +104,9 @@ DEMOFILE, read at run time. The repo holds nothing of the file but the counts be
   loop (`1000:0000(1)`), whose first act is its usual random draw (`1000:48b7(0x0f, 0)`).
 - **The keys** (`273d:0259`, the one key read). While F:3938 is set it takes the next byte from
   the buffer instead of the keyboard:
-  - 0x48 is a pause of 30 display frames (`273d:0006(30)`), and the byte after it is read;
+  - 0x48 is a pause of 30 retraces (`273d:0006(30)`), and the byte after it is read;
   - a key the player pressed meanwhile is read and thrown away (`287f:0b8a`), and DG:0152 is set;
-  - then one frame (`273d:0006(1)`), and the byte is the key, sign-extended (an arrow is minus
+  - then one retrace (`273d:0006(1)`), and the byte is the key, sign-extended (an arrow is minus
     its scan code, as the rebuild's key codes are);
   - 0x50 is the end mark: it sets DG:0152 too, and is still the key (to the town, a step on the
     spot).

@@ -1346,8 +1346,8 @@ void Town::show_page() {
     text_.forget(13, 0, kTextColumns - 13, kTextRows);
 }
 
-void Town::hold_screen(int frames) {
-    events_.push_back({Shown{view(), figures(), screen_sprites_, screen_lines_, text_, boxes(), picture_}, frames, -1, 0});
+void Town::hold_screen(int retraces) {
+    events_.push_back({Shown{view(), figures(), screen_sprites_, screen_lines_, text_, boxes(), picture_}, retraces, -1, 0});
 }
 
 void Town::play_sound(int n) {
@@ -1383,16 +1383,16 @@ Combat Town::combat_rules() {
         page_ = Frozen{live_view(), fight_figures_drawn()};
         page_sprites_.clear();
     };
-    hooks.show = [this](int frames) {
+    hooks.show = [this](int retraces) {
         show_page();
-        hold_screen(frames);
+        hold_screen(retraces);
     };
-    hooks.hold = [this](int frames) { hold_screen(frames); };
+    hooks.hold = [this](int retraces) { hold_screen(retraces); };
     hooks.sprite = [this](int slot, int x, int y) { page_sprites_.push_back({sprite(slot), x, y}); };
     hooks.line = [this](const ShownLine& line) { screen_lines_.push_back(line); };
     hooks.sound = [this](int n) { play_sound(n); };
     hooks.picture = [this](int number, int mode) { show_picture(number, mode); };
-    // 1e31:1dcc: 12 frames for each step of the message speed (DG:015e);
+    // 1e31:1dcc: 12 retraces for each step of the message speed (DG:015e);
     // from 5 up a key instead (273d:0259, docs/combat.md 3.8). Pauses come
     // only inside a round, so a key that isn't there stops the fight as the
     // key hook does.

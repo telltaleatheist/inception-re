@@ -62,7 +62,7 @@ public:
 };
 
 // One step of a script: a key, or `idle` passes of the main loop with no key
-// (each one display frame, see game/clock.h).
+// (each one retrace, see game/clock.h).
 struct ScriptItem {
     int key = 0;
     int idle = 0;       // > 0: idle passes instead of a key
@@ -108,16 +108,16 @@ class DemoKeys : public KeySource {
 public:
     // The program reads at most this much of the file (1000:5204).
     static constexpr std::size_t kMaxBytes = 0x3ff;
-    static constexpr int kPause = 0x48;    // 30 display frames, then the next byte
+    static constexpr int kPause = 0x48;    // 30 retraces, then the next byte
     static constexpr int kEndMark = 0x50;  // the last key: DG:0152 is set
-    static constexpr int kPauseFrames = 30;
+    static constexpr int kPauseRetraces = 30;
 
-    // `time` is the script: its idle items are the frames that pass, and a
+    // `time` is the script: its idle items are the retraces that pass, and a
     // key in it is one the player pressed.
     DemoKeys(std::vector<std::uint8_t> bytes, ScriptKeys& time);
     // BTECH.EXE 273d:0259 (Ghidra FUN_273d_0259), while F:3938 is set
     // The next byte as a key (sign-extended: an arrow is minus its scan
-    // code), after any pauses and one frame. A key the player pressed is
+    // code), after any pauses and one retrace. A key the player pressed is
     // read and thrown away, and ends the demo; so does the end mark. Past
     // the data the demo ends with nothing read.
     std::optional<int> next() override;
@@ -126,8 +126,8 @@ public:
     std::optional<int> waiting_key() override { return next(); }
 
     // BTECH.EXE 273d:0006 (Ghidra FUN_273d_0006)
-    // Waits `frames` display frames; false if the script's time runs out.
-    bool wait(int frames);
+    // Waits `retraces` retraces; false if the script's time runs out.
+    bool wait(int retraces);
     // DG:0152: the demo ends after this pass.
     bool ended() const { return ended_; }
     // Bytes read so far (F:39f8 less 10000).
@@ -137,13 +137,13 @@ public:
     void stop_at(std::size_t n) { stop_at_ = n; }
 
 private:
-    // The frames the next read waits: its pauses and one.
-    int frames_to_next() const;
+    // The retraces the next read waits: its pauses and one.
+    int retraces_to_next() const;
 
     std::vector<std::uint8_t> bytes_;
     ScriptKeys* time_;
     std::size_t pos_ = 0;
-    int frames_ = 0;  // frames given and not yet waited
+    int retraces_ = 0;  // given and not yet waited
     bool player_key_ = false;
     bool ended_ = false;
     std::optional<std::size_t> stop_at_;
@@ -252,6 +252,8 @@ public:
     // Stopped at a computer-fought fight's once-a-round "is a key waiting?"
     // (203b:1015): an idle pass answers no.
     bool poll_open() const { return poll_open_; }
+    // The open poll is a wait for a key: a no only has it asked again.
+    bool poll_waits() const { return poll_waits_; }
     // What the screen showed while the logic ran (game/shown.h), and the
     // sprites and line pixels it shows now over the map.
     const std::vector<ShownEvent>& events() const { return events_; }
@@ -445,8 +447,8 @@ private:
     bool talk(KeySource& keys);
     void show_picture(int number, int mode);
     void play_picture(int number);
-    // The screen as it is, held `frames` display frames (an event).
-    void hold_screen(int frames);
+    // The screen as it is, held `retraces` retraces (an event).
+    void hold_screen(int retraces);
     // BTECH.EXE 1000:19bf (Ghidra FUN_1000_19bf)
     // Sound effect n: the event, and with sound on the player's state.
     void play_sound(int n);
@@ -651,7 +653,7 @@ private:
     Flags flags_ = new_game_flags();
     std::vector<std::pair<int, int>> pending_flags_;
     Stage stage_ = Stage::Town;
-    int infocom_frames_ = 0;  // frames the Infocom screen has been up
+    int infocom_retraces_ = 0;  // how long the Infocom screen has been up
     bool start_up_open_ = false;
     std::optional<DemoKeys> demo_;  // set while the demo plays (F:3938)
     std::optional<std::size_t> demo_stop_;  // set_demo_stop
@@ -747,6 +749,7 @@ private:
     int arena_patch_ = 0;                                // DG:0010: the wall patch, 0-3
     KeySource* round_keys_ = nullptr;  // the keys while a fight round runs (Combat's key hook)
     bool poll_open_ = false;
+    bool poll_waits_ = false;
     std::vector<XorBox> boxes_;
     std::uint32_t boxes_since_ = 0;  // the text layer's paint clock when boxes_ was last settled
     void settle_boxes();

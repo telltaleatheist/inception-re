@@ -48,7 +48,7 @@ one more as the main loop starts (`1000:0024`, docs/town_loop.md, "Random number
 
 - **Every game tick, one draw** (docs/town_loop.md, "The game tick"). Outdoors it may start a
   random encounter (docs/combat.md 1.1). A tick runs on the first idle pass on a map, then every
-  11th idle pass (one pass is a display frame), and after every key.
+  11th idle pass (one pass is a retrace), and after every key.
 - **The money step**, every 256th tick: three draws, outdoors or when the money is below the
   floor (docs/town_loop.md, "Money").
 - **The townspeople**, every third tick: their routes and waits (docs/townspeople.md).
@@ -83,5 +83,5 @@ raid met the same three groups in reach every time: four soldiers, five, and one
   same keys and compares memory byte for byte, the generator's state included (`state random`).
   A different generator would make every comparison past the first draw meaningless.
 
-The rebuild counts display frames as the original does (docs/town_loop.md, "Pace"), so the
+The rebuild counts retraces as the original does (docs/town_loop.md, "Pace"), so the
 same timing gives the same draws.

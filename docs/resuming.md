@@ -40,12 +40,12 @@ At every point the original reads input:
   hands the fight back to the player, so the poll must see keys pressed while the
   previous round was shown;
 - the pause after a shot (1e31:1dcc) when the message speed DG:015e is 5 or more: it waits for
-  a key (273d:0259). At the starting speed, 2, it waits 24 frames and reads no keys;
+  a key (273d:0259). At the starting speed, 2, it waits 24 retraces and reads no keys;
 - the main loop's idle pass, where the town ticks on its own.
 
-The waits that read no keys (273d:0006's frames, the place pictures, the shot's poses,
+The waits that read no keys (273d:0006's retraces, the place pictures, the shot's poses,
 missiles and explosions) are not stops. The logic records them as presentation events (draw
-the view, a pose's frame, a shot's line, a sound, wait n frames). At each stop the platform
+the view, a pose's frame, a shot's line, a sound, wait n retraces). At each stop the platform
 plays the events so far at its own pace. Then it hands the logic whatever the player pressed
 meanwhile and resumes it. A replay with the same keys gives the same events, so the rig can
 ignore them.

@@ -335,6 +335,7 @@ bool Town::new_member(int skill, KeySource& keys) {
             if (!waiting) {
                 place_open_ = true;
                 poll_open_ = true;
+                poll_waits_ = true;
                 return false;
             }
             if (*waiting) break;
@@ -2126,8 +2127,8 @@ void Town::play_picture(int number) {
     const auto picture = source_->place_picture(number);
     if (!picture) return;
     const auto& anm = *picture;
-    const auto hold = [this](int frames) {
-        if (const int n = frames & 0xffff; n != 0) hold_screen(n);
+    const auto hold = [this](int retraces) {
+        if (const int n = retraces & 0xffff; n != 0) hold_screen(n);
     };
     const int plays = number == kRepeatedPicture ? kRepeatedPlays : 1;
     for (int play = 0; play < plays; ++play)

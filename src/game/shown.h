@@ -64,10 +64,10 @@ struct Shown {
 
 // One event: a sound played (1000:19bf: its number, and how long the game
 // waits for it, 0 with the sound off), or the screen shown
-// and held for `frames` display frames (273d:0006 counts them).
+// and held for `retraces` vertical retraces (273d:0006 counts them).
 struct ShownEvent {
     std::optional<Shown> screen;
-    int frames = 0;
+    int retraces = 0;
     int sound = -1;
     double wait_ms = 0;
 };

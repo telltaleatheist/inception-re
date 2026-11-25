@@ -353,5 +353,5 @@ The whole tune is not run, since its end starts the demo.
 `SoundState` holds `on` (DG:015c) and `minus_one_y`, the F:4034 word the people's run reads (the last
 kind-2 entry's fourth word; nothing reads its other four). `Town::play_sound(n)` records the event
 (`ShownEvent::sound`) and, with sound on, applies the effect's rule: the word and the wait
-(`ShownEvent::wait_ms`). With sound off the event takes no time, as in the original. chr's `--sound-log` prints
-each effect's steps for the rig.
+(`ShownEvent::wait_ms`). The platform uses only its milliseconds, not the cycles. With sound off the
+event takes no time, as in the original. chr's `--sound-log` prints each effect's steps for the rig.

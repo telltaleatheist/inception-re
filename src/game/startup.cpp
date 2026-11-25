@@ -14,8 +14,8 @@ namespace chr::game {
 namespace {
 
 // BTECH.EXE 1527:01e6: the Infocom screen stays up for at most 700 display
-// frames (one 273d:0006 wait each), or until a key.
-constexpr int kInfocomFrames = 700;
+// retraces (one 273d:0006 wait each), or until a key.
+constexpr int kInfocomRetraces = 700;
 
 }  // namespace
 
@@ -36,7 +36,7 @@ std::optional<int> DemoKeys::next() {
     // pressed is read and dropped, and ends the demo (DG:0152); then
     // 273d:0006(1).
     if (stop_at_ && pos_ >= *stop_at_) return std::nullopt;
-    if (!wait(frames_to_next())) return std::nullopt;
+    if (!wait(retraces_to_next())) return std::nullopt;
     if (player_key_) ended_ = true;
     player_key_ = false;
     while (bytes_[pos_] == kPause) ++pos_;
@@ -45,20 +45,20 @@ std::optional<int> DemoKeys::next() {
     return int(std::int8_t(b));
 }
 
-bool DemoKeys::wait(int frames) {
-    while (frames_ < frames) {
+bool DemoKeys::wait(int retraces) {
+    while (retraces_ < retraces) {
         const auto item = time_->next_item();
         if (!item) return false;
         if (item->is_set() || item->tune_end) throw std::invalid_argument("a set: or tune-end item in the demo");
         if (item->idle > 0) {
-            frames_ += item->idle;
+            retraces_ += item->idle;
             continue;
         }
         // A key: it waits for the next read, which ends the demo.
         player_key_ = true;
-        frames_ = frames;
+        retraces_ = retraces;
     }
-    frames_ -= frames;
+    retraces_ -= retraces;
     return true;
 }
 
@@ -68,10 +68,10 @@ std::optional<bool> DemoKeys::poll() {
     return true;
 }
 
-int DemoKeys::frames_to_next() const {
-    int frames = 1;
-    for (std::size_t i = pos_; i < bytes_.size() && bytes_[i] == kPause; ++i) frames += kPauseFrames;
-    return frames;
+int DemoKeys::retraces_to_next() const {
+    int retraces = 1;
+    for (std::size_t i = pos_; i < bytes_.size() && bytes_[i] == kPause; ++i) retraces += kPauseRetraces;
+    return retraces;
 }
 
 // BTECH.EXE 1000:51f9..525c (in Ghidra FUN_1000_50c8)
@@ -219,8 +219,8 @@ bool Town::run_start_up(ScriptKeys& input) {
         if (item->idle == 0) {
             stage_ = Stage::Title;  // a key ends it (and is not used for anything else)
         } else {
-            infocom_frames_ += item->idle;
-            if (infocom_frames_ >= kInfocomFrames) stage_ = Stage::Title;
+            infocom_retraces_ += item->idle;
+            if (infocom_retraces_ >= kInfocomRetraces) stage_ = Stage::Title;
         }
     }
     // BTECH.EXE 1000:5126..5276 (in Ghidra FUN_1000_50c8): the title and its

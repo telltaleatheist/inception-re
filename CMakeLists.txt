@@ -157,6 +157,7 @@ add_executable(chrtests
   tests/test_bld.cpp
   tests/test_anm.cpp
   tests/test_fight.cpp
+  tests/test_pace.cpp
   tests/test_quiz.cpp
   tests/test_saves.cpp
   tests/test_save_files.cpp

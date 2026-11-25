@@ -18,10 +18,10 @@
 // to the file without opening a window; with --event N, the screen of the
 // N-th thing the logic showed (game/shown.h), and --events lists them.
 // --step-hold N holds each step the original showed without a wait (a
-// missile's, an explosion's) N display frames (default 1). In a window the town runs at the
-// original's pace, one main-loop pass per display frame of a VGA card
-// (game/clock.h). --loop-ms N, a test aid: with --script and a headless video
-// driver, the window's loop runs N ms after the script.
+// missile's, an explosion's) N retraces (default 1). In a window the town runs at the
+// original's pace, one main-loop pass per retrace of a VGA card
+// (game/clock.h, platform/pace.h). --loop-ms N, a test aid: with --script and
+// a headless video driver, the window's loop runs N ms after the script.
 //
 // The game folder is --game-dir, else the CHR_GAME_DIR environment variable,
 // else the setup's (platform/sdl_setup.h): the one remembered in the data
@@ -31,7 +31,6 @@
 // found as one JSON line and writes nothing; --setup only sets the game up.
 
 #include <algorithm>
-#include <cmath>
 #include <cstdio>
 #include <deque>
 #include <memory>
@@ -56,13 +55,13 @@
 #include "formats/palette.h"
 #include "formats/tables.h"
 #include "game/asset_id.h"
-#include "game/clock.h"
 #include "game/map_view.h"
 #include "game/text_provider.h"
 #include "game/town.h"
 #include "platform/map_layer.h"
 #include "platform/original_assets.h"
 #include "platform/overhead_layer.h"
+#include "platform/pace.h"
 #include "platform/panel_layer.h"
 #include "platform/quiz_layer.h"
 #include "platform/stats_layer.h"
@@ -663,19 +662,18 @@ int main(int argc, char** argv) {
             if (options.list_events) {
                 for (const auto& e : town->events()) {
                     if (!e.screen) std::printf("event sound %d\n", e.sound);
-                    else std::printf("event screen %d frames, %zu sprites, %zu lines%s\n", e.frames,
+                    else std::printf("event screen %d retraces, %zu sprites, %zu lines%s\n", e.retraces,
                                      e.screen->sprites.size(), e.screen->lines.size(), e.screen->picture ? ", a picture" : "");
                 }
             }
         }
 
         // What the logic showed while it ran on (game/shown.h) is played
-        // when it stops: `played` events are done, the current one has been
-        // up `held` frames. Keys pressed meanwhile wait until the end; then
-        // the logic resumes with them. The script's own are not played.
+        // when it stops: `played` events are done. Keys pressed meanwhile
+        // wait until the end; then the logic resumes with them. The script's
+        // own are not played.
         std::size_t played = town ? town->events().size() : 0;
         if (town && options.event >= 0 && std::size_t(options.event) < played) played = std::size_t(options.event);
-        int held = 0;
         bool keys_meanwhile = false;
         // Sound only for a player at the keyboard: a run with a script or a
         // screenshot (the rig, the tests) never opens an audio device.
@@ -693,17 +691,98 @@ int main(int argc, char** argv) {
         audio_opened = audio_opened || SDL_WasInit(SDL_INIT_AUDIO) != 0;
         std::size_t sounded = played;  // the events before it have had their sound started
         bool music_on = false;  // the title's tune has been started
-        int title_frames = 0;   // frames the title has waited with its tune
         const auto playing = [&] { return town && played < town->events().size(); };
-        const auto resume = [&] {
-            if (keys_meanwhile) {
-                keys_meanwhile = false;
-                replay();
-            } else if (town && town->poll_open()) {
-                // 203b:1015 asked whether a key is waiting: none was.
-                if (!keys.empty() && keys.back().idle > 0) ++keys.back().idle;
-                else keys.push_back({0, 1});
-                replay();
+        // A stretch of `n` retraces with no key.
+        const auto pass_time = [&](int n) {
+            if (!keys.empty() && keys.back().idle > 0) keys.back().idle += n;
+            else keys.push_back({0, n});
+        };
+        // What the window's time goes to.
+        enum class Doing {
+            Waiting,  // for a key, however long
+            Events,   // what the logic showed
+            Poll,     // the logic asks whether a key is waiting
+            Demo,
+            Title,    // its tune
+            Infocom,
+            Town,     // the main loop's passes
+        };
+        const auto doing = [&] {
+            if (!town || !options.screenshot.empty()) return Doing::Waiting;
+            if (playing()) return Doing::Events;
+            if (town->poll_open()) return Doing::Poll;
+            if (town->demo_playing()) return Doing::Demo;
+            if (town->title_tune_playing()) return Doing::Title;
+            if (town->start_up_open() && town->full_screen() == chr::assets::kInfocomLogo) return Doing::Infocom;
+            if (town->question_open() || town->place_open() || town->start_up_open()) return Doing::Waiting;
+            return Doing::Town;
+        };
+        chr::platform::Pace pace;
+        // Uses the time there is.
+        const auto go_on = [&] {
+            switch (doing()) {
+            case Doing::Waiting:
+                pace.restart();
+                break;
+            case Doing::Events:
+                while (played < town->events().size()) {
+                    // The game waits while a sound plays (docs/sound.md).
+                    const auto& e = town->events()[played];
+                    if (played >= sounded) {
+                        if (sound_player && !e.screen && e.wait_ms > 0) sound_player->play(e.sound);
+                        sounded = played + 1;
+                    }
+                    if (!pace.take(chr::platform::event_ms(e, options.step_hold))) return;
+                    ++played;
+                }
+                if (keys_meanwhile) {
+                    keys_meanwhile = false;
+                    replay();
+                } else if (town->poll_open() && !town->poll_waits()) {
+                    // 203b:1015 asked whether a key is waiting: none was,
+                    // and the asking took no time.
+                    pass_time(1);
+                    replay();
+                }
+                break;
+            case Doing::Poll:
+                // Asked again and again, it is asked once a retrace.
+                if (town->poll_waits()) {
+                    if (const int n = pace.take_retraces(); n > 0) {
+                        pass_time(n);
+                        replay();
+                    }
+                } else if (pace.take(chr::game::kRetraceMs)) {
+                    pass_time(1);
+                    replay();
+                    if (!playing()) pace.take_retraces();
+                }
+                break;
+            case Doing::Demo:     // the demo's keys keep its time (docs/startup.md, "The demo")
+            case Doing::Infocom:  // it goes by itself after a while: time is input there too
+                if (const int n = pace.take_retraces(); n > 0) {
+                    pass_time(n);
+                    replay();
+                }
+                break;
+            case Doing::Title:
+                // When the tune has played to its end with no key, the demo.
+                if (pace.take(town->title_wait_ms())) {
+                    chr::game::ScriptItem item;
+                    item.tune_end = true;
+                    keys.push_back(item);
+                    replay();
+                }
+                break;
+            case Doing::Town: {
+                int n = 0;
+                while (doing() == Doing::Town && pace.take(chr::game::kRetraceMs)) {
+                    town->idle_pass();
+                    ++n;
+                }
+                if (n > 0) pass_time(n);
+                break;
+            }
             }
         };
 
@@ -715,11 +794,11 @@ int main(int argc, char** argv) {
             if (driver == "dummy" || driver == "offscreen") running = running && options.loop_ms > 0;
         }
         bool reported = false;
-        chr::game::FrameClock clock;
         Uint64 last = SDL_GetTicksNS();
         const Uint64 loop_started = last;
         while (running) {
             if (options.loop_ms > 0 && last - loop_started >= Uint64(options.loop_ms) * 1000000) break;
+            const Doing before = doing();
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 if (event.type == SDL_EVENT_QUIT) running = false;
@@ -739,65 +818,13 @@ int main(int argc, char** argv) {
                 }
             }
             const Uint64 now = SDL_GetTicksNS();
-            const int frames = clock.advance(double(now - last) / 1e9);
+            // What a key started has had no time yet.
+            if (doing() == before) pace.add(double(now - last) / 1e6);
+            else pace.restart();
             last = now;
-            if (playing() && options.screenshot.empty()) {
-                held += frames;
-                const auto& events = town->events();
-                while (played < events.size()) {
-                    // The game waits while a sound plays (docs/sound.md). A
-                    // screen the original showed without a wait went by as
-                    // fast as the machine drew the next: the platform holds
-                    // it `step_hold` frames.
-                    const auto& e = events[played];
-                    if (played >= sounded) {
-                        if (sound_player && !e.screen && e.wait_ms > 0) sound_player->play(e.sound);
-                        sounded = played + 1;
-                    }
-                    const int cost = !e.screen ? int(std::ceil(e.wait_ms * chr::game::kVgaRefreshHz / 1000.0))
-                                     : e.frames > 0 ? e.frames
-                                                    : options.step_hold;
-                    if (held < cost) break;
-                    held -= cost;
-                    ++played;
-                }
-                if (played == events.size()) {
-                    held = 0;
-                    resume();
-                }
-            } else if (town && options.screenshot.empty() && town->poll_open()) {
-                resume();
-            } else if (town && frames > 0 && town->demo_playing() && options.screenshot.empty()) {
-                // The demo's keys keep its time (docs/startup.md, "The demo").
-                if (!keys.empty() && keys.back().idle > 0) keys.back().idle += frames;
-                else keys.push_back({0, frames});
-                replay();
-            } else if (town && frames > 0 && town->title_tune_playing() && options.screenshot.empty()) {
-                // When the tune has played to its end with no key, the demo.
-                title_frames += frames;
-                if (title_frames * 1000.0 >= town->title_wait_ms() * chr::game::kVgaRefreshHz) {
-                    chr::game::ScriptItem item;
-                    item.tune_end = true;
-                    keys.push_back(item);
-                    title_frames = 0;
-                    replay();
-                }
-            } else if (town && frames > 0 && town->start_up_open() && town->full_screen() == chr::assets::kInfocomLogo &&
-                options.screenshot.empty()) {
-                // The Infocom screen goes by itself after a while: time is
-                // input there too.
-                if (!keys.empty() && keys.back().idle > 0) keys.back().idle += frames;
-                else keys.push_back({0, frames});
-                replay();
-            } else if (town && frames > 0 && !town->question_open() && !town->place_open() &&
-                       !town->start_up_open() && options.screenshot.empty()) {
-                for (int i = 0; i < frames; ++i) town->idle_pass();
-                if (!keys.empty() && keys.back().idle > 0) keys.back().idle += frames;
-                else keys.push_back({0, frames});
-            }
+            go_on();
             // The title's tune plays while the title waits for its key
             // (1000:476d); the key cuts it off.
-            if (!town || !town->title_tune_playing()) title_frames = 0;
             if (sound_player) {
                 const bool tune = town && town->title_tune_playing();
                 if (tune && !music_on) sound_player->play_music(chr::game::music_segments(town->title_tune()));

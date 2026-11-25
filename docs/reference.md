@@ -602,7 +602,7 @@ vehicle menu) and out.
   same blocking read that other boxes take keys at. The sequence goes round it by sending the key
   before round 1 ends, which hands the fight back to the player, then Begin Fight each round.
   The same happens at the double agent's box after round 1 (`chain_agent`, docs/combat.md 2.9),
-  and there the cause is the feeder: the box's `273d:086a` waits display frames (no poll), then
+  and there the cause is the feeder: the box's `273d:086a` waits retraces (no poll), then
   flushes (`1000:2a2b`, one int 21h 0Bh). The computer-fought round asks for no key in between,
   so `arm:1` before `n` hands the next key to that flush, which reads and drops it; the box's
   own read (`273d:0259`) then takes the key after. Without `arm:1`, or with `arm:2`, the
