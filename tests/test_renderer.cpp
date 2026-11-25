@@ -387,6 +387,91 @@ TEST(renderer_frame_refused_and_back) {
     SDL_DestroySurface(surface);
 }
 
+// What SDL says when the device has been reset (here only said: the software renderer keeps its
+// textures): every texture is made again, from what the provider has, the frame's too.
+TEST(renderer_device_reset) {
+    struct Changing : MadeUp {
+        std::uint32_t colour = 0x2040f0;
+        int asked = 0, missing = 0;
+        std::optional<Image> image(const AssetId& id) override {
+            if (id.file == "NONE") return ++missing, std::nullopt;
+            if (id.file != "CHANGES") return MadeUp::image(id);
+            ++asked;
+            Image t = blank(16, 16, 16, 16);
+            for (int y = 0; y < 16; ++y)
+                for (int x = 0; x < 16; ++x) put(t, x, y, colour);
+            return t;
+        }
+    } assets;
+    SDL_Surface* surface = SDL_CreateSurface(320, 200, SDL_PIXELFORMAT_XRGB8888);
+    SDL_Renderer* sdl = SDL_CreateSoftwareRenderer(surface);
+    {
+        Renderer renderer(sdl, assets);
+        const auto frame = [&] {
+            CHECK(renderer.begin_frame() && everything(renderer) && renderer.draw({"CHANGES", 0}, 0, 0));
+            CHECK(!renderer.draw({"NONE", 0}, 0, 0));
+            CHECK(renderer.refused().empty());
+            renderer.end_frame();
+            return colours(surface);
+        };
+        const auto first = frame();
+        const auto made = renderer.textures();
+        CHECK(frame() == first && assets.asked == 1 && assets.missing == 1 && made > 200);
+        assets.colour = 0x10c020;
+        CHECK(frame() == first && assets.asked == 1);  // kept, until the device is reset
+
+        CHECK(SDL_InitSubSystem(SDL_INIT_EVENTS));
+        const auto say = [&](std::uint32_t type) {
+            SDL_Event event{};
+            event.type = type;
+            CHECK(SDL_PushEvent(&event));
+            while (SDL_PollEvent(&event)) renderer.handle(event);
+        };
+        say(SDL_EVENT_RENDER_TARGETS_RESET);
+        CHECK(frame() == first && renderer.resets() == 0);
+        say(SDL_EVENT_RENDER_DEVICE_RESET);
+        CHECK(renderer.resets() == 1 && renderer.textures() == 0);
+        const auto second = frame();
+        CHECK(renderer.textures() == made && assets.asked == 2 && assets.missing == 1);
+        auto wanted = first;
+        for (int y = 0; y < 16; ++y)
+            for (int x = 0; x < 16; ++x) wanted[std::size_t(y * 320 + x)] = second[0];
+        CHECK(second[0] != first[0] && second == wanted);
+        // In the middle of a frame: what is left of it is lost, and the next is whole.
+        CHECK(renderer.begin_frame() && renderer.draw({"TILE", 3}, 40, 40));
+        say(SDL_EVENT_RENDER_DEVICE_RESET);
+        renderer.end_frame();
+        CHECK(frame() == second && renderer.resets() == 2);
+        SDL_QuitSubSystem(SDL_INIT_EVENTS);
+    }
+    SDL_DestroyRenderer(sdl);
+    SDL_DestroySurface(surface);
+}
+
+// A picture whose texture is refused once is asked for again, and its size is known meanwhile.
+TEST(renderer_texture_refused_and_back) {
+    SDL_Surface* surface = SDL_CreateSurface(320, 200, SDL_PIXELFORMAT_XRGB8888);
+    SDL_Renderer* sdl = SDL_CreateSoftwareRenderer(surface);
+    {
+        MadeUp assets;
+        Renderer renderer(sdl, assets);
+        SDL_SetNumberProperty(SDL_GetRendererProperties(sdl), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 320);
+        for (int i = 0; i < 2; ++i) {  // twice the screen's size: the frame is made, the picture isn't
+            CHECK(renderer.begin_frame() && renderer.refused().empty());
+            CHECK(!renderer.draw(kFine2, 0, 0) && !renderer.refused().empty());
+            CHECK(renderer.draw({"TILE", 7}, 211, 57));
+            CHECK(renderer.logical_size(kFine2) == std::pair(kScreenWidth, kScreenHeight));
+            renderer.end_frame();
+        }
+        SDL_SetNumberProperty(SDL_GetRendererProperties(sdl), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 0);
+        CHECK(renderer.begin_frame() && renderer.draw(kFine2, 0, 0) && renderer.refused().empty());
+        renderer.end_frame();
+        CHECK(colours(surface) == draw_at(320, 200, 0, [](Renderer& r) { return r.draw(kFine2, 0, 0); }).output);
+    }
+    SDL_DestroyRenderer(sdl);
+    SDL_DestroySurface(surface);
+}
+
 // A window with no pixels is not an error: the frame is drawn, and shown on
 // nothing.
 TEST(renderer_no_output) {

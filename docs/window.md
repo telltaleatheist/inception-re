@@ -26,7 +26,16 @@ pixels: 16:10, not a monitor's 4:3.
 
 - A frame that can't be drawn (a lost device, a refused target) is skipped, the error is said once, and
   the next frame starts again from nothing. The game goes on. Only a screenshot run ends with it. A
-  window with no pixels (minimised) is not an error.
+  window with no pixels (minimised) is not an error. A picture whose texture is refused is left out,
+  said once the same way, and asked for again when it is next drawn.
+- When SDL says the device has been reset (`SDL_EVENT_RENDER_DEVICE_RESET`), every texture is gone:
+  they are all dropped, and each is made again from the provider's picture when it is next drawn.
+  From SDL 3.4.12's source: Direct3D 11 and 12 and Vulkan say it (the driver was updated or
+  restarted, the GPU removed), after a present that failed; Direct3D 9 keeps its textures and says
+  only that the targets' contents are gone, and the frame is drawn from nothing each time anyway.
+  `SDL_EVENT_RENDER_DEVICE_LOST`, a device that can't be made again, leaves the window as it is:
+  nothing more is drawn. No one has seen any of these on a real GPU; the checks send the event
+  (`rendertests`, and `chr --loop-resets` in `keep_places`).
 
 ## The window's shape
 

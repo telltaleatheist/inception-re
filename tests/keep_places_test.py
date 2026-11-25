@@ -58,15 +58,17 @@ def window(a, work):
                CHR_HIDDEN="1", CHR_DATA_DIR=a.data)
     out = subprocess.run([a.program, "--game-dir", a.game, "--data-dir", a.data, "--save-dir", saves, "--script",
                           " ".join(items[:at]), "--events", "--loop-keys", " ".join(i for i in items[at:] if ":" not in i),
-                          "--loop-ms", "60000", *options], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                          "--loop-ms", "60000", "--loop-resets", *options], env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True,
                          timeout=200)
     said = re.search(r"loop (\d+) places, (\d+) of (\d+) events played, (\d+) of (\d+) sounds started, (\d+) keys left", out.stdout)
-    if not said or out.returncode != 0:
+    again = re.search(r"loop (\d+) resets, (\d+) textures now", out.stdout)
+    if not said or not again or out.returncode != 0:
         return False, "exit %s: %s" % (out.returncode, (out.stdout + out.stderr)[-200:])
     places, played, shown, started, sounds, left = map(int, said.groups())
     first, first_sounds = out.stdout.count("\nevent "), out.stdout.count("\nevent sound")
-    return (places > 3 and played == shown > first > 0 and started == sounds > first_sounds > 0 and left == 0,
-            "%s; the script's %d and %d" % (said[0], first, first_sounds))
+    # SDL's event for a device reset comes between the keys, and the textures are made again after the last.
+    return (int(again[1]) > 3 and int(again[2]) > 0 and places > 3 and played == shown > first > 0 and started == sounds > first_sounds > 0 and left == 0,
+            "%s; the script's %d and %d; %s" % (said[0], first, first_sounds, again[0]))
 
 
 def main():

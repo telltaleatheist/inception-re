@@ -100,6 +100,7 @@ struct Options {
     int step_hold = 1;         // --step-hold N
     bool keep_places = false;  // --keep-places: the script's items one by one, each place kept (platform/sitting.h)
     std::string loop_keys;     // --loop-keys KEYS: keys pressed in the window's loop, one every kLoopKeyFrames
+    bool loop_resets = false;  // --loop-resets: with --loop-keys, SDL's event for a device reset between the keys
     int loop_ms = 0;           // --loop-ms N: the window's loop runs N ms after the script, under a headless driver
     std::optional<std::size_t> demo_to;  // --demo-to N: the demo stops at byte N (DemoKeys::stop_at)
     bool list_events = false;
@@ -123,7 +124,7 @@ void usage(std::FILE* out, const char* argv0) {
     std::fprintf(out, "usage: %s --status | --setup\n"
                  "       %s --setup --describe | --search | --look PICK | --install PICK [--folder DIR]\n"
                  "       %s [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
-                 "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--loop-ms N] [--loop-keys KEYS] [--keep-places] [--demo-to N]\n"
+                 "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--loop-ms N] [--loop-keys KEYS] [--loop-resets] [--keep-places] [--demo-to N]\n"
                  "           [--state] [--show-quiz]\n"
                  "  --show-quiz: show the training center's quiz (no check: the right part is\n"
                  "           picked and any answer goes on); by default it is skipped\n"
@@ -178,6 +179,8 @@ bool parse(int argc, char** argv, Options& options) {
             options.loop_ms = std::max(0, std::atoi(argv[++i]));
         } else if (arg == "--loop-keys" && i + 1 < argc) {
             options.loop_keys = argv[++i];
+        } else if (arg == "--loop-resets") {
+            options.loop_resets = true;
         } else if (arg == "--keep-places") {
             options.keep_places = true;
         } else if (arg == "--events") {
@@ -890,10 +893,16 @@ int main(int argc, char** argv) {
             const Doing before = doing();
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
+                renderer.handle(event);
                 if (event.type == SDL_EVENT_QUIT) running = false;
                 if (event.type != SDL_EVENT_KEY_DOWN) continue;
                 if (event.key.key == SDLK_ESCAPE) running = false;
                 if (const int k = key_code(event.key.key); k != 0) pressed(k);
+            }
+            if (options.loop_resets && frames % kLoopKeyFrames == 1) {
+                SDL_Event reset{};
+                reset.type = SDL_EVENT_RENDER_DEVICE_RESET;
+                SDL_PushEvent(&reset);
             }
             if (!loop_keys.empty() && ++frames % kLoopKeyFrames == 0) {
                 const auto item = loop_keys.front();
@@ -967,8 +976,12 @@ int main(int argc, char** argv) {
             } else {
                 drawn = renderer.draw(title, 0, 0);
             }
-            if (!drawn && !reported) {
-                std::fprintf(stderr, "chr: %s\n", assets.last_error().c_str());
+            if (!drawn && !renderer.refused().empty() && options.screenshot.empty()) {
+                // As a frame that can't be drawn: it is asked for again.
+                if (!skipped) std::fprintf(stderr, "chr: can't draw: %s\n", renderer.refused().c_str());
+                skipped = true;
+            } else if (!drawn && !reported) {
+                std::fprintf(stderr, "chr: %s\n", (renderer.refused().empty() ? assets.last_error() : renderer.refused()).c_str());
                 reported = true;
                 status = 1;
                 if (!options.screenshot.empty()) running = false;
@@ -987,6 +1000,8 @@ int main(int argc, char** argv) {
             totals.shown += town->events().size(), totals.sounds += sounds_in(town->events().size());
             std::printf("loop %zu places, %zu of %zu events played, %zu of %zu sounds started, %zu keys left\n", totals.places, totals.played,
                         totals.shown, totals.started, totals.sounds, loop_keys.size());
+            if (options.loop_resets)
+                std::printf("loop %d resets, %zu textures now\n", renderer.resets(), renderer.textures());
         }
     }
 

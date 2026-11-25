@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <map>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -45,6 +46,15 @@ public:
     // a lost device, a refused target. The frame is skipped, with no other
     // call, and the next one starts again from nothing.
     bool begin_frame();
+    // After SDL_EVENT_RENDER_DEVICE_RESET no texture of the renderer's is there any more: each is
+    // made again when it is next drawn.
+    void handle(const SDL_Event& event);
+    // What SDL said when it last refused a picture's texture in this frame, "" when it refused none.
+    // The picture is asked for again when next drawn.
+    const std::string& refused() const { return refused_; }
+    // How many resets have been handled, and the pictures' textures there are now.
+    int resets() const { return resets_; }
+    std::size_t textures() const;
     // Draws the picture for `id` with its top-left corner at (x, y) in
     // 320x200 screen units. Returns false if no provider has it.
     bool draw(const AssetId& id, int x, int y);
@@ -86,11 +96,16 @@ private:
     const int fixed_scale_;
     SDL_Texture* frame_ = nullptr;
     int scale_ = 0;  // frame_'s pixels for each screen unit
+    void forget_textures();
+
     struct Entry {
-        SDL_Texture* texture = nullptr;  // null: the provider had nothing
+        bool there = false;              // the provider has it
+        SDL_Texture* texture = nullptr;  // null: not made yet, or refused
         float logical_width = 0, logical_height = 0;
     };
     std::map<AssetId, Entry> cache_;
+    std::string refused_;
+    int resets_ = 0;
     std::map<AssetId, std::optional<Image>> sources_;
 };
 

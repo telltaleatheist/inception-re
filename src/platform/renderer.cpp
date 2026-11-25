@@ -30,13 +30,31 @@ Renderer::Renderer(SDL_Renderer* sdl, AssetProvider& assets, int fixed_scale)
 }
 
 Renderer::~Renderer() {
+    forget_textures();
+}
+
+void Renderer::forget_textures() {
     SDL_SetRenderTarget(sdl_, nullptr);
     if (frame_) SDL_DestroyTexture(frame_);
-    for (auto& [id, entry] : cache_)
+    frame_ = nullptr;
+    for (auto& [id, entry] : cache_) {
         if (entry.texture) SDL_DestroyTexture(entry.texture);
+        entry.texture = nullptr;
+    }
+}
+
+void Renderer::handle(const SDL_Event& event) {
+    if (event.type != SDL_EVENT_RENDER_DEVICE_RESET) return;
+    ++resets_;
+    forget_textures();
+}
+
+std::size_t Renderer::textures() const {
+    return std::size_t(std::count_if(cache_.begin(), cache_.end(), [](const auto& c) { return c.second.texture != nullptr; }));
 }
 
 bool Renderer::begin_frame() {
+    refused_.clear();
     if (start_frame()) return true;
     // Whatever failed (a lost device, a refused target), the next frame
     // starts again from nothing.
@@ -77,20 +95,22 @@ bool Renderer::start_frame() {
 }
 
 SDL_Texture* Renderer::texture_for(const AssetId& id) {
-    if (auto it = cache_.find(id); it != cache_.end()) return it->second.texture;
-    Entry entry;
-    if (auto image = assets_.image(id)) {
-        entry.texture = SDL_CreateTexture(sdl_, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC,
-                                          image->width, image->height);
-        if (entry.texture) {
-            SDL_UpdateTexture(entry.texture, nullptr, image->rgba.data(), image->width * 4);
-            SDL_SetTextureScaleMode(entry.texture, SDL_SCALEMODE_NEAREST);
-            SDL_SetTextureBlendMode(entry.texture, SDL_BLENDMODE_BLEND);
-            entry.logical_width = float(image->logical_width);
-            entry.logical_height = float(image->logical_height);
-        }
+    if (const auto it = cache_.find(id); it != cache_.end() && (it->second.texture || !it->second.there)) return it->second.texture;
+    const auto image = assets_.image(id);
+    Entry& entry = cache_[id];
+    if (!image) return nullptr;
+    entry.there = true;
+    entry.logical_width = float(image->logical_width);
+    entry.logical_height = float(image->logical_height);
+    SDL_Texture* texture = SDL_CreateTexture(sdl_, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, image->width, image->height);
+    if (!texture || !SDL_UpdateTexture(texture, nullptr, image->rgba.data(), image->width * 4)) {
+        refused_ = SDL_GetError();
+        if (texture) SDL_DestroyTexture(texture);
+        return nullptr;
     }
-    return cache_.emplace(id, entry).first->second.texture;
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    return entry.texture = texture;
 }
 
 bool Renderer::draw(const AssetId& id, int x, int y) {
@@ -139,8 +159,9 @@ void Renderer::clip(int x, int y, int width, int height) {
 void Renderer::clear_clip() { SDL_SetRenderClipRect(sdl_, nullptr); }
 
 std::optional<std::pair<int, int>> Renderer::logical_size(const AssetId& id) {
-    if (!texture_for(id)) return std::nullopt;
+    texture_for(id);
     const Entry& entry = cache_.at(id);
+    if (!entry.there) return std::nullopt;
     return std::pair{int(entry.logical_width), int(entry.logical_height)};
 }
 
