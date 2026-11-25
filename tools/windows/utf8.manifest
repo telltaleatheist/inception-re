@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- UTF-8 as the program's ANSI code page (Windows 10 1903 and later, ignored before), so a name that SDL gives
+     in UTF-8 and one the C library turns into text are the same name (docs/setup.md, "Names on Windows").
+     From mw3-re, tools/windows/utf8.manifest (MIT, the same owner). -->
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>
+    </windowsSettings>
+  </application>
+</assembly>

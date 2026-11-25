@@ -181,6 +181,31 @@ def checks(program, env, scratch, kill=True):
     a = run("user", ["--look", install])
     yield a.clean() and a.last.get("in_place") and a.code == 0, "look: the install itself is in place (%s)" % a
 
+    # Names outside ASCII, one in Windows-1252 and one in no one code page: the folders are the ones named.
+    for word in ("Zo\u00eb", "\u0141 \u65e5\u672c"):
+        there = scratch / "names" / word
+        given = made_up_copy(there / "copy")
+        was = tree(given)
+        a = run("names/%s/user" % word, ["--install", given, "--folder", there / "Inception"])
+        yield a.clean() and a.code == 0 and a.last.get("ok") and (there / "Inception" / "install" / "MAP1.MTP").is_file(), \
+            "names: %s: installed into the folder named (%s)" % (ascii(word), ascii(str(a)))
+        ini = there / "user" / "settings.ini"
+        line = ini.read_bytes().decode("utf-8", "replace").strip() if ini.is_file() else ""
+        yield line.startswith("game_folder=") and line.endswith(os.path.join(word, "Inception", "install")), \
+            "names: %s: remembered in UTF-8 (%s)" % (ascii(word), ascii(line))
+        yield tree(given) == was and sorted(os.listdir(there)) == ["Inception", "copy", "user"], \
+            "names: %s: nothing anywhere else" % ascii(word)
+        s = subprocess.run([str(program), "--status"], env=asking_env(env, there / "user"), stdin=subprocess.DEVNULL,
+                           capture_output=True, timeout=SECONDS)
+        try:
+            where = json.loads(s.stdout.decode("utf-8"))["files"]["where"]
+        except (ValueError, KeyError):
+            where = ""
+        yield s.returncode == 0 and bool(where) and os.path.exists(where) and \
+            os.path.samefile(where, there / "Inception" / "install"), "names: %s: --status finds it there (%s)" % (
+                ascii(word), ascii(where or s.stdout[-200:]))
+    yield sorted(os.listdir(scratch / "names")) == sorted(["Zo\u00eb", "\u0141 \u65e5\u672c"]), "names: no other folder made"
+
     many = made_up_copy(scratch / "many", MANY)
     a = run("stopped", ["--install", many], cancel_at="Copying")
     yield a.clean() and a.code == 1 and a.last.get("cancelled") and not a.last.get("ok") and a.last.get("summary"), \

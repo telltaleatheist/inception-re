@@ -386,12 +386,22 @@ int key_code(SDL_Keycode key) {
     return 0;
 }
 
-}  // namespace
+// What begin() answers for a start that goes on to the game.
+constexpr int kGoOn = -1;
 
-int main(int argc, char** argv) {
-    // A read the compiler must make: no linker drops the marker as unreferenced.
-    { const volatile char* marker = chi_version_tag; (void)marker[0]; }
-    Options options;
+// A run that asks for an answer, or that no player is at: nothing is shown to say why it ended.
+bool no_player(int argc, char** argv) {
+    for (int i = 1; i < argc; ++i) {
+        const std::string_view arg = argv[i];
+        if (arg == "--script" || arg == "--screenshot" || arg == "--status" || arg == "--import" ||
+            (arg == "--setup" && i + 1 < argc))
+            return true;
+    }
+    return chr::platform::setup_unattended();
+}
+
+// The start up to the folders it uses: options' game_dir and data_dir. The program's exit when it ends there.
+int begin(int argc, char** argv, Options& options) {
     if (!parse(argc, argv, options)) return 2;
     if (options.help) {
         usage(stdout, argv[0]);
@@ -419,7 +429,8 @@ int main(int argc, char** argv) {
         } else if (const auto folder = chr::platform::settled_user_folder(); !folder.empty()) {
             options.data_dir = folder;
         } else {
-            std::fprintf(stderr, "chr: no data folder (%s); use --data-dir\n", SDL_GetError());
+            chr::platform::tell_player(std::string("no data folder (") + SDL_GetError() + "); use --data-dir",
+                                       no_player(argc, argv));
             return 1;
         }
     }
@@ -430,6 +441,8 @@ int main(int argc, char** argv) {
         if (std::freopen(log.string().c_str(), "w", stdout) && std::freopen(log.string().c_str(), "a", stderr))
             std::setvbuf(stderr, nullptr, _IONBF, 0);
     }
+    if (options.save_dir.empty())
+        chr::platform::tell_left_saves(options.data_dir.string(), chr::setup::old_page(), no_player(argc, argv));
     if (options.setup || options.game_dir.empty()) {
         std::string folder;
         const int ready = chr::platform::resolve_game(options.setup, scripted, CHR_DEFAULT_GAME_DIR,
@@ -438,6 +451,18 @@ int main(int argc, char** argv) {
         if (ready != 0) return ready == 1 ? 0 : 1;
         options.game_dir = folder;
     }
+    return kGoOn;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    // A read the compiler must make: no linker drops the marker as unreferenced.
+    { const volatile char* marker = chi_version_tag; (void)marker[0]; }
+    Options options;
+    const int ended = chr::platform::guarded([&] { return begin(argc, argv, options); },
+                                             [&] { return options.setup; }, [&] { return no_player(argc, argv); });
+    if (ended != kGoOn) return ended;
     std::shared_ptr<const chr::formats::GameSource> source;
     try {
         source = chr::formats::open_game_source(options.game_dir);

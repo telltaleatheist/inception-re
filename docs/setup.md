@@ -36,6 +36,38 @@ start, and the move is tried again at the next one.
 `settings.ini` holds `game_folder=<the game's files>`, written when the setup
 chooses the folder. Other lines in it are kept.
 
+## Names on Windows
+
+SDL's names (the arguments, the player's folder, the program's folder, the
+dialogs) are UTF-8. The C library and `std::filesystem` read and write narrow
+names in the program's code page. `tools/windows/utf8.manifest` makes that
+page UTF-8 too (Windows 10 1903 and later; an older one doesn't read it, and
+keeps the system's page), so both mean the same folder.
+
+Version 1.0.0 had the system's page. What it may have left behind is read back
+(`src/setup/old_names.h`), only where the program's page is UTF-8 and the
+system's isn't, and only for a name with a byte above 0x7f:
+
+- `settings.ini`'s `game_folder`, when it isn't UTF-8, is in the system's page
+  (1.0.0 wrote a folder from `CHR_DATA_DIR` or the search so) and is read in
+  it. When it is UTF-8 (a folder from a dialog or `--folder`), it is first read
+  as it is, then in the system's page: 1.0.0 took those bytes for text in that
+  page, so the game may be in the folder so named. The first reading that is
+  the game's folder is used, else the first. A line neither reading can make
+  anything of counts as none, and the setup asks. The line is written in UTF-8
+  when the setup next remembers a folder. No folder is renamed.
+- The player's folder itself: where Windows let 1.0.0 make one under the
+  misread name, its saved games are there. When the folder of that name has a
+  `Game1` to `Game6` and the player's folder has none, a start says where they
+  are (`tell_left_saves`): on stderr (`chi.log`), and in a message box while
+  nothing is set up. Nothing is moved or copied.
+
+Not covered: a system page changed since 1.0.0 ran.
+
+A name that still can't be turned into text ends a start with a message
+(stderr, and a message box when a player is at it) and exit 1, or 2 with
+`--setup` (`guarded`, `platform/sdl_setup.h`). `--status` answers with a note.
+
 ## Where a start gets the game
 
 1. `--game-dir DIR`, else the `CHR_GAME_DIR` environment variable: used as

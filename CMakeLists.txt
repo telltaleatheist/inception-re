@@ -145,7 +145,7 @@ set(CHR_VERSION "dev" CACHE STRING "The program's version, as --status reports i
 set(CHR_VERSION_TAG "dev" CACHE STRING "The package's full label, in the launcher's version marker (packages set it)")
 
 # The setup recipe (src/setup/setup.h): no SDL.
-add_library(chrsetup STATIC src/setup/setup.cpp src/setup/versions.cpp)
+add_library(chrsetup STATIC src/setup/old_names.cpp src/setup/setup.cpp src/setup/versions.cpp)
 target_include_directories(chrsetup PUBLIC src)
 target_link_libraries(chrsetup PUBLIC chrformats rekit)
 
@@ -229,7 +229,7 @@ if(SDL3_FOUND)
     CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
 
   # What the platform draws, with SDL's software renderer on a surface: no window.
-  add_executable(rendertests tests/test_main.cpp tests/test_renderer.cpp)
+  add_executable(rendertests tests/test_main.cpp tests/test_renderer.cpp tests/test_start.cpp)
   target_link_libraries(rendertests PRIVATE chrplatform)
   target_compile_definitions(rendertests PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}" CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/test-scratch"
     CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
@@ -241,6 +241,10 @@ if(SDL3_FOUND)
   option(CHR_WINDOWS_GUI "Link chr as a Windows GUI program" OFF)
   if(WIN32 AND CHR_WINDOWS_GUI)
     set_target_properties(chr PROPERTIES WIN32_EXECUTABLE ON)
+  endif()
+  # UTF-8 as the program's code page on Windows (docs/setup.md, "Names on Windows").
+  if(MSVC)
+    target_sources(chr PRIVATE tools/windows/utf8.manifest)
   endif()
   # The program's icon on Windows (tools/package/ICONS.md): the first icon resource is the one shown.
   if(WIN32)

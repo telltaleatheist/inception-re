@@ -18,6 +18,7 @@
 #include <cstring>
 #include <exception>
 #include <filesystem>
+#include <functional>
 
 #ifndef CHR_VERSION
 #define CHR_VERSION "dev"
@@ -210,6 +211,44 @@ bool setup_unattended(bool scripted) {
     return driver && (!std::strcmp(driver, "offscreen") || !std::strcmp(driver, "dummy"));
 }
 
+std::function<void(const std::string& text)>& message_box() {
+    static std::function<void(const std::string&)> box = [](const std::string& text) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, theme().header.c_str(), text.c_str(), nullptr);
+    };
+    return box;
+}
+
+void tell_player(const std::string& text, bool unattended) {
+    std::fprintf(stderr, "chr: %s\n", text.c_str());
+    if (!unattended) message_box()(text);
+}
+
+int guarded(const std::function<int()>& work, const std::function<bool()>& setup_only,
+            const std::function<bool()>& unattended) {
+    try {
+        return work();
+    } catch (const std::exception& e) {
+        const std::string why = std::string("The game can't start: ") + e.what();
+        if (!setup_only()) {
+            tell_player(why, unattended());
+            return 1;
+        }
+        say_error(true, why);
+        if (!unattended()) message_box()(why);
+        return rekit::kSetupFailed;
+    }
+}
+
+void tell_left_saves(const std::string& user, const setup::PageText& page, bool unattended) {
+    const std::string left = setup::left_saves(user, page);
+    if (left.empty()) return;
+    std::error_code ec;
+    const bool set_up = std::filesystem::exists(std::filesystem::path(user) / setup::kSettingsFile, ec);
+    tell_player("Saved games from version 1.0.0 are in " + left + ". This version keeps them in " + user +
+                    ". Nothing was moved. To go on with them, copy Game1 to Game6 from the first folder to the second.",
+                unattended || set_up);
+}
+
 bool setup_hooks_allowed(bool setup_only) {
     const std::string why = hook_without_folder();
     if (!why.empty()) say_error(setup_only, why);
@@ -219,10 +258,15 @@ bool setup_hooks_allowed(bool setup_only) {
 int print_setup_status(const std::string& given, const std::string& builtin, const std::string& data_dir) {
     // Anything else printed while answering goes to stderr: stdout carries the one JSON line.
     std::fflush(stdout);
-    const std::string user = data_dir.empty() ? setup::user_folder() : data_dir;
-    const std::vector<std::string> known =
-        given.empty() ? std::vector<std::string>{setup::remembered_folder(user), builtin} : std::vector<std::string>{given};
-    rekit::Status st = setup::status(known, user, program_dir(), CHR_VERSION);
+    rekit::Status st;
+    try {
+        const std::string user = data_dir.empty() ? setup::user_folder() : data_dir;
+        const std::vector<std::string> known =
+            given.empty() ? std::vector<std::string>{setup::remembered_folder(user), builtin} : std::vector<std::string>{given};
+        st = setup::status(known, user, program_dir(), CHR_VERSION);
+    } catch (const std::exception& e) {  // a name nothing can be made of: answered all the same
+        st.game = setup::kId, st.version = CHR_VERSION, st.note = std::string("the folders can't be read: ") + e.what();
+    }
     st.setup = rekit::kServedSetup;  // serve_game_setup answers the launcher
     std::printf("%s\n", rekit::status_json(st).c_str());
     std::fflush(stdout);
@@ -253,11 +297,12 @@ int serve_game_setup(const std::vector<std::string>& args, const std::string& da
 #endif
     if (const std::string why = wrong_ask(args); !why.empty()) return refuse_ask(why);
     if (const std::string why = hook_without_folder(); !why.empty()) return refuse_ask(why);
-    std::string user = data_dir;
-    if (const char* env = std::getenv("CHR_DATA_DIR"); user.empty() && env) user = env;
-    if (user.empty()) user = settled_user_folder();
-    if (user.empty()) return refuse_ask(std::string("There is no folder for the player's files (") + SDL_GetError() + ").");
     try {
+        std::string user = data_dir;
+        if (const char* env = std::getenv("CHR_DATA_DIR"); user.empty() && env) user = env;
+        if (user.empty()) user = settled_user_folder();
+        if (user.empty())
+            return refuse_ask(std::string("There is no folder for the player's files (") + SDL_GetError() + ").");
         rekit::sdl::SetupOptions o;
         o.hidden = true, o.user_folder = user, o.default_out = setup::default_install(user), o.program_dir = program_dir();
         const rekit::sdl::SetupResult r = rekit::sdl::serve_setup(kit_game(user), o, args);
