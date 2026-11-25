@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Japanese as the program's ANSI code page (Windows 11's newer builds; ignored or refused by others):
+     a double-byte page, in which some UTF-8 is no text at all. Only the probe's. -->
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">ja-JP</activeCodePage>
+    </windowsSettings>
+  </application>
+</assembly>
