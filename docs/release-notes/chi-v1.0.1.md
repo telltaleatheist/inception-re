@@ -11,8 +11,8 @@ you loaded and later saved to the same slot.
 
 - **Saved games:** a game loaded and later saved to the same slot is no longer
   changed by the next menu or question.
-- **Saved games:** if a save fails half way (a full disk, a crash), the one
-  before stays. The original loses both; this is a difference from it, on
+- **Saved games:** if a save fails half way (a full disk, for instance), the
+  one before stays. The original loses both; this is a difference from it, on
   purpose. An empty save file no longer crashes the game.
 - **Menus and questions answer at once**, however long you have been playing.
   They took longer the longer you had played. A very long fight or a long stay
@@ -34,8 +34,9 @@ you loaded and later saved to the same slot.
   as the original's does.
 - **If the graphics driver restarts**, the picture should come back. A frame that
   can't be drawn is skipped and the game goes on.
-- Waits are counted in milliseconds. They were rounded up to the next pass of
-  the loop. The beginning of `chi.log` is no longer overwritten at the end.
+- The waits for sounds and for the title are counted in milliseconds. They were
+  rounded up to the next pass of the loop. The beginning of `chi.log` is no
+  longer overwritten at the end.
 
 Your saved games and settings from 0.1.0 and 1.0.0 carry on as they are.
 
@@ -105,6 +106,8 @@ Automated tests check these, but nobody has gone through them yet:
 
 ## Other known limits
 
+- If the graphics device can't be brought back, the picture stops and the game
+  must be started again.
 - A game saved inside the cache comes back without its 'Mechs. This is the
   original's bug, kept. Save before you go in.
 - Commodore 64 and Apple II copies can't be played: their towns are their own.
