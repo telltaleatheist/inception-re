@@ -13,7 +13,8 @@ you loaded and later saved to the same slot.
   changed by the next menu or question.
 - **Saved games:** if a save fails half way (a full disk, for instance), the
   one before stays. The original loses both; this is a difference from it, on
-  purpose. An empty save file no longer crashes the game.
+  purpose. An empty save file is now
+  refused like any other file that isn't a saved game.
 - **Menus and questions answer at once**, however long you have been playing.
   They took longer the longer you had played. A very long fight or a long stay
   in one place can still build up some delay; it ends with the visit.
