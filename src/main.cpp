@@ -794,6 +794,7 @@ int main(int argc, char** argv) {
             if (driver == "dummy" || driver == "offscreen") running = running && options.loop_ms > 0;
         }
         bool reported = false;
+        bool skipped = false;  // a frame that couldn't be drawn has been reported
         Uint64 last = SDL_GetTicksNS();
         const Uint64 loop_started = last;
         while (running) {
@@ -832,9 +833,15 @@ int main(int argc, char** argv) {
                 music_on = tune;
             }
             if (!renderer.begin_frame()) {
-                std::fprintf(stderr, "chr: can't draw: %s\n", SDL_GetError());
-                status = 1;
-                break;
+                // The game goes on without the frame: it may come back.
+                if (!skipped) std::fprintf(stderr, "chr: can't draw: %s\n", SDL_GetError());
+                skipped = true;
+                if (!options.screenshot.empty()) {
+                    status = 1;
+                    break;
+                }
+                SDL_Delay(16);
+                continue;
             }
             bool drawn = true;
             if (const auto screen = town ? town->full_screen() : std::nullopt) {

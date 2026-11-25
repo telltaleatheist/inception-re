@@ -349,3 +349,70 @@ TEST(renderer_screenshot_size) {
         CHECK(d.frame == window.output);
     }
 }
+
+// A frame that can't be drawn (here the renderer refuses a texture of the
+// frame's size, as a lost device refuses any) is skipped, and drawing goes
+// on as before once it can be.
+TEST(renderer_frame_refused_and_back) {
+    SDL_Surface* surface = SDL_CreateSurface(1000, 625, SDL_PIXELFORMAT_XRGB8888);
+    SDL_Renderer* sdl = SDL_CreateSoftwareRenderer(surface);
+    const auto largest = [&](int side) {
+        SDL_SetNumberProperty(SDL_GetRendererProperties(sdl), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, side);
+    };
+    {
+        MadeUp assets;
+        Renderer renderer(sdl, assets);
+        const auto scene = [&] { return everything(renderer) && renderer.draw({"TILE", 7}, 211, 57); };
+        // Refused from the start.
+        largest(100);
+        for (int i = 0; i < 3; ++i) CHECK(!renderer.begin_frame() && *SDL_GetError() != 0);
+        largest(0);
+        CHECK(renderer.begin_frame() && scene());
+        renderer.end_frame();
+        const auto before = colours(surface);
+        CHECK(before == draw_at(1000, 625, 0, [](Renderer& r) { return everything(r) && r.draw({"TILE", 7}, 211, 57); }).output);
+        // Refused while running, then there again; and nothing is drawn on
+        // the window meanwhile.
+        largest(100);
+        for (int i = 0; i < 3; ++i) CHECK(!renderer.begin_frame());
+        CHECK(colours(surface) == before);
+        largest(0);
+        for (int i = 0; i < 2; ++i) {
+            CHECK(renderer.begin_frame() && scene());
+            renderer.end_frame();
+            CHECK(colours(surface) == before);
+        }
+    }
+    SDL_DestroyRenderer(sdl);
+    SDL_DestroySurface(surface);
+}
+
+// A window with no pixels is not an error: the frame is drawn, and shown on
+// nothing.
+TEST(renderer_no_output) {
+    const auto none = [](int w, int h) {
+        const auto r = picture_rect(w, h);
+        return r.w == 0 || r.h == 0;
+    };
+    CHECK(none(0, 0) && none(0, 600) && none(960, 0));
+    // The software renderer's output is its surface's size as it is made.
+    SDL_Surface* surface = SDL_CreateSurface(640, 400, SDL_PIXELFORMAT_XRGB8888);
+    surface->w = surface->h = 0;
+    SDL_Renderer* sdl = SDL_CreateSoftwareRenderer(surface);
+    int w = -1, h = -1;
+    CHECK(sdl && SDL_GetCurrentRenderOutputSize(sdl, &w, &h) && w == 0 && h == 0);
+    if (sdl) {
+        MadeUp assets;
+        Renderer renderer(sdl, assets);
+        for (int i = 0; i < 3; ++i) {
+            CHECK(renderer.begin_frame() && everything(renderer));
+            SDL_Surface* frame = renderer.read_frame();
+            CHECK(frame && frame->w == kScreenWidth && frame->h == kScreenHeight);
+            SDL_DestroySurface(frame);
+            renderer.end_frame();
+        }
+    }
+    SDL_DestroyRenderer(sdl);
+    surface->w = 640, surface->h = 400;
+    SDL_DestroySurface(surface);
+}

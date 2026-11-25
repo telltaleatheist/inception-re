@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 #include <vector>
 
 namespace chr::platform {
@@ -36,13 +37,29 @@ Renderer::~Renderer() {
 }
 
 bool Renderer::begin_frame() {
+    if (start_frame()) return true;
+    // Whatever failed (a lost device, a refused target), the next frame
+    // starts again from nothing.
+    const std::string error = SDL_GetError();
+    SDL_SetRenderTarget(sdl_, nullptr);
+    if (frame_) SDL_DestroyTexture(frame_);
+    frame_ = nullptr;
+    SDL_SetError("%s", error.c_str());
+    return false;
+}
+
+bool Renderer::start_frame() {
     SDL_SetRenderTarget(sdl_, nullptr);
     int scale = fixed_scale_;
     if (scale == 0) {
         int width = 0, height = 0;
         if (!SDL_GetCurrentRenderOutputSize(sdl_, &width, &height)) return false;
-        const auto side = SDL_GetNumberProperty(SDL_GetRendererProperties(sdl_), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 0);
-        scale = frame_scale(picture_rect(width, height), int(side));
+        // A window with no pixels (minimised) keeps the frame it has.
+        scale = std::max(1, scale_);
+        if (width > 0 && height > 0) {
+            const auto side = SDL_GetNumberProperty(SDL_GetRendererProperties(sdl_), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 0);
+            scale = frame_scale(picture_rect(width, height), int(side));
+        }
     }
     if (!frame_ || scale != scale_) {
         if (frame_) SDL_DestroyTexture(frame_);

@@ -41,7 +41,9 @@ public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
 
-    // False (SDL_GetError) if there is nothing to draw the frame on.
+    // False (SDL_GetError) if there is nothing to draw the frame on for now:
+    // a lost device, a refused target. The frame is skipped, with no other
+    // call, and the next one starts again from nothing.
     bool begin_frame();
     // Draws the picture for `id` with its top-left corner at (x, y) in
     // 320x200 screen units. Returns false if no provider has it.
@@ -77,6 +79,7 @@ public:
 
 private:
     SDL_Texture* texture_for(const AssetId& id);
+    bool start_frame();
 
     SDL_Renderer* sdl_;
     AssetProvider& assets_;

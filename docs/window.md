@@ -24,6 +24,10 @@ pixels: 16:10, not a monitor's 4:3.
   works on the frame's pixels, so it doesn't coarsen it.
 - A screenshot is the frame at 3 pixels a unit, 960x600, whatever the window or the display.
 
+- A frame that can't be drawn (a lost device, a refused target) is skipped, the error is said once, and
+  the next frame starts again from nothing. The game goes on. Only a screenshot run ends with it. A
+  window with no pixels (minimised) is not an error.
+
 ## The window's shape
 
 The window is held to 16:10 while it is resized (`SDL_SetWindowAspectRatio`), and is at least
