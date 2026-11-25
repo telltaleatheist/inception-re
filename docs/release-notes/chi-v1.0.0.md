@@ -1,3 +1,9 @@
+> **Known problems in 1.0.0 (added November 25, 2026). A fix, 1.0.1, is being prepared.**
+>
+> - **Saves:** if you load a saved game and later save to that *same* slot, the next menu or question can change that save again, and progress can be lost or repeated. Until 1.0.1, save to a different slot from the one you loaded, and keep a copy of any `Game1` to `Game6` you care about.
+> - **Windows, first start:** before the game is set up, it can close at once if a file or folder near it has an emoji, or letters your Windows language doesn't use, in its name. It looks in the game's own folder, the folder above and the folders beside it. Until 1.0.1, put the game in a new folder inside another new folder.
+> - **Windows, names with accented or non-English letters:** if your Windows user name, the folder the game is in or the folder your copy is in has such letters, setting up or saving can fail. Plainly named folders (for example in `C:\Games`) avoid the last two, but not the user name.
+
 **Inception Rebuild** is a fan rebuild of BattleTech: The Crescent Hawk's
 Inception (Infocom, 1988, written by Westwood Associates) for today's Windows,
 macOS and Linux. It is new code written to play as the DOS original did, not an
