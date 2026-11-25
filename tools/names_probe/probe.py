@@ -5,7 +5,7 @@ UTF-8 as the program's (a manifest) and with Japanese, side by side.
 
 A verdict of chi_cases, base_cases and path_cases is a look at the disk by Python, whose names are wide; what a
 program says is only noted beside it. The search and the remembered folder leave nothing on the disk: theirs are what
-the program answered (search_cases, settings_cases). The copies of the game are made up
+the program answered (search_cases, settings_cases, left_cases). The copies of the game are made up
 (tools/package/served_setup.py). Nothing is changed outside SCRATCH_DIR, but for a key of the player's registry, taken
 away again, and the player folder SDL makes when asked for it; so on Windows it runs on a runner alone
 (GITHUB_ACTIONS). It fails only when the plain name's cases do: then nothing here means anything.
@@ -408,6 +408,38 @@ def settings_cases(probe):
                     probe.told("%s, %s" % (what, run), name, page, case)
 
 
+def left_cases(probe):
+    """A start whose player folder 1.0.0 misread, with a saved game under the misread name: it is that folder, or the log
+    says where it is; and it stays where it was."""
+    for name in ("plain", "latin"):
+        for page in ("legacy", "utf8"):
+            def case(place):
+                (place / "user").mkdir()
+                right = place / "user" / NAMES[name] / "BattleTech" / "Inception Rebuild"
+                left = place / "user" / NAMES[name].encode("utf-8").decode(probe.old) / "BattleTech" / "Inception Rebuild"
+                left.mkdir(parents=True)
+                right.mkdir(parents=True, exist_ok=True)
+                (left / "Game1").write_bytes(b"a saved game")
+                chi = place / "above" / "chi folder"
+                stage(probe.programs, chi, probe.program("pref", page))
+                env = enclosed(place)
+                del env["CHR_DATA_DIR"]
+                env["PROBE_PREF"] = (str(right) + os.sep).encode("utf-8").hex()
+                code, out, err = started(chi / ("chi" + EXE), [], env)
+                logs = [f / "chi.log" for f in (left, right) if (f / "chi.log").is_file()]
+                said = logs[0].read_bytes().decode("utf-8", "replace") if logs else ""
+                lines = [line for line in said.splitlines() if "Saved games from version 1.0.0" in line]
+                words = shown(" | ".join(lines or said.splitlines()[-1:]))
+                if not logs or code != "0":
+                    return ended(code), code, "", words
+                if (left / "Game1").read_bytes() != b"a saved game" or (left != right and (right / "Game1").exists()):
+                    return "WRONG", code, "moved", words
+                if logs[0].parent == left:  # its own folder: nothing to say
+                    return ("WRONG" if lines else "ok"), code, "", words
+                return ("ok" if lines and str(left) in lines[0] else "HIDDEN"), code, "", words
+            probe.told("saves 1.0.0 left, the player folder", name, page, case)
+
+
 def stage(programs, folder, program):
     """A package's layout with `program` as chi."""
     folder.mkdir(parents=True)
@@ -465,6 +497,7 @@ def main():
     path_cases(probe)
     search_cases(probe)
     settings_cases(probe)
+    left_cases(probe)
     text = table(probe)
     print("\n" + text)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
