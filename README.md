@@ -4,13 +4,15 @@ A ground-up rebuild of **BattleTech: The Crescent Hawk's Inception** (Infocom,
 1988, written by Westwood Associates) in modern C++, so the game runs on
 today's Windows, macOS and Linux.
 
-| | |
+| DOS | Amiga |
 |---|---|
-| ![A town](docs/screenshots/town.png) | ![Walking the streets](docs/screenshots/streets.png) |
-| ![Choosing a weapon](docs/screenshots/weapons.png) | ![A 'Mech's status](docs/screenshots/mech-status.png) |
+| ![A town, DOS](docs/screenshots/town.png) | ![A town, Amiga](docs/screenshots/amiga-town.png) |
+| ![Walking the streets, DOS](docs/screenshots/streets.png) | ![Walking the streets, Amiga](docs/screenshots/amiga-streets.png) |
+| ![Choosing a weapon, DOS](docs/screenshots/weapons.png) | ![Choosing a weapon, Amiga](docs/screenshots/amiga-weapons.png) |
+| ![A 'Mech's status, DOS](docs/screenshots/mech-status.png) | ![A 'Mech's status, Amiga](docs/screenshots/amiga-mech-status.png) |
 
-*The rebuild running with the player's own DOS copy. The art shown is the original
-game's and belongs to its rights holders; none of its files are in this project.*
+*The rebuild running with the player's own DOS or Amiga copy. The art shown is the
+original game's and belongs to its rights holders; none of its files are in this project.*
 
 This is **not** an emulator, a static recompilation or a patched copy of the
 original. Every line is new. We study the original DOS program to learn
