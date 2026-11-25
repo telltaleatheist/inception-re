@@ -158,6 +158,8 @@ bool Town::mech_stats(int fig, KeySource& keys) {
         const auto key = keys.waiting_key();
         if (!key) {
             place_open_ = true;
+            poll_open_ = true;
+            poll_waits_ = true;
             return false;
         }
         if (*key != KeySource::kNoKey) break;

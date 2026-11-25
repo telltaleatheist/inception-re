@@ -37,9 +37,10 @@ the counts directly. The window's main loop has the time, in milliseconds (`plat
   to the next. So the waits' total doesn't depend on how long a pass takes.
 - A pass longer than 250 ms counts as 250.
 - What a key starts has none of the time before it.
-- A wait that asks for a key over and over without one (the overhead map, a recruit's text) is asked
-  once a retrace. The check between two rounds the computer fights takes no time, unless the round showed
-  nothing: then a retrace.
+- A wait that asks for a key over and over without one (the overhead map, a recruit's text, the 'Mech
+  stats screen) is asked once a retrace: on the stats screen, a draw a retrace, so 16 a colour step and
+  10 - heat / 6 and one more a heat blink (below). The check between two rounds the computer fights
+  takes no time, unless the round showed nothing: then a retrace.
 
 ## The game tick
 

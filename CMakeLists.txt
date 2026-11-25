@@ -272,6 +272,11 @@ if(SDL3_FOUND)
       COMMAND chr --map 1 --script "left*10" --screenshot walk_west.bmp)
     set_tests_properties(walk_scrolls_west PROPERTIES ENVIRONMENT "${chr_headless}"
       PASS_REGULAR_EXPRESSION "moved at 0c3b,c019")
+    # A 'Mech's stats screen waits for its key at a poll, so its time goes on.
+    add_test(NAME stats_poll
+      COMMAND chr --map 1 --script "mech:0:00=01 space down*3 enter*3")
+    set_tests_properties(stats_poll PROPERTIES ENVIRONMENT "${chr_headless}"
+      PASS_REGULAR_EXPRESSION "polling for a key")
     # A scripted run, as the rig's, never opens an audio device
     # (docs/sound.md), with or without a screenshot: the player is made only
     # for a run with neither.
