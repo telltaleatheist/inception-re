@@ -352,6 +352,11 @@ std::string game_in(const std::string& dir, int depth) {
     return "";
 }
 
+// `dir` when a start can use it as the game's folder, else "".
+static std::string usable_folder(const std::string& dir) {
+    return !dir.empty() && check_install(dir).state != rekit::Status::kMissing ? dir : std::string();
+}
+
 std::string first_found(const std::vector<std::string>& places,
                         const std::function<std::string(const std::string&)>& look) {
     for (const std::string& place : places) {
@@ -367,14 +372,11 @@ std::string first_found(const std::vector<std::string>& places,
 std::string find_install(const std::vector<std::string>& known, const std::string& user,
                          const std::string& program_dir, bool* searched) {
     if (searched) *searched = false;
-    const auto usable = [](const std::string& d) {
-        return !d.empty() && check_install(d).state != rekit::Status::kMissing ? d : std::string();
-    };
-    if (std::string named = first_found(known, usable); !named.empty()) return named;
+    if (std::string named = first_found(known, usable_folder); !named.empty()) return named;
     try {
-        if (std::string own = first_found({default_install(user)}, usable); !own.empty()) return own;
+        if (std::string own = first_found({default_install(user)}, usable_folder); !own.empty()) return own;
         std::string found = first_found(rekit::install_candidates(hints(), program_dir),
-                                        [&](const std::string& place) { return usable(game_in(place, 2)); });
+                                        [&](const std::string& place) { return usable_folder(game_in(place, 2)); });
         if (searched) *searched = !found.empty();
         return found;
     } catch (const std::exception& e) {
@@ -419,7 +421,7 @@ rekit::Status status(const std::vector<std::string>& known, const std::string& u
     return st;
 }
 
-std::string remembered_folder(const std::string& user) {
+std::string remembered_folder(const std::string& user, const PageText& page) {
     if (user.empty()) return "";
     std::ifstream in(fs::path(with_slash(user)) / kSettingsFile);
     std::string line, found;
@@ -433,7 +435,11 @@ std::string remembered_folder(const std::string& user) {
         while (!v.empty() && std::isspace(static_cast<unsigned char>(v.back()))) v.pop_back();
         found = v;
     }
-    return found;
+    const std::vector<std::string> readings = folder_readings(found, page);
+    if (readings.empty()) return "";
+    if (readings.size() == 1) return readings.front();
+    const std::string game = first_found(readings, usable_folder);
+    return game.empty() ? readings.front() : game;
 }
 
 bool remember_folder(const std::string& user, const std::string& dir) {

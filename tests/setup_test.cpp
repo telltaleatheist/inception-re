@@ -23,6 +23,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -290,6 +291,75 @@ void in_the_way(const fs::path& work) {
     set_env("HOME", home);
 }
 
+// What 1.0.0 wrote on Windows, read back. `latin` stands for the system's code page: each byte is the letter with
+// that number (as in code page 1252, but for its 0x80 to 0x9f).
+void old_names(const fs::path& work) {
+    const setup::PageText latin = [](const std::string& bytes) -> std::optional<std::string> {
+        std::string out;
+        for (const char c : bytes) {
+            const auto b = static_cast<unsigned char>(c);
+            if (b < 0x80) out += c;
+            else out += char(0xc0 | b >> 6), out += char(0x80 | (b & 0x3f));
+        }
+        return out;
+    };
+    const setup::PageText none = [](const std::string&) -> std::optional<std::string> { return std::nullopt; };
+    const std::string utf8 = "Zo\xc3\xab", old = "Zo\xeb", misread = "Zo\xc3\x83\xc2\xab";
+
+    for (const char* good : {"", "plain", "\xc2\x80", "\xdf\xbf", "\xe0\xa0\x80", "\xed\x9f\xbf", "\xee\x80\x80",
+                             "\xe6\x97\xa5 x", "\xf0\x90\x80\x80", "\xf4\x8f\xbf\xbf"})
+        check(setup::is_utf8(good), "UTF-8: " + std::to_string(std::string(good).size()) + " bytes of it");
+    for (const char* bad : {"\x80", "Zo\xeb", "\xeb x", "\xc0\x80", "\xc1\xbf", "\xe0\x9f\xbf", "\xed\xa0\x80", "\xed\xbf\xbf",
+                            "\xf0\x8f\xbf\xbf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80", "\xe6\x97", "\xe6\x97x", "\xc3"})
+        check(!setup::is_utf8(bad), "not UTF-8: " + std::to_string(std::string(bad).size()) + " bytes");
+
+    using List = std::vector<std::string>;
+    check(setup::folder_readings("plain", latin) == List{"plain"}, "an ASCII name has one reading");
+    check(setup::folder_readings(old, {}) == List{old} && setup::folder_readings(utf8, {}) == List{utf8},
+          "where the code page is the system's, the bytes as they are");
+    check(setup::folder_readings(utf8, latin) == List({utf8, misread}), "UTF-8 first, then as 1.0.0 misread it");
+    check(setup::folder_readings(old, latin) == List{utf8}, "what isn't UTF-8 is the old page's");
+    check(setup::folder_readings(old, none).empty() && setup::folder_readings(utf8, none) == List{utf8},
+          "no text in the old page either: no reading");
+
+    const fs::path base = work / "old";
+    const std::string user = (base / "user").string(), games = (base / "games" / "").string();
+    const auto remembered = [&](const std::string& bytes, const setup::PageText& page) {
+        write(base / "user" / setup::kSettingsFile, "game_folder=" + bytes + "\n");
+        return setup::remembered_folder(user, page);
+    };
+    check(remembered(games + old, latin) == games + utf8, "settings.ini in the old page: the folder it meant");
+    check(remembered(games + old, none).empty(), "settings.ini nothing can be made of: no folder");
+    check(remembered(games + utf8, latin) == games + utf8, "settings.ini in UTF-8, no such folder: as it is");
+    write(fs::path(games + misread) / "BTECH.EXE", "made up");
+    write(fs::path(games + misread) / "MAP1.MTP", "made up");
+    check(remembered(games + utf8, latin) == games + misread, "the game in the folder 1.0.0 misread: that one");
+    check(remembered(games + utf8, {}) == games + utf8, "... and not where the code page is the system's");
+    bool searched = true;
+    check(setup::find_install({setup::remembered_folder(user, latin)}, user, "", &searched) == games + misread && !searched,
+          "a start uses it without a search");
+    write(fs::path(games + utf8) / "BTECH.EXE", "made up");
+    write(fs::path(games + utf8) / "MAP1.MTP", "made up");
+    check(remembered(games + utf8, latin) == games + utf8, "the game in both: the rightly named one");
+    const std::string ini = read(base / "user" / setup::kSettingsFile);
+    check(fs::exists(fs::path(games + misread) / "MAP1.MTP") && ini == "game_folder=" + games + utf8 + "\n",
+          "nothing moved, settings.ini as it was");
+
+    // The saved games 1.0.0 left in the player's folder's misread name.
+    const fs::path right = base / "pref" / utf8 / "Inception Rebuild", left = base / "pref" / misread / "Inception Rebuild";
+    fs::create_directories(right);
+    write(left / "chi.log", "x");
+    check(setup::left_saves(right.string(), latin).empty(), "no saved game under the misread name: nothing to say");
+    write(left / "Game3", "x");
+    check(setup::left_saves(right.string(), latin) == left.string(), "a saved game under the misread name is named");
+    check(setup::left_saves(right.string(), {}).empty() && setup::left_saves(right.string(), none).empty(),
+          "... not where nothing was misread");
+    check(setup::left_saves((base / "user").string(), latin).empty(), "... nor for an ASCII name");
+    write(right / "Game1", "x");
+    check(setup::left_saves(right.string(), latin).empty(), "... nor once there is one under the right name");
+    check(count_files(base / "pref") == 7, "nothing moved");
+}
+
 // With an Amiga copy (CHR_AMIGA_COPY: an .adf, or a folder or archive holding one).
 void with_amiga(const fs::path& work, const std::string& copy) {
     const setup::AmigaChoice choice = setup::choose_amiga_copy(copy);
@@ -505,6 +575,7 @@ int main(int argc, char** argv) {
     fs::create_directories(work);
     game_free(work / "free");
     in_the_way(work / "way");
+    old_names(work / "names");
     other_versions(work / "versions");
     const std::string game = argc == 3 ? argv[2] : "";
     if (!game.empty() && !rekit::any_case_path(game, "BTECH.EXE").empty()) with_game(work / "game", game);

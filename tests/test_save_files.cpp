@@ -305,6 +305,32 @@ TEST(saves_folder_names) {
     CHECK(!failing.write(0, Bytes{6}) && files.read(0) == Bytes({4, 5}) && names(dir) == Names{"Game1"});
 }
 
+// A place kept: what came before isn't asked for again, and isn't done again.
+TEST(saves_journal_settled) {
+    const Bytes a{1, 2, 3}, b{4, 5};
+    Disk disk;
+    SaveJournal journal(disk);
+    CHECK(journal.write(0, a) && journal.read(0) == a);
+    journal.settle();
+    const auto play = [&] { return journal.read(1) == std::nullopt && journal.write(0, b) && journal.read(0) == b; };
+    CHECK(play());
+    for (int again = 0; again < 3; ++again) {
+        journal.rewind();
+        CHECK(play() && !journal.strayed());
+    }
+    CHECK(did(disk, {"w1", "r1", "r2", "w1", "r1"}) && disk.files[0] == b);
+    // Settled in the middle of a replay, the rest of it is forgotten too.
+    journal.rewind();
+    CHECK(!journal.read(1));
+    journal.settle();
+    CHECK(journal.write(2, a) && did(disk, {"w1", "r1", "r2", "w1", "r1", "w3"}));
+    // Strayed stays strayed.
+    journal.rewind();
+    CHECK(!journal.read(5) && journal.strayed());
+    journal.settle();
+    CHECK(journal.strayed() && !journal.write(3, a) && !disk.files.contains(3));
+}
+
 // The journal over the disk: each action is done once, and answered the same
 // when played again, whatever happens to the files meanwhile.
 TEST(saves_journal_on_disk) {

@@ -128,13 +128,13 @@ public:
     // 1000:0e4b) with the tiles' next frame (1000:240b), or with `shown`
     // false only the drawer's writes (fix_terrain_without_graphics);
     // picture: 1000:48b7. With combat graphics: show: the page drawn so
-    // far made the screen (273d:06c3) and held `frames` (273d:0006); hold:
+    // far made the screen (273d:06c3) and held `retraces` (273d:0006); hold:
     // the screen as it is held; sprite: a sprite slot drawn on the page at a
     // screen point (1e31:1f73); line: a shot's line (22e8:000c, plotted
     // by 273d:031c); sound: 1000:19bf.
     struct Hooks {
-        std::function<void(int frames)> show;
-        std::function<void(int frames)> hold;
+        std::function<void(int retraces)> show;
+        std::function<void(int retraces)> hold;
         std::function<void(int slot, int x, int y)> sprite;
         std::function<void(const ShownLine& line)> line;
         std::function<void(int n)> sound;
@@ -257,7 +257,7 @@ private:
     // 22e8:000c's after the movement, 1e31:1f09 during a shot.
     // 1e31:1f09, or with after_movement the round's own (22e8:1210..1281).
     void redraw(bool after_movement = false);
-    void show(int frames) const;
+    void show(int retraces) const;
     void sound(int n) const;
     // BTECH.EXE 1e31:0c63 (Ghidra FUN_1e31_0c63)
     void end_round(const std::array<std::int8_t, 24>& moved);

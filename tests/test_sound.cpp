@@ -3,7 +3,6 @@
 
 #include "formats/game_source.h"
 #include "formats/tables.h"
-#include "game/clock.h"
 #include "game/music.h"
 #include "game/sound.h"
 #include "platform/sound_wave.h"
@@ -67,7 +66,6 @@ TEST(sound_rules_are_dos_s) {
         double ms = 0;
         for (const auto& s : sound_segments(effect_steps(tables.sound_lists, n), default_sound_machine())) ms += s.ms;
         CHECK(std::fabs(ms - rule.wait_ms()) < 1e-6);
-        CHECK(std::ceil(ms * kVgaRefreshHz / 1000.0) == std::ceil(rule.wait_ms() * kVgaRefreshHz / 1000.0));
     }
 }
 

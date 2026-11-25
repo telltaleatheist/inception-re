@@ -154,9 +154,9 @@ they show: the round's redraw, the poses, the missiles, the lines, the explosion
 pictures, matched pixel for pixel at the end of every round by the `drawn` sequence. Steps the
 original shows without a wait (the round's redraw, a missile's steps, an explosion's) went by
 as fast as the machine could draw the next one, so their pace depended on the CPU: on the
-machines of the day each probably took several display frames. The platform holds each one
-`--step-hold` frames (default 1), a setting of the platform, not of the logic. A line is shown whole once plotted. The
-sounds are played by the platform (docs/sound.md). A story picture is held 50 frames
+machines of the day each probably took several retraces. The platform holds each one
+`--step-hold` retraces (default 1), a setting of the platform, not of the logic. A line is shown whole once plotted. The
+sounds are played by the platform (docs/sound.md). A story picture is held 50 retraces
 at its last frame.
 
 Scan's Detail (2.6) opens the 'Mech stats screen (docs/town_loop.md).

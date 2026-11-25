@@ -1020,8 +1020,8 @@ int Combat::view_figure() const {
     return m < 8 ? m : 4;
 }
 
-void Combat::show(int frames) const {
-    if (hooks_.show) hooks_.show(frames);
+void Combat::show(int retraces) const {
+    if (hooks_.show) hooks_.show(retraces);
 }
 
 void Combat::sound(int n) const {

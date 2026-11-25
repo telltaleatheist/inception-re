@@ -145,7 +145,7 @@ set(CHR_VERSION "dev" CACHE STRING "The program's version, as --status reports i
 set(CHR_VERSION_TAG "dev" CACHE STRING "The package's full label, in the launcher's version marker (packages set it)")
 
 # The setup recipe (src/setup/setup.h): no SDL.
-add_library(chrsetup STATIC src/setup/setup.cpp src/setup/versions.cpp)
+add_library(chrsetup STATIC src/setup/old_names.cpp src/setup/setup.cpp src/setup/versions.cpp)
 target_include_directories(chrsetup PUBLIC src)
 target_link_libraries(chrsetup PUBLIC chrformats rekit)
 
@@ -157,6 +157,7 @@ add_executable(chrtests
   tests/test_bld.cpp
   tests/test_anm.cpp
   tests/test_fight.cpp
+  tests/test_pace.cpp
   tests/test_quiz.cpp
   tests/test_saves.cpp
   tests/test_save_files.cpp
@@ -174,6 +175,7 @@ add_executable(chrtests
   # The effects as samples and the saves on disk: plain C++, no SDL.
   src/platform/original_assets.cpp
   src/platform/save_files.cpp
+  src/platform/sitting.cpp
   src/platform/sound_wave.cpp
 )
 target_link_libraries(chrtests PRIVATE chrgame)
@@ -208,6 +210,7 @@ if(SDL3_FOUND)
     src/platform/renderer.cpp
     src/platform/save_files.cpp
     src/platform/sdl_setup.cpp
+    src/platform/sitting.cpp
     src/platform/sound_player.cpp
     src/platform/sound_wave.cpp
     src/platform/text_layer.cpp
@@ -225,12 +228,23 @@ if(SDL3_FOUND)
     CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/save-test-scratch"
     CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
 
+  # What the platform draws, with SDL's software renderer on a surface: no window.
+  add_executable(rendertests tests/test_main.cpp tests/test_renderer.cpp tests/test_start.cpp)
+  target_link_libraries(rendertests PRIVATE chrplatform)
+  target_compile_definitions(rendertests PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}" CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/test-scratch"
+    CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
+  add_test(NAME rendertests COMMAND rendertests)
+
   add_executable(chr src/main.cpp)
   target_link_libraries(chr PRIVATE chrplatform)
   # Windows packages: a GUI program, so no console window opens (SDL_main.h's WinMain).
   option(CHR_WINDOWS_GUI "Link chr as a Windows GUI program" OFF)
   if(WIN32 AND CHR_WINDOWS_GUI)
     set_target_properties(chr PROPERTIES WIN32_EXECUTABLE ON)
+  endif()
+  # UTF-8 as the program's code page on Windows (docs/setup.md, "Names on Windows").
+  if(MSVC)
+    target_sources(chr PRIVATE tools/windows/utf8.manifest)
   endif()
   # The program's icon on Windows (tools/package/ICONS.md): the first icon resource is the one shown.
   if(WIN32)
@@ -293,6 +307,11 @@ if(SDL3_FOUND)
       COMMAND chr --map 1 --script "left*10" --screenshot walk_west.bmp)
     set_tests_properties(walk_scrolls_west PROPERTIES ENVIRONMENT "${chr_headless}"
       PASS_REGULAR_EXPRESSION "moved at 0c3b,c019")
+    # A 'Mech's stats screen waits for its key at a poll, so its time goes on.
+    add_test(NAME stats_poll
+      COMMAND chr --map 1 --script "mech:0:00=01 space down*3 enter*3")
+    set_tests_properties(stats_poll PROPERTIES ENVIRONMENT "${chr_headless}"
+      PASS_REGULAR_EXPRESSION "polling for a key")
     # A scripted run, as the rig's, never opens an audio device
     # (docs/sound.md), with or without a screenshot: the player is made only
     # for a run with neither.
@@ -325,6 +344,13 @@ if(SDL3_FOUND)
           --program $<TARGET_FILE:chr> --game ${CHR_GAME_DIR} --data ${CMAKE_BINARY_DIR}/chr-data
           --work ${CMAKE_BINARY_DIR}/save_replay_work)
       set_tests_properties(save_replay PROPERTIES TIMEOUT 300)
+      # The place kept (docs/resuming.md): some of the rig's scripts, played both ways (--all: every one).
+      add_test(NAME keep_places
+        COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_SOURCE_DIR}/tests/keep_places_test.py
+          --program $<TARGET_FILE:chr> --game ${CHR_GAME_DIR} --data ${CMAKE_BINARY_DIR}/chr-data
+          --work ${CMAKE_BINARY_DIR}/keep_places_work
+          town training mission course raid orders comstar shops settings demo save_startup chain_save)
+      set_tests_properties(keep_places PROPERTIES TIMEOUT 300)
     endif()
     add_test(NAME reference_compare
       COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/reference/check.py

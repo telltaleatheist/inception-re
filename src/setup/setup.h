@@ -7,6 +7,8 @@
 // platform/sdl_setup.h.
 #pragma once
 
+#include "setup/old_names.h"
+
 #include <rekit/search.h>
 #include <rekit/sources.h>
 #include <rekit/status.h>
@@ -138,8 +140,10 @@ std::string find_install(const std::vector<std::string>& known, const std::strin
 rekit::Status status(const std::vector<std::string>& known, const std::string& user,
                      const std::string& program_dir, const std::string& version);
 
-// settings.ini's game_folder in `user`, read without SDL; "" when unset.
-std::string remembered_folder(const std::string& user);
+// settings.ini's game_folder in `user`, read without SDL; "" when unset or nothing can be made of it.
+// What 1.0.0 wrote on Windows is read as it may have meant it (folder_readings): the first reading
+// that is the game's folder, else the first.
+std::string remembered_folder(const std::string& user, const PageText& page = old_page());
 // settings.ini's game_folder set to `dir`, its other lines kept. False when it can't be written.
 bool remember_folder(const std::string& user, const std::string& dir);
 

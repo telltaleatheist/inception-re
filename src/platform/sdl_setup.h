@@ -3,8 +3,11 @@
 // screen, and the player's folder settled under its family name.
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
+
+#include "setup/old_names.h"
 
 namespace chr::platform {
 
@@ -13,6 +16,22 @@ namespace chr::platform {
 // message box or window that takes focus opens then, and on macOS the
 // program runs as a background app.
 bool setup_unattended(bool scripted = false);
+
+// What the player must see though a start has no console: `text` on stderr, and in a message box
+// unless the run is unattended.
+void tell_player(const std::string& text, bool unattended);
+
+// What shows the box; a test puts its own there.
+std::function<void(const std::string& text)>& message_box();
+
+// `work`'s answer; when it throws, the exit for a start that failed (1, or with `setup_only` the
+// launcher contract's 2 and its line), with why told to the player.
+int guarded(const std::function<int()>& work, const std::function<bool()>& setup_only,
+            const std::function<bool()>& unattended);
+
+// Where 1.0.0 left saved games under a name it misread (setup::left_saves), told to the player: in
+// the message box too while nothing is set up in `user`. Nothing is moved or changed.
+void tell_left_saves(const std::string& user, const setup::PageText& page, bool unattended);
 
 // --status: one JSON line on stdout, exit 0; no window, nothing written.
 // `given`: the game folder the run names (--game-dir, CHR_GAME_DIR), else

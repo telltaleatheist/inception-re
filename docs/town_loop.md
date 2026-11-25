@@ -3,13 +3,13 @@
 `1000:0000` starts the main loop on a map; `1000:002d` is its key half and `1000:01f4` its idle
 half. Rebuilt in `src/game/town.cpp` (`Town::key`, `Town::idle_pass`, `Town::game_tick`).
 
-## Pace: a pass is a display frame
+## Pace: a pass is a retrace
 
 Each pass of the loop asks DOS whether a key is waiting (`273d:002f`, int 21h function 0Bh).
 
 - **No key** (idle half): it waits once in `273d:0006`. That is not a timer wait: it calls
   `287f:0b40` (0x29330), which waits for the vertical retrace on the VGA/EGA status port 3DAh.
-  So a pass lasts one display frame: about 70 per second on a VGA card in the 320x200 modes (what
+  So a pass lasts one retrace: about 70 per second on a VGA card in the 320x200 modes (what
   DOSBox shows), 60 on an EGA card. Then a countdown (`[bp-1a]`, 0 when the loop starts) is
   decremented; when it goes below 0 a game tick runs. So the first pass on a map is a tick, and
   then every 11th pass.
@@ -25,9 +25,22 @@ WWOODBT.SIF is loaded into the sound driver, hooks int 8 and sets PIT channel 0 
 own handler every 16th (so the BIOS clock still runs at 18.2 Hz). `284b:0091` restores 0xFFFF.
 The main loop never reads it.
 
-The rebuild counts passes and ticks only. The window's main loop turns real time into passes
-with `game::FrameClock` (70.086 a second, a VGA card's rate); scripts (`idle:N`) and tests give
-the passes directly.
+### The rebuild's time
+
+The logic counts passes, ticks and retraces, as the original does. Scripts (`idle:N`) and tests give
+the counts directly. The window's main loop has the time, in milliseconds (`platform::Pace`):
+
+- A retrace is 1000/70.086 = 14.268 ms, a VGA card's. It is the only pace the loop gives a count.
+- A sound's wait and the title's are milliseconds (docs/sound.md, "Lengths"; docs/startup.md), compared
+  as they are.
+- A wait ends at the first pass of the window's loop at or after its time, and what is left over goes
+  to the next. So the waits' total doesn't depend on how long a pass takes.
+- A pass longer than 250 ms counts as 250.
+- What a key starts has none of the time before it.
+- A wait that asks for a key over and over without one (the overhead map, a recruit's text, the 'Mech
+  stats screen) is asked once a retrace: on the stats screen, a draw a retrace, so 16 a colour step and
+  10 - heat / 6 and one more a heat blink (below). The check between two rounds the computer fights
+  takes no time, unless the round showed nothing: then a retrace.
 
 ## The game tick
 
@@ -165,8 +178,8 @@ The record is m = t, or t - 8 from 12.
      nibble), left arm (0x24's high nibble) and right arm (0x25's high nibble): `stats.ok` in
      white when whole, `stats.gone` in grey when 0, else `stats.hit` in white. A leg is whole at
      f; an arm when its nibble equals the high nibble of byte 0x69 (left) or 0x6a (right).
-4. Then once a display frame until a key (`273d:002f`; while the demo plays, F:3938, 600
-   frames and then the demo's next key: docs/startup.md, "The demo"):
+4. Then once a retrace until a key (`273d:002f`; while the demo plays, F:3938, 600
+   retraces and then the demo's next key: docs/startup.md, "The demo"):
    - The eleven armour bars (`15ab:174c(x, y, a, b)`): bar i at x DG:131c[i], its bottom row
      DG:1332[i], 6 pixels wide and a pixel a point. From the bottom, b in red (4), then a in
      green (2) above it. a is the armour (byte 0x11 + i); b is the byte DG:1306[i] names (the

@@ -109,6 +109,11 @@ const SaveJournal::Action* SaveJournal::again(bool writes, int slot) {
     return &kStrayed;
 }
 
+void SaveJournal::settle() {
+    actions_.clear();
+    next_ = 0;
+}
+
 std::optional<std::vector<std::uint8_t>> SaveJournal::read(int slot) {
     const Action* action = again(false, slot);
     if (!action) {

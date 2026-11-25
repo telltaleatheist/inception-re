@@ -232,13 +232,13 @@ std::optional<int> Town::draw_overhead(formats::MapPosition party, formats::MapP
     const bool on_view = x >= 0 && x < 0x140 && y >= 0 && y < 0xc0;
     x = std::min(x, 0x13e);
     // While the demo plays (F:3938, 1000:4578) the map stays up for 600
-    // frames and more, and the key is the demo's next.
-    int demo_frames = 0x258;  // 1000:4449
+    // retraces and more, and the key is the demo's next.
+    int demo_retraces = 0x258;  // 1000:4449
     for (;;) {
         if (on_view) shown.dot = OverheadMap::Dot{x, y, random_.next() & 0x0f};  // 287f:0bc0
         overhead_ = shown;
         if (demo_) {
-            const bool done = demo_frames-- == 0;
+            const bool done = demo_retraces-- == 0;
             if (!demo_->wait(1)) {
                 place_open_ = true;
                 return std::nullopt;
@@ -249,6 +249,7 @@ std::optional<int> Town::draw_overhead(formats::MapPosition party, formats::MapP
         if (!k) {
             place_open_ = true;
             poll_open_ = true;
+            poll_waits_ = true;
             return std::nullopt;
         }
         if (*k != KeySource::kNoKey) return *k;  // then 1000:2a2b

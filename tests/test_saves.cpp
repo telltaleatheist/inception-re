@@ -1,12 +1,15 @@
-// The saves of a sitting (platform/save_files.h): the window's loop plays the
-// Town again from the start for every menu key, and what it read and wrote
-// must be done once (docs/resuming.md). These play the game, so they need its
-// folder; what needs none is in test_save_files.cpp.
+// A sitting (platform/sitting.h) and its saves (platform/save_files.h): the
+// window's loop plays the Town again for every menu key, from the start or from
+// the last place kept, and what it read and wrote must be done once
+// (docs/resuming.md). These play the game, so they need its folder; what needs
+// none is in test_save_files.cpp. tests/keep_places_test.py plays the rig's
+// scripts both ways.
 
 #include <deque>
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -14,12 +17,14 @@
 #include "formats/game_source.h"
 #include "formats/import.h"
 #include "formats/mtp.h"
+#include "formats/rules.h"
 #include "formats/tables.h"
 #include "game/save.h"
 #include "game/save_store.h"
 #include "game/text_provider.h"
 #include "game/town.h"
 #include "platform/save_files.h"
+#include "platform/sitting.h"
 #include "save_disk.h"
 #include "test.h"
 
@@ -29,6 +34,7 @@ using chrtest::Bytes;
 using chrtest::did;
 using chrtest::Disk;
 using platform::SaveJournal;
+using platform::Sitting;
 
 namespace {
 
@@ -38,12 +44,14 @@ struct Game {
     std::unique_ptr<MapText> map_text;
     std::unique_ptr<LayeredText> texts;
     std::shared_ptr<const formats::GameSource> source;
+    formats::Rules rules;
 
     static const Game* get() {
         static const auto game = []() -> std::unique_ptr<Game> {
             const auto dir = chrtest::game_dir();
             if (dir.empty() || !chrtest::tables()) return nullptr;
             auto g = std::make_unique<Game>();
+            g->rules = formats::read_rules(chrtest::imported_data_dir());
             g->source = std::make_shared<const formats::DosGameSource>(dir);
             g->map = formats::decode_mtp(*g->source->map(1));
             g->imported = std::make_unique<TextTable>(TextTable::load(formats::imported_text_path(chrtest::imported_data_dir())));
@@ -54,12 +62,18 @@ struct Game {
         return game.get();
     }
 
-    std::unique_ptr<Town> play(const std::deque<ScriptItem>& keys, SaveStore& saves, bool start_up) const {
+    std::unique_ptr<Town> begun(SaveStore& saves, bool start_up) const {
         auto town = std::make_unique<Town>(map, 1, new_game_position(), *texts, *chrtest::tables());
         town->set_source(source);
         town->set_saves(&saves);
+        town->set_rules(&rules);
         if (start_up) town->start_up();
         else town->draw_panel(true);
+        return town;
+    }
+
+    std::unique_ptr<Town> play(const std::deque<ScriptItem>& keys, SaveStore& saves, bool start_up) const {
+        auto town = begun(saves, start_up);
         ScriptKeys script(keys);
         town->run(script);
         return town;
@@ -212,4 +226,166 @@ TEST(saves_replaced_meanwhile) {
     CHECK(play(loaded + " space enter enter") == 0x0c3c);
     CHECK(play(loaded + " space enter enter left") == 0x0c3b);
     CHECK(did(disk, {"r1", "r1"}) && disk.files[0] == other.files[0]);
+}
+
+namespace {
+
+bool same(const TextCell& a, const TextCell& b) {
+    return a.kind == b.kind && a.code == b.code && a.fg == b.fg && a.bg == b.bg && a.bars == b.bars && a.box_marks == b.box_marks;
+}
+
+// Everything a later key could depend on, as far as it can be seen.
+bool same(const Town& a, const Town& b) {
+    if (a.save_block() != b.save_block() || a.position() != b.position() || a.random().state() != b.random().state()) return false;
+    if (a.ticks() != b.ticks() || a.question_open() != b.question_open() || a.place_open() != b.place_open()) return false;
+    for (int row = 0; row < kTextRows; ++row)
+        for (int col = 0; col < kTextColumns; ++col)
+            if (!same(a.text().cell(col, row), b.text().cell(col, row))) return false;
+    return true;
+}
+
+// A walk into another area, the command menu, a place and back out, an idle stretch.
+const std::string kWalk = "left*12 idle:40 down*3 space down*2 enter space left*30 up*4 idle:25 space down*8 enter";
+
+}  // namespace
+
+// A copy is the Town it was made from and its own: neither has anything of the other's, whichever goes on first.
+TEST(town_copied_at_the_main_loop) {
+    if (!Game::get()) return chrtest::skip("no game folder (set CHR_GAME_DIR)");
+    Disk disk;
+    const auto items = parse_key_script(kWalk);
+    int copies = 0;
+    for (std::size_t n = 1; n < items.size(); ++n) {
+        const std::deque<ScriptItem> first(items.begin(), items.begin() + std::ptrdiff_t(n)), rest(items.begin() + std::ptrdiff_t(n), items.end());
+        auto town = Game::get()->play(first, disk, false);
+        if (!town->at_main_loop()) continue;
+        ++copies;
+        auto copy = town->copy();
+        CHECK(same(*town, *copy) && copy->terrain().placed_map() == &copy->map() && town->terrain().placed_map() == &town->map());
+        auto again = copy->copy();
+        ScriptKeys a(rest), b(rest);
+        town->run(a);
+        CHECK(!same(*town, *copy) && same(*copy, *again));
+        const auto straight = Game::get()->play(items, disk, false);
+        CHECK(same(*town, *straight));
+        again.reset();
+        town.reset();
+        copy->run(b);
+        CHECK(same(*copy, *straight));
+    }
+    CHECK(copies > 20);
+    bool refused = false;
+    try {
+        Game::get()->play(parse_key_script("space"), disk, false)->copy();
+    } catch (const std::logic_error&) {
+        refused = true;
+    }
+    CHECK(refused);
+}
+
+// A sitting as the window's loop has it, the place kept wherever it can be: the same game as one straight run, the
+// saves done once, and the Town begun once only.
+TEST(sitting_keeps_its_place) {
+    const auto before = one_save();
+    if (!before) return;
+    const std::string script = kLoad + " enter left*3 space down enter enter " + kWalk;
+    const auto items = parse_key_script(script);
+    Disk disk = *before;
+    SaveJournal journal(disk);
+    int begun = 0, kept = 0;
+    Sitting sitting([&] { return ++begun, Game::get()->begun(journal, false); }, journal);
+    CHECK(!sitting.town() && !sitting.keep_place());
+    sitting.play();
+    for (std::size_t n = 0; n < items.size(); ++n) {
+        const bool can = sitting.town()->at_main_loop();
+        CHECK(sitting.keep_place() == can);
+        if (can) CHECK(sitting.time() == 0 && sitting.town()->events().empty() && sitting.town()->log().empty());
+        kept += can;
+        sitting.take(items[n]);
+        Disk once = *before;
+        const auto straight = Game::get()->play({items.begin(), items.begin() + std::ptrdiff_t(n) + 1}, once, false);
+        CHECK(same(*sitting.town(), *straight) && disk.files == once.files && disk.actions == once.actions);
+        for (int again = 0; again < 2; ++again) {
+            sitting.play();
+            CHECK(same(*sitting.town(), *straight) && disk.actions == once.actions);
+        }
+    }
+    CHECK(begun == 1 && kept > 20 && !journal.strayed());
+}
+
+// A long sitting: a question's key plays again what came since the last key of the main loop, no more.
+TEST(sitting_plays_again_from_the_place) {
+    if (!Game::get()) return chrtest::skip("no game folder (set CHR_GAME_DIR)");
+    Disk disk;
+    SaveJournal journal(disk);
+    Sitting sitting([&] { return Game::get()->begun(journal, false); }, journal);
+    sitting.play();
+    for (int i = 0; i < 200; ++i) {
+        sitting.keep_place();
+        sitting.key(i % 2 ? key::kLeft : key::kRight);
+        for (int j = 0; j < 12; ++j) sitting.pass();
+    }
+    CHECK(sitting.time() == 12);
+    sitting.keep_place();
+    const int ticks = sitting.town()->ticks();
+    sitting.key(key::kSpace);
+    CHECK(sitting.town()->place_open() || sitting.town()->question_open());
+    for (int i = 0; i < 5; ++i) sitting.key(key::kDown);
+    CHECK(sitting.town()->ticks() <= ticks + 1 && !sitting.keep_place());
+    // The log since the place is all a replay has: it did not play the walk again.
+    CHECK(sitting.town()->log().size() < 20);
+}
+
+// Keys pressed while what the logic showed is played wait for the next play: no place is kept past them.
+TEST(sitting_keys_meanwhile) {
+    if (!Game::get()) return chrtest::skip("no game folder (set CHR_GAME_DIR)");
+    Disk disk;
+    SaveJournal journal(disk);
+    Sitting sitting([&] { return Game::get()->begun(journal, false); }, journal);
+    sitting.play();
+    sitting.keep_place();
+    sitting.key(key::kLeft);
+    sitting.add({key::kLeft, 0});
+    sitting.add({key::kLeft, 0});
+    CHECK(sitting.town()->at_main_loop() && !sitting.keep_place());
+    sitting.play();
+    const auto straight = Game::get()->play(parse_key_script("left*3"), disk, false);
+    CHECK(same(*sitting.town(), *straight));
+    CHECK(sitting.keep_place());
+    sitting.add_time(30);
+    CHECK(!sitting.keep_place());
+    sitting.add_time(10);
+    sitting.play();
+    CHECK(sitting.time() == 40 && same(*sitting.town(), *Game::get()->play(parse_key_script("left*3 idle:40"), disk, false)));
+}
+
+// What throws leaves no Town, and the next play has one again.
+TEST(sitting_after_a_throw) {
+    if (!Game::get()) return chrtest::skip("no game folder (set CHR_GAME_DIR)");
+    Disk disk;
+    SaveJournal journal(disk);
+    bool bad = true;
+    Sitting sitting([&] {
+        if (bad) throw std::runtime_error("made up");
+        return Game::get()->begun(journal, false);
+    }, journal);
+    bool threw = false;
+    try {
+        sitting.play();
+    } catch (const std::runtime_error&) {
+        threw = true;
+    }
+    CHECK(threw && !sitting.town() && !sitting.keep_place());
+    bad = false;
+    sitting.play();
+    CHECK(sitting.keep_place());
+    ScriptItem wrong;
+    wrong.tune_end = true;
+    threw = false;
+    try {
+        sitting.take(wrong);
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    CHECK(threw && !sitting.town());
 }

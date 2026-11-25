@@ -1,6 +1,7 @@
 #include "game/terrain.h"
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -91,7 +92,13 @@ void subdivide_inside(Lattice& h, Noise& noise, bool fix_noise) {
 }  // namespace
 
 Terrain::Terrain(const formats::Tables& tables, const Fixes& fixes)
-    : tables_(tables), fixes_(fixes), noise_(start_up_noise()) {}
+    : tables_(tables), fixes_(&fixes), noise_(start_up_noise()) {}
+
+void Terrain::copied(const formats::MtpMap& from, const formats::MtpMap& to, const Fixes& fixes) {
+    if (map_ && map_ != &from) throw std::logic_error("the terrain is another map's");
+    if (map_) map_ = &to;
+    fixes_ = &fixes;
+}
 
 std::array<std::uint8_t, 256> Terrain::start_up_noise() {
     Random random;
@@ -129,7 +136,7 @@ std::array<std::uint8_t, Terrain::kGridBlocks> Terrain::area_types(int nw, int n
     edge(0, kSide * last, kSide);
     const std::uint8_t index = edge(last, kSide * last + last, kSide);
     Noise noise{noise_, index};
-    subdivide_inside(h, noise, fixes_.fix_terrain_noise);
+    subdivide_inside(h, noise, fixes_->fix_terrain_noise);
     noise_cursor_ = noise.index;
     // The type is the height's top four bits; the ninth row and column
     // belong to the neighbours.
