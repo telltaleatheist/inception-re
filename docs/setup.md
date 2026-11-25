@@ -97,7 +97,9 @@ A folder is:
 
 The search looks in the usual folder names for a DOS game under the system
 drive, the home folder and any Wine prefix (`setup::hints`), two levels down,
-and in a folder dropped beside the program.
+and in a folder dropped beside the program. A file or folder whose name has no
+text in the program's code page (Windows), or that can't be read, is passed
+over, and the search goes on; what stops a look at a place is said on stderr.
 
 ## The launcher contract
 

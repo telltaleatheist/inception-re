@@ -35,7 +35,7 @@ std::vector<std::string> amiga_files_missing(const AmigaFiles& files);
 // `dir`, or its folder Battletech, when it holds the program, the scripts and the maps.
 std::optional<std::filesystem::path> amiga_folder(const std::filesystem::path& dir);
 
-// The game's disk images straight in `dir`, by name.
+// The game's disk images straight in `dir`, by name; one that can't be opened is passed over.
 struct AmigaImage {
     std::filesystem::path path;
     AmigaFiles files;

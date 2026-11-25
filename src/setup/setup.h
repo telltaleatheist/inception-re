@@ -120,11 +120,17 @@ Check check_install(const std::string& dir);
 // when none.
 std::string game_in(const std::string& dir, int depth = 2);
 
+// The first of `places` that `look` finds something for, as `look` names it; "" when none. A place
+// `look` throws for is passed over, with why on stderr.
+std::string first_found(const std::vector<std::string>& places,
+                        const std::function<std::string(const std::string&)>& look);
+
 // The game folder a start uses: the first of `known` (the remembered one,
 // then a build's own default) that is still the game, then the player's own
 // default_install, then the search (hints(), each place looked into two
 // levels down). `searched` says the answer came from the search (offered,
-// never taken unasked). "" when none.
+// never taken unasked). "" when none. What can't be read is passed over and
+// nothing is thrown: why is said on stderr.
 std::string find_install(const std::vector<std::string>& known, const std::string& user,
                          const std::string& program_dir, bool* searched);
 

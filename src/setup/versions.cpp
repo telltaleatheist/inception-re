@@ -17,6 +17,7 @@
 #include "formats/amiga_source.h"
 #include "formats/cmp.h"  // FormatError
 #include "formats/disk_image.h"
+#include "formats/game_files.h"
 #include "formats/sha256.h"
 
 namespace chr::setup {
@@ -189,17 +190,19 @@ struct Walk {
     }
 
     void file(const fs::path& p, std::uint64_t size) {
-        const std::string name = base_name(p.filename().string());
+        const auto text = formats::name_text(p), last = formats::name_text(p.filename());
+        if (!text || !last) return;
+        const std::string name = base_name(*last);
         if (rekit::archives_supported() && rekit::archive_name(name)) {
             rekit::ArchiveReader r;
-            if (r.open_file(p.string())) archive(r, p.filename().string(), 0);
-            else note(p.filename().string() + ": " + r.error());
+            if (r.open_file(*text)) archive(r, *last, 0);
+            else note(*last + ": " + r.error());
             return;
         }
         if (formats::disk_kind_by_size(size) == formats::DiskKind::None && !wants(name, size)) return;
         std::ifstream in(p, std::ios::binary);
         std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(in)), {});
-        bytes(p.filename().string(), name, data);
+        bytes(*last, name, data);
     }
 
     void path(const fs::path& p) {

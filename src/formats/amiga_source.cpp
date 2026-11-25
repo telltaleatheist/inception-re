@@ -63,7 +63,8 @@ AmigaGameSource::AmigaGameSource(std::map<std::string, std::vector<std::uint8_t>
 AmigaGameSource AmigaGameSource::from_folder(const std::filesystem::path& dir) {
     std::map<std::string, std::vector<std::uint8_t>> files;
     for (const auto& entry : std::filesystem::directory_iterator(dir))
-        if (entry.is_regular_file()) files[entry.path().filename().string()] = read_file(entry.path());
+        if (const auto name = name_text(entry.path().filename()); name && entry.is_regular_file())
+            files[*name] = read_file(entry.path());
     return AmigaGameSource(std::move(files), dir.string());
 }
 

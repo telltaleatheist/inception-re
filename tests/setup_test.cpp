@@ -23,6 +23,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -210,6 +211,83 @@ void game_free(const fs::path& work) {
     write(work / "blocked.new" / "X", "the player's");
     const setup::Installed r = setup::install(f, (work / "blocked").string());
     check(!r.ok && fs::exists(work / "blocked.new" / "X"), "break: a .new folder that is not ours is left alone");
+}
+
+// What can't be read, or has a name that is no text in the program's code page, in the way of a copy.
+void in_the_way(const fs::path& work) {
+    const fs::path base = work / "way";
+    const std::string copy = (base / "above" / "copy").string(), bin = (base / "above" / "bin").string();
+    const auto made_up_copy = [](const fs::path& dir) {
+        write(dir / "BTECH.EXE", "made up");
+        write(dir / "MAP1.MTP", "made up");
+    };
+    made_up_copy(copy);
+    fs::create_directories(base / "home");
+    fs::create_directories(base / "user");
+
+    std::vector<std::string> looked;
+    const std::string third = setup::first_found({"first", "second", "third", "fourth"}, [&](const std::string& place) {
+        looked.push_back(place);
+        if (place == "second") throw std::runtime_error("made up");
+        return place == "third" ? "found there" : "";
+    });
+    check(third == "found there" && looked.size() == 3, "a place whose look throws is passed over, the next ones looked at");
+    check(setup::first_found({"only"}, [](const std::string&) -> std::string { throw std::runtime_error("made up"); }).empty(),
+          "every look throwing: nothing found");
+
+    const char* real_home = std::getenv("HOME");
+    const std::string home = real_home ? real_home : "";
+    set_env("HOME", (base / "home").string());
+
+    // Names for the files in the way: on Windows none but the first is text in code page 1252, and the last is none in
+    // any (half a character; only there). Elsewhere they are text, and the copy is found all the same.
+    std::vector<fs::path> names{"plain", fs::path(u8"\u0141 \u65e5\u672c"), fs::path(u8"emoji \U0001f600")};
+#if defined(_WIN32)
+    names.push_back(fs::path(std::wstring{L'h', wchar_t(0xd83d), L'x'}));
+#endif
+    for (const fs::path& name : names)
+        for (const char* where : {"bin", "", "a folder", "copy"}) {
+            const fs::path folder = base / "above" / where;
+            fs::create_directories(folder);
+            std::ofstream(folder / name) << "in the way";
+        }
+    for (const fs::path& name : names) fs::create_directories(base / "above" / "folders" / name);
+    bool searched = false;
+    check(setup::game_in((base / "above").string()) == copy, "game_in past files and folders of every name");
+    check(setup::find_install({}, (base / "user").string(), bin, &searched) == copy && searched,
+          "the search past files and folders of every name");
+    check(setup::status({}, (base / "user").string(), bin, "test").where == copy, "status past files and folders of every name");
+
+#if !defined(_WIN32)
+    // A remembered folder of one disk image that can't be opened: its size alone says what it is.
+    const fs::path locked = base / "locked", image = locked / "game.adf";
+    write(image, std::string(901120, 'x'));
+    fs::permissions(image, fs::perms::none);
+    if (std::ifstream(image).good()) {
+        std::printf("skip  an image that can't be opened (this user opens everything)\n");
+    } else {
+        bool threw = false, there = true;
+        std::string found;
+        rekit::Status st;
+        try {
+            there = setup::check_install(locked.string()).state != rekit::Status::kMissing;
+            found = setup::find_install({locked.string()}, (base / "user").string(), bin, &searched);
+            st = setup::status({locked.string()}, (base / "user").string(), bin, "test");
+        } catch (const std::exception&) {
+            threw = true;
+        }
+        check(!threw && !there, "a folder of an image that can't be opened: missing");
+        check(found == copy && searched && st.where == copy, "the search goes on past it");
+        // ... and one found by the search: a folder named BTECH.EXE beside it makes it look like the game.
+        fs::create_directories(base / "above" / "a image" / "BTECH.EXE");
+        write(base / "above" / "a image" / "game.adf", std::string(901120, 'x'));
+        fs::permissions(base / "above" / "a image" / "game.adf", fs::perms::none);
+        check(setup::find_install({}, (base / "user").string(), bin, &searched) == copy,
+              "a place of the search's whose image can't be opened hides nothing");
+    }
+    fs::permissions(image, fs::perms::owner_all);
+#endif
+    set_env("HOME", home);
 }
 
 // With an Amiga copy (CHR_AMIGA_COPY: an .adf, or a folder or archive holding one).
@@ -426,6 +504,7 @@ int main(int argc, char** argv) {
     fs::remove_all(work, ec);  // the test's own folder (the build's setup_work)
     fs::create_directories(work);
     game_free(work / "free");
+    in_the_way(work / "way");
     other_versions(work / "versions");
     const std::string game = argc == 3 ? argv[2] : "";
     if (!game.empty() && !rekit::any_case_path(game, "BTECH.EXE").empty()) with_game(work / "game", game);
