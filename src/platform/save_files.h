@@ -10,12 +10,19 @@
 
 namespace chr::platform {
 
-// GameN in a folder.
+// GameN in a folder. A write goes to a file beside it, GameN.part, which takes
+// its place when it is whole and on the disk: until then, and when anything
+// fails, GameN is the one before (docs/formats/save.md).
 class SaveFiles : public game::SaveStore {
 public:
     explicit SaveFiles(std::filesystem::path dir) : dir_(std::move(dir)) {}
     std::optional<std::vector<std::uint8_t>> read(int slot) override;
     bool write(int slot, std::span<const std::uint8_t> file) override;
+
+protected:
+    enum class Step { Open, Write, Flush, Replace };
+    // Asked before each step of a write: false makes the step fail (tests).
+    virtual bool may(Step) { return true; }
 
 private:
     std::filesystem::path dir_;

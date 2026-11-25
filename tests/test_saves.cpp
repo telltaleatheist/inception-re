@@ -2,14 +2,22 @@
 // Town again from the start for every menu key, and what it read and wrote
 // must be done once (docs/resuming.md).
 
+#include <algorithm>
 #include <deque>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
+
+#if !defined(_WIN32)
+#include <csignal>
+#include <sys/resource.h>
+#endif
 
 #include "formats/game_files.h"
 #include "formats/game_source.h"
@@ -273,3 +281,185 @@ TEST(saves_files) {
     std::filesystem::create_directories(dir / "deeper" / "Game2");
     CHECK(!files.write(1, Bytes{1}));
 }
+
+namespace {
+
+namespace fs = std::filesystem;
+
+// An empty folder of the test's own.
+fs::path scratch(const char* name) {
+    const auto dir = fs::path(CHR_TEST_SCRATCH) / name;
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    return dir;
+}
+
+Bytes bytes_of(const fs::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    return Bytes(std::istreambuf_iterator<char>(in), {});
+}
+
+void put(const fs::path& path, const Bytes& bytes) {
+    std::ofstream(path, std::ios::binary).write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+}
+
+std::vector<std::string> names(const fs::path& dir) {
+    std::vector<std::string> out;
+    for (const auto& e : fs::directory_iterator(dir)) out.push_back(e.path().filename().string());
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+using Names = std::vector<std::string>;
+
+// Saves on disk whose nth step of a write fails.
+struct Failing : SaveFiles {
+    using SaveFiles::SaveFiles;
+    int at = -1;  // the step that fails, in order; -1: none
+    int steps = 0;
+    Bytes before;  // GameN when the failing step came
+    fs::path file;
+    bool may(Step) override {
+        if (steps++ != at) return true;
+        before = bytes_of(file);
+        return false;
+    }
+};
+
+}  // namespace
+
+// Every byte value, and a saved game's size, as they are.
+TEST(saves_written_as_they_are) {
+    const auto dir = scratch("save-bytes");
+    SaveFiles files(dir);
+    const std::size_t size = save::kFileSize;
+    Bytes all(size);
+    for (std::size_t i = 0; i < all.size(); ++i) all[i] = std::uint8_t(i * 7 + (i >> 8));
+    CHECK(files.write(0, all) && bytes_of(dir / "Game1") == all && names(dir) == Names{"Game1"});
+    std::reverse(all.begin(), all.end());
+    CHECK(files.write(0, all) && bytes_of(dir / "Game1") == all && names(dir) == Names{"Game1"});
+    CHECK(files.write(0, {}) && bytes_of(dir / "Game1").empty() && names(dir) == Names{"Game1"});
+}
+
+// A step that fails leaves the save before it, or none, and nothing beside.
+TEST(saves_each_step_failing) {
+    for (int at = 0; at < 4; ++at) {
+        const auto dir = scratch("save-steps");
+        Failing files(dir);
+        files.file = dir / "Game1";
+        files.at = at;
+        CHECK(!files.write(0, Bytes{4, 5}) && files.steps == at + 1 && names(dir).empty());
+        put(dir / "Game1", {1, 2, 3});
+        files.steps = 0;
+        CHECK(!files.write(0, Bytes{4, 5}) && files.steps == at + 1);
+        CHECK(files.before == Bytes({1, 2, 3}) && bytes_of(dir / "Game1") == Bytes({1, 2, 3}));
+        CHECK(names(dir) == Names{"Game1"});
+        files.at = -1;
+        files.steps = 0;
+        CHECK(files.write(0, Bytes{4, 5}) && files.steps == 4);
+        CHECK(bytes_of(dir / "Game1") == Bytes({4, 5}) && names(dir) == Names{"Game1"});
+    }
+}
+
+// The renaming itself refused: a folder has taken GameN's place meanwhile.
+TEST(saves_not_replaced) {
+    const auto dir = scratch("save-rename");
+    struct Taken : SaveFiles {
+        using SaveFiles::SaveFiles;
+        fs::path file;
+        bool may(Step step) override {
+            if (step == Step::Replace) {
+                fs::remove(file);
+                fs::create_directories(file / "in it");
+            }
+            return true;
+        }
+    } files(dir);
+    files.file = dir / "Game1";
+    put(dir / "Game1", {1, 2, 3});
+    CHECK(!files.write(0, Bytes{4, 5}) && names(dir) == Names{"Game1"} && fs::is_directory(dir / "Game1" / "in it"));
+}
+
+// A write cut short: what it left is written over. A .part that isn't a
+// file is left alone, and the write fails.
+TEST(saves_part_left) {
+    const auto dir = scratch("save-part");
+    SaveFiles files(dir);
+    put(dir / "Game1", {1, 2, 3});
+    put(dir / "Game1.part", {7, 7, 7, 7, 7});
+    CHECK(files.read(0) == Bytes({1, 2, 3}));
+    CHECK(files.write(0, Bytes{4, 5}) && bytes_of(dir / "Game1") == Bytes({4, 5}) && names(dir) == Names{"Game1"});
+    fs::create_directories(dir / "Game1.part");
+    CHECK(!files.write(0, Bytes{6}) && bytes_of(dir / "Game1") == Bytes({4, 5}));
+    CHECK(names(dir) == Names({"Game1", "Game1.part"}));
+}
+
+// A save that may not be written stays, as does what isn't a file.
+TEST(saves_read_only) {
+    const auto dir = scratch("save-read-only");
+    SaveFiles files(dir);
+    put(dir / "Game1", {1, 2, 3});
+    fs::permissions(dir / "Game1", fs::perms::owner_write | fs::perms::group_write | fs::perms::others_write,
+                    fs::perm_options::remove);
+    if (!std::fstream(dir / "Game1", std::ios::in | std::ios::out)) {  // not for a user who may write anything
+        CHECK(!files.write(0, Bytes{4, 5}) && bytes_of(dir / "Game1") == Bytes({1, 2, 3}));
+        CHECK(names(dir) == Names{"Game1"});
+    }
+    fs::permissions(dir / "Game1", fs::perms::owner_write, fs::perm_options::add);
+    fs::permissions(dir / "Game1", fs::perms::group_all | fs::perms::others_all, fs::perm_options::remove);
+    const auto who = fs::status(dir / "Game1").permissions();
+    CHECK(files.write(0, Bytes{4, 5}) && bytes_of(dir / "Game1") == Bytes({4, 5}));
+    CHECK(fs::status(dir / "Game1").permissions() == who);
+    fs::create_directories(dir / "Game2");
+    CHECK(!files.write(1, Bytes{1}) && names(dir) == Names({"Game1", "Game2"}));
+}
+
+// A link stays one, and the file it leads to is the one written.
+TEST(saves_links) {
+    const auto dir = scratch("save-links"), other = scratch("save-links-to");
+    SaveFiles files(dir);
+    put(other / "kept", {1, 2, 3});
+    std::error_code ec;
+    fs::create_symlink(fs::path("..") / "save-links-to" / "kept", dir / "Game1", ec);
+    if (ec) return;  // not everyone may make one on Windows
+    fs::create_symlink(dir / "Game1", dir / "Game2");
+    fs::create_symlink(other / "not yet", dir / "Game3");
+    fs::create_symlink("Game4", dir / "Game4");
+    CHECK(files.write(0, Bytes{4, 5}) && bytes_of(other / "kept") == Bytes({4, 5}) && fs::is_symlink(dir / "Game1"));
+    CHECK(files.write(1, Bytes{6}) && bytes_of(other / "kept") == Bytes({6}) && fs::is_symlink(dir / "Game2"));
+    CHECK(files.write(2, Bytes{7}) && bytes_of(other / "not yet") == Bytes({7}) && fs::is_symlink(dir / "Game3"));
+    CHECK(!files.write(3, Bytes{8}) && fs::is_symlink(dir / "Game4"));
+    fs::create_symlink(other / "kept", other / "not yet.part");
+    CHECK(!files.write(2, Bytes{9}) && bytes_of(other / "kept") == Bytes({6}) && bytes_of(other / "not yet") == Bytes({7}));
+    fs::remove(other / "not yet.part");
+    CHECK(names(dir) == Names({"Game1", "Game2", "Game3", "Game4"}) && names(other) == Names({"kept", "not yet"}));
+}
+
+#if !defined(_WIN32)
+// The disk's own failures: a write that doesn't fit, and a folder nothing may
+// be made in.
+TEST(saves_disk_failures) {
+    const auto dir = scratch("save-disk");
+    SaveFiles files(dir);
+    const std::size_t size = save::kFileSize;
+    const Bytes old(size, 1), now(size, 2);
+    CHECK(files.write(0, old));
+    rlimit was{};
+    getrlimit(RLIMIT_FSIZE, &was);
+    const auto handler = std::signal(SIGXFSZ, SIG_IGN);
+    rlimit small = was;
+    small.rlim_cur = 1000;
+    setrlimit(RLIMIT_FSIZE, &small);
+    const bool written = files.write(0, now);
+    setrlimit(RLIMIT_FSIZE, &was);
+    std::signal(SIGXFSZ, handler);
+    CHECK(!written && bytes_of(dir / "Game1") == old && names(dir) == Names{"Game1"});
+    fs::permissions(dir, fs::perms::owner_write, fs::perm_options::remove);
+    const bool may = bool(std::ofstream(dir / "any"));  // a user who may write anything
+    const bool made = files.write(0, now);
+    fs::permissions(dir, fs::perms::owner_write, fs::perm_options::add);
+    if (!may) CHECK(!made && bytes_of(dir / "Game1") == old && names(dir) == Names{"Game1"});
+    fs::remove(dir / "any");
+    CHECK(files.write(0, now) && bytes_of(dir / "Game1") == now);
+}
+#endif

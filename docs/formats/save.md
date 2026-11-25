@@ -101,6 +101,20 @@ docs/import.md), or wherever `--save-dir DIR` says. The names are the original's
 lets the rebuild and the original read each other's saves. Each is read or written once, however
 often the sitting is played again (docs/resuming.md).
 
+**How a file is written.** The original creates GameN, which empties the one before, and writes
+into it, so a write that fails half way loses both games. The rebuild writes the same bytes to
+`GameN.part` beside it, has the disk take them, and renames that over GameN
+(`platform::SaveFiles`). If any of it fails, GameN is the one before, `GameN.part` is taken away
+and the player sees DG:06ad. One left by a crash is written over by the next save. A GameN that is
+read-only, or isn't a file, is refused, as when it was opened itself. If GameN is a link, the file
+it leads to is written the same way, in that file's own folder, and the link stays. The new file
+has the old one's permissions, but is a new file: another name for the old one (a hard link) keeps
+the old game. The folder must allow a new file.
+
+On Windows the rename is `MoveFileExW` with MOVEFILE_REPLACE_EXISTING, the C++ library's: it takes
+the old file's place in one step. It fails, and the old save stays, while another program holds
+GameN open without allowing its deletion.
+
 **A short file** is read as far as it goes: the original does not check the reads' counts, so
 whatever the file leaves out stays as it was in memory, and the rebuild does the same.
 
