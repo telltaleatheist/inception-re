@@ -6,6 +6,7 @@
 #include "formats/amiga_program_data.h"
 #include "formats/bld.h"
 #include "formats/exe_data.h"
+#include "formats/game_files.h"
 #include "formats/open_source.h"
 
 #include <rekit/archive.h>
@@ -14,6 +15,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -332,8 +334,10 @@ std::string game_in(const std::string& dir, int depth) {
             for (fs::directory_iterator it(f, fs::directory_options::skip_permission_denied, ec), end;
                  !ec && it != end; it.increment(ec)) {
                 std::error_code e2;
-                names.insert(lower(it->path().filename().string()));
-                if (d < depth && it->is_directory(e2) && !it->is_symlink(e2)) subs.push_back(it->path().string());
+                const auto name = formats::name_text(it->path().filename()), whole = formats::name_text(it->path());
+                if (!name || !whole) continue;
+                names.insert(lower(*name));
+                if (d < depth && it->is_directory(e2) && !it->is_symlink(e2)) subs.push_back(*whole);
             }
             if (names.contains("btech.exe")) return f;
             if (std::all_of(formats::kAmigaTellingFiles.begin(), formats::kAmigaTellingFiles.end(),
@@ -348,24 +352,35 @@ std::string game_in(const std::string& dir, int depth) {
     return "";
 }
 
-std::string find_install(const std::vector<std::string>& known, const std::string& user,
-                         const std::string& program_dir, bool* searched) {
-    if (searched) *searched = false;
-    auto usable = [](const std::string& d) {
-        return !d.empty() && check_install(d).state != rekit::Status::kMissing;
-    };
-    for (const auto& k : known)
-        if (usable(k)) return k;
-    const std::string own = default_install(user);
-    if (usable(own)) return own;
-    for (const std::string& place : rekit::install_candidates(hints(), program_dir)) {
-        const std::string g = game_in(place, 2);
-        if (usable(g)) {
-            if (searched) *searched = true;
-            return g;
+std::string first_found(const std::vector<std::string>& places,
+                        const std::function<std::string(const std::string&)>& look) {
+    for (const std::string& place : places) {
+        try {
+            if (std::string found = look(place); !found.empty()) return found;
+        } catch (const std::exception& e) {
+            std::fprintf(stderr, "setup: %s can't be looked at: %s\n", place.c_str(), e.what());
         }
     }
     return "";
+}
+
+std::string find_install(const std::vector<std::string>& known, const std::string& user,
+                         const std::string& program_dir, bool* searched) {
+    if (searched) *searched = false;
+    const auto usable = [](const std::string& d) {
+        return !d.empty() && check_install(d).state != rekit::Status::kMissing ? d : std::string();
+    };
+    if (std::string named = first_found(known, usable); !named.empty()) return named;
+    try {
+        if (std::string own = first_found({default_install(user)}, usable); !own.empty()) return own;
+        std::string found = first_found(rekit::install_candidates(hints(), program_dir),
+                                        [&](const std::string& place) { return usable(game_in(place, 2)); });
+        if (searched) *searched = !found.empty();
+        return found;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "setup: the search for the game ended: %s\n", e.what());
+        return "";
+    }
 }
 
 rekit::Status status(const std::vector<std::string>& known, const std::string& user,
@@ -384,23 +399,23 @@ rekit::Status status(const std::vector<std::string>& known, const std::string& u
         return st;
     }
     // Another version's copy where the player said: named, not played.
-    for (const auto& k : known) {
+    first_found(known, [&](const std::string& k) -> std::string {
         std::error_code ec;
         OtherCopy other;
-        if (k.empty() || !fs::exists(k, ec)) continue;
+        if (k.empty() || !fs::exists(k, ec)) return "";
         // An Amiga copy a start can't play from there (in an archive, or several): the setup takes it.
         if (const AmigaChoice amiga = choose_amiga_copy(k); amiga.copy || !amiga.note.empty()) {
             st.where = k, st.data = kAmigaVersion, st.state = rekit::Status::kIncomplete;
             st.missing.push_back("the setup: it copies the game out of there");
             st.note = amiga.note.empty() ? "the Amiga version was found, not set up yet" : amiga.note;
-            break;
+            return k;
         }
-        if (!find_other_copy(k, &other)) continue;
+        if (!find_other_copy(k, &other)) return "";
         st.where = k, st.data = other.label(), st.state = rekit::Status::kIncomplete;
         st.missing = other.needed();
         st.note = other.note();
-        break;
-    }
+        return k;
+    });
     return st;
 }
 

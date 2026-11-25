@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <exception>
 #include <system_error>
 #include <utility>
 
@@ -61,23 +62,34 @@ std::vector<std::string> amiga_files_missing(const AmigaFiles& files) {
 std::optional<fs::path> amiga_folder(const fs::path& dir) {
     if (holds_the_game(dir)) return dir;
     std::error_code ec;
-    for (const auto& entry : fs::directory_iterator(dir, ec))
-        if (entry.is_directory(ec) && lower(entry.path().filename().string()) == kFolder && holds_the_game(entry.path()))
-            return entry.path();
+    for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
+        std::error_code e2;
+        if (!it->is_directory(e2)) continue;
+        if (const auto name = name_text(it->path().filename()); name && lower(*name) == kFolder && holds_the_game(it->path()))
+            return it->path();
+    }
     return std::nullopt;
 }
 
 std::vector<AmigaImage> amiga_images_in(const fs::path& dir) {
     std::vector<fs::path> paths;
     std::error_code ec;
-    for (const auto& entry : fs::directory_iterator(dir, ec)) {
+    for (fs::directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec)) {
         std::error_code e2;
-        if (entry.is_regular_file(e2) && disk_kind_by_size(entry.file_size(e2)) == DiskKind::Adf) paths.push_back(entry.path());
+        if (it->is_regular_file(e2) && disk_kind_by_size(it->file_size(e2)) == DiskKind::Adf && name_text(it->path()))
+            paths.push_back(it->path());
     }
     std::sort(paths.begin(), paths.end());
     std::vector<AmigaImage> images;
-    for (const auto& path : paths)
-        if (auto files = amiga_disk_files(read_file(path)); !files.empty()) images.push_back({path, std::move(files)});
+    for (const auto& path : paths) {
+        std::vector<std::uint8_t> image;
+        try {
+            image = read_file(path);
+        } catch (const std::exception&) {
+            continue;  // can't be opened: the others are looked at
+        }
+        if (auto files = amiga_disk_files(image); !files.empty()) images.push_back({path, std::move(files)});
+    }
     return images;
 }
 
