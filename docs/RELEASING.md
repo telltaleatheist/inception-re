@@ -54,7 +54,7 @@ program for it, the Mac app in each architecture's slice.
 
 | Platform | Made on | Files |
 |---|---|---|
-| macOS | a Mac | `CHI-Rebuild-<label>-mac.dmg`: `Inception Rebuild.app`, signed ad hoc, universal (arm64 and x86_64) from macOS 12 |
+| macOS | a Mac | `CHI-Rebuild-<label>-mac.dmg`: `Inception Rebuild.app`, universal (arm64 and x86_64) from macOS 12; a release's signed with a Developer ID and notarized, a check build's ad hoc |
 | Windows x64 | Windows, MSVC | `CHI-Rebuild-<label>-win64.zip` (`chi.exe`, `SDL3.dll` and the MSVC runtime at the top level), and with `--installer` `CHI-Rebuild-<label>-Setup.exe` |
 | Linux x86-64 | Linux or WSL | `CHI-Rebuild-<label>-linux-x86_64.tar.gz` (the checks' form), and with `--installer` `CHI-Rebuild-<label>-x86_64.AppImage` |
 
@@ -86,12 +86,23 @@ of what the compiler writes (`CHR_TRIM_PATHS`).
   checks every binary in the app for both. The x86_64 half is started under
   Rosetta when the Mac has it. `--this-arch` builds this Mac's architecture
   alone, for a quicker local test. SDL goes to `Contents/Frameworks`, named `@rpath`. The library,
-  the program and the app are signed ad hoc with
-  `tools/package/chi.entitlements` and checked with
-  `codesign --verify --deep --strict`. The dmg holds the app, a link to
-  Applications and the read-me. The app is not signed with a developer
-  identity, so the first start needs right-click, Open. Its bundle id is
-  `io.github.inceptionre.chi`.
+  the program and the app are signed with `tools/package/chi.entitlements`
+  (no exceptions to the hardened runtime) and checked with
+  `codesign --verify --deep --strict`, before the smoke test, so what is
+  started is what ships. The dmg holds the app, a link to Applications and
+  the read-me. Its bundle id is `io.github.inceptionre.chi`.
+  - Without a signing identity (a check build, the workflow), everything is
+    signed ad hoc and the first start needs right-click, Open.
+  - With one, re-setup-kit's `tools/macos/sign_notarize.sh` signs instead
+    (`sign_app`): a Developer ID, the hardened runtime and a timestamp. It
+    then signs the dmg, notarizes it, and staples the ticket to the dmg and
+    the app (`notarize_dmg`), and the `.sha256` is written after that. Who
+    signs comes only from the environment, set on the command itself and
+    never written down:
+    `RE_SIGN_IDENTITY` (the keychain's Developer ID Application identity,
+    by its SHA-1) and `RE_NOTARY_PROFILE` (a `notarytool` keychain profile).
+    The kit's `check` runs first, so a build that couldn't be notarized
+    stops before anything is built.
 - **Windows**: the program is linked as a GUI program (`CHR_WINDOWS_GUI`),
   so no console window opens. `--installer` runs Inno Setup's `iscc` on
   `tools/package/installer.iss`. It installs to
@@ -178,6 +189,10 @@ a push to main doesn't cancel it.
    and wait until all three jobs pass. Note the commit it ran on.
 3. Download its three artifacts into one empty folder
    (`gh run download <run id>`), and check each file against its `.sha256`.
+   The Mac artifact is the check build's, signed ad hoc: in its place, build
+   the release's dmg on a Mac at the same commit with the signing identity
+   (above), then check it with `spctl -a -vv -t install` and
+   `xcrun stapler validate`.
 4. Write `SHA256SUMS` over the packages:
    `python3 -I tools/package/sums.py <folder>`.
 5. Tag the commit the run built `chi-vX.Y.Z`, and push the tag.
