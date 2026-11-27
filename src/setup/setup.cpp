@@ -385,6 +385,16 @@ std::string find_install(const std::vector<std::string>& known, const std::strin
     }
 }
 
+std::string release_tag(const std::string& version) {
+    int parts = 1, digits = 0;
+    for (const char c : version) {
+        if (std::isdigit(static_cast<unsigned char>(c))) ++digits;
+        else if (c == '.' && digits > 0) ++parts, digits = 0;
+        else return "";
+    }
+    return parts == 3 && digits > 0 ? "chi-v" + version : "";
+}
+
 rekit::Status status(const std::vector<std::string>& known, const std::string& user,
                      const std::string& program_dir, const std::string& version) {
     rekit::Status st;

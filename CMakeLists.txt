@@ -235,6 +235,16 @@ if(SDL3_FOUND)
     CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
   add_test(NAME rendertests COMMAND rendertests)
 
+  # The catalog's download on the kit's screen, from a local catalog signed by
+  # the kit's test key (no network); the zip it serves is built from the
+  # player's files (CHR_GAME_DIR), else a stand-in.
+  add_executable(setup_download_test tests/setup_download_test.cpp)
+  target_link_libraries(setup_download_test PRIVATE chrplatform)
+  target_include_directories(setup_download_test PRIVATE
+    extern/re-setup-kit/tests extern/re-setup-kit/third_party)
+  target_compile_definitions(setup_download_test PRIVATE CHR_VERSION="${CHR_VERSION}")
+  add_test(NAME setup_download COMMAND setup_download_test "${CMAKE_BINARY_DIR}/setup_download_work" "${CHR_GAME_DIR}")
+
   add_executable(chr src/main.cpp)
   target_link_libraries(chr PRIVATE chrplatform)
   # Windows packages: a GUI program, so no console window opens (SDL_main.h's WinMain).

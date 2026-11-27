@@ -19,6 +19,7 @@
 #include <exception>
 #include <filesystem>
 #include <functional>
+#include <iterator>
 
 #ifndef CHR_VERSION
 #define CHR_VERSION "dev"
@@ -85,6 +86,10 @@ rekit::sdl::Game kit_game(const std::string& user) {
     g.id = setup::kId, g.title = setup::kTitle, g.folder_key = setup::kFolderKey, g.folder_name = setup::kFolderName;
     g.program = "BTECH.EXE";
     g.rules = setup::rules(), g.hints = setup::hints();
+    // A fresh setup searches this computer first and offers the catalog's download only when it finds no copy.
+    g.original_catalogs.assign(std::begin(setup::kOriginalCatalogs), std::end(setup::kOriginalCatalogs));
+    g.catalog_keys = {setup::kCatalogKey}, g.original_key = setup::kOriginalKey;
+    g.version = setup::release_tag(CHR_VERSION);
     const std::string pdir = program_dir();
     g.search = [user, pdir] {
         bool s = false;
@@ -204,6 +209,8 @@ int refuse_ask(const std::string& why) {
 }
 
 }  // namespace
+
+rekit::sdl::Game setup_kit_game(const std::string& user) { return kit_game(user); }
 
 bool setup_unattended(bool scripted) {
     if (scripted || std::getenv("CHR_HIDDEN")) return true;

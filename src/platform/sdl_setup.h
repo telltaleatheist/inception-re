@@ -9,7 +9,13 @@
 
 #include "setup/old_names.h"
 
+#include <rekit/sdl/setup_screen.h>
+
 namespace chr::platform {
+
+// This game's recipe for the kit's setup, as the screen and the launcher's served setup use it, for the
+// player's folder `user` (tests/setup_download_test.cpp).
+rekit::sdl::Game setup_kit_game(const std::string& user);
 
 // No player at this run: a hidden or scripted one (CHR_HIDDEN, an offscreen
 // or dummy video driver, or `scripted`: --script or --screenshot). No picker,

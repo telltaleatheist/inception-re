@@ -82,6 +82,19 @@ A name that still can't be turned into text ends a start with a message
    so a failure or a cancel leaves nothing behind. The player's original
    (folder or archive) is only read.
 
+   When the search finds no copy, the screen also offers to download the
+   original files from the launcher's catalog (the kit's
+   `Game::original_catalogs`). The catalog is asked at
+   `reverse-engineered.com`, then at its copy on GitHub, and is used only
+   when its signature checks against the launcher's key. Its entry for this
+   game is `chi` (`setup.h`, `kOriginalKey`). The download must match the
+   catalog's size and SHA-256, and is installed at once like a picked
+   archive, then deleted. A copy found on the computer is always offered
+   instead, and the download is never asked about then. `setup_download`
+   (tests/setup_download_test.cpp) checks this against a local catalog
+   signed by the kit's test key, serving a zip it builds from
+   `CHR_GAME_DIR`. It uses no network.
+
 A run that no player is at never opens the screen, a picker or a window that
 takes focus. That covers `CHR_HIDDEN`, SDL's `dummy` or `offscreen` video
 driver, `--script` and `--screenshot`. If such a run has no game, it fails

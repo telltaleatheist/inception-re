@@ -24,6 +24,13 @@ inline constexpr const char* kId = "inception";        // the launcher contract'
 inline constexpr const char* kTitle = "The Crescent Hawk's Inception";  // the setup screen's sentences
 inline constexpr const char* kFolderName = "Inception Rebuild";  // a game folder made inside a picked one
 inline constexpr const char* kFolderKey = "chi";  // its mark's game=<key> (the kit's game_folder.h), the launcher's name
+// The original files from the launcher's catalog (the kit's Game::original_catalogs): its addresses, asked in order,
+// the public key its signature must check against, and the game's entry in it.
+inline constexpr const char* kOriginalCatalogs[] = {
+    "https://reverse-engineered.com/launcher/catalog.json",
+    "https://raw.githubusercontent.com/telltaleatheist/mw3-re/main/catalog/games.json"};
+inline constexpr const char* kCatalogKey = "4e2d26a76ab9f92876ca86aa915b9d61de1ed93b854610be07c70179136bfced";
+inline constexpr const char* kOriginalKey = "chi";
 // The player's folder (the import, the saves, settings.ini): SDL's per-user
 // folder for these names, under the family's folder (BattleTech).
 inline constexpr const char* kOrganisation = "BattleTech";
@@ -135,6 +142,10 @@ std::string first_found(const std::vector<std::string>& places,
 // nothing is thrown: why is said on stderr.
 std::string find_install(const std::vector<std::string>& known, const std::string& user,
                          const std::string& program_dir, bool* searched);
+
+// The release tag for the program's `version` (CHR_VERSION): chi-vX.Y.Z when it is a release's X.Y.Z
+// (tools/build_package.py), "" for any other build. The kit's Game::version.
+std::string release_tag(const std::string& version);
 
 // The answer to --status: nothing written, no window. `version` is the program's.
 rekit::Status status(const std::vector<std::string>& known, const std::string& user,
