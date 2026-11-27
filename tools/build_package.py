@@ -508,6 +508,14 @@ def smoke_x86_64(exe):
     print("Smoke: the x86_64 program answers --help and --status (Rosetta)")
 
 
+def build_rpaths(otool_lines):
+    """The LC_RPATH paths in `otool -l`'s lines, each once, in order. A path is everything between "path " and
+    " (offset N)", so a folder whose name has a space is kept whole."""
+    found = (re.match(r"\s*path (.*) \(offset \d+\)$", otool_lines[i + 2])
+             for i, line in enumerate(otool_lines) if "cmd LC_RPATH" in line and i + 2 < len(otool_lines))
+    return list(dict.fromkeys(m.group(1) for m in found if m))
+
+
 def package_mac(root, build, sdl, output, label, game, universal=True):
     """Inception Rebuild.app and CHI-Rebuild-<label>-mac.dmg: the program in Contents/MacOS, data/ and the
     notices in Contents/Resources (SDL_GetBasePath), SDL in Contents/Frameworks named @rpath, every binary
@@ -554,8 +562,7 @@ def package_mac(root, build, sdl, output, label, game, universal=True):
             copied.add(dep)
     # The build's rpaths, each once: a universal program lists them once a slice, and one delete takes all.
     lines = subprocess.run(["otool", "-l", str(exe)], capture_output=True, text=True, check=True).stdout.splitlines()
-    rpaths = dict.fromkeys(lines[i + 2].strip().split(" ")[1] for i, line in enumerate(lines) if "cmd LC_RPATH" in line)
-    for rpath in rpaths:
+    for rpath in build_rpaths(lines):
         run("install_name_tool", "-delete_rpath", rpath, str(exe))
     run("install_name_tool", "-add_rpath", "@executable_path/../Frameworks", str(exe))
     left = [d for f in [exe, *frameworks.iterdir()] for d in dependencies(f) if not (system(d) or d.startswith("@"))]
