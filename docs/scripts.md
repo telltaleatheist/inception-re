@@ -580,7 +580,11 @@ town is refused) and a key.
   alone, is offered it again, and Yes with 7000 C-Bills pays again. The mappers test flag 31
   first.
 - **WEAPON's unreached block.** A `goto 0220` at 015d always jumps over 0160–021f, which has
-  another line from the shopkeeper. The player never sees it. It is kept (not imported, not
+  another line from the shopkeeper. The player never sees it. The block is an `fd` at 0160, then
+  two prints: 0161 (its text at 0162–0206, ended at 0207), the shopkeeper disappointed that you
+  won't buy, putting the suit away and showing his other stock (likely the reply to turning down
+  a suit); and 0208 (ended at 021f), a heading for the stock menu that only this block prints.
+  Then 0220, the jump's target, prints the stock menu itself. It is kept (not imported, not
   shown); a fix would need to know what the jump was meant to test.
 - **The Arena's second text shows after every lost fight.** The script uses flag 21 to show
   its second renting text once (03a0..069e: shown while flag 21 is clear, then flag 21 = 1), but

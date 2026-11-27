@@ -61,8 +61,9 @@ Two opcodes end in a jump table with no count:
 A walk of the control flow from offset 0 reaches every byte of every DOS 1.03 script except these
 (checked by the `bld_walk_reaches_every_text` test):
 - the two zero bytes at the end of every file;
-- WEAPON 0160–021f: a block that `goto 0220` at 015d jumps over, so the shopkeeper's line in it is
-  never shown (an original quirk; the rebuild keeps it, see docs/scripts.md);
+- WEAPON 0160–021f: a block that `goto 0220` at 015d jumps over, so the shopkeeper's line in it
+  (the print at 0161, likely his reply to a suit turned down) and the menu heading after it (the
+  print at 0208) are never shown (an original quirk; the rebuild keeps it, see docs/scripts.md);
 - TRAINING 1be4–1be5: two bytes after an `end`.
 
 ## Text IDs
