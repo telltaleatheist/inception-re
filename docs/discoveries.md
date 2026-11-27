@@ -212,7 +212,7 @@ Details: [original.md](original.md), [formats/](formats/).
 - **A shopkeeper's line nobody has seen.** The weapon shop's script always jumps over one block
   (`WEAPON.BLD` 0160–021f), so one of the shopkeeper's lines can never appear. It is his answer
   to a customer who won't buy: he looks a little crestfallen, as if your thrift might cost him his
-  supper, puts the suit away and shows you the rest of his stock. Likely the reply to turning down
+  supper, then packs it up again and offers you the rest of his wares. Likely the reply to turning down
   a suit, from its wording; whatever was meant to lead to it isn't in the script. The same block
   holds a second heading for the stock menu that nothing else prints.
 - **EGA colours are shuffled.** The title screens' palette shows colour 1 as black and swaps

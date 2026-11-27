@@ -582,7 +582,7 @@ town is refused) and a key.
 - **WEAPON's unreached block.** A `goto 0220` at 015d always jumps over 0160–021f, which has
   another line from the shopkeeper. The player never sees it. The block is an `fd` at 0160, then
   two prints: 0161 (its text at 0162–0206, ended at 0207), the shopkeeper disappointed that you
-  won't buy, putting the suit away and showing his other stock (likely the reply to turning down
+  won't buy, packing it up and offering the rest of his wares (likely the reply to turning down
   a suit); and 0208 (ended at 021f), a heading for the stock menu that only this block prints.
   Then 0220, the jump's target, prints the stock menu itself. It is kept (not imported, not
   shown); a fix would need to know what the jump was meant to test.
