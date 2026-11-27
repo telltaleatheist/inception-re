@@ -157,8 +157,8 @@ over, and the search goes on; what stops a look at a place is said on stderr.
 - `chr --setup` opens the setup screen whatever is found, plays nothing, and
   exits 0 (ready), 1 (cancelled) or 2 (failed, with `{"error": ...}` on
   stdout).
-- `chr --setup` followed by `--describe`, `--search`, `--look <pick>` or
-  `--install <pick> [--folder <dir>]` is the setup for the launcher's own
+- `chr --setup` followed by `--describe`, `--search`, `--copies`, `--look <pick>`
+  or `--install <pick> [--folder <dir>]` is the setup for the launcher's own
   screens (the kit's `rekit/sdl/setup_serve.h`; `--status` says `"setup": 1`).
   See "The setup served to the launcher".
 - `--status` reports the program's version as `CHR_VERSION` (CMake; `dev`
@@ -174,6 +174,13 @@ the sentence for a pick that can't be used and the install are the screen's.
 
 - The folder a served install went to is remembered in `settings.ini`, as after
   the screen. So is a looked-at folder that is played where it is.
+- `--copies` lists every copy of the game on this computer, one line each
+  (`copy`, `data`, `in_use`, `missing`), then `done`. The copy a start would
+  play (the remembered folder, the build's own, the player's own install;
+  never one only the search found) comes first and is marked `in_use`; then
+  the player's own install and each place the search looks, each folder once
+  (`setup::copies`). What isn't the game is left out, and a copy that is the
+  game but lacks something says what in `missing`. It writes nothing.
 - The player's folder is the one a start uses: `--data-dir`, else
   `CHR_DATA_DIR`, else the system's. An install writes there by design.
   Only a test's hook (`CHR_SETUP_PICK`, `REKIT_SETUP_GO`) without

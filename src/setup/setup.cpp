@@ -385,6 +385,40 @@ std::string find_install(const std::vector<std::string>& known, const std::strin
     }
 }
 
+std::vector<Copy> copies(const std::string& in_use, const std::vector<std::string>& known, const std::string& user,
+                         const std::string& program_dir) {
+    std::vector<Copy> rows;
+    const auto same = [](const std::string& a, const std::string& b) {
+        std::error_code ec;
+        if (a.empty() || b.empty()) return false;
+        if (fs::equivalent(a, b, ec)) return true;
+        return fs::path(a).lexically_normal() == fs::path(b).lexically_normal();
+    };
+    const auto add = [&](const std::string& dir) {
+        if (dir.empty()) return;
+        for (const Copy& r : rows)
+            if (same(r.path, dir)) return;
+        try {
+            const Check c = check_install(dir);
+            if (c.state == rekit::Status::kMissing) return;
+            Copy row;
+            row.path = dir, row.data = c.version, row.in_use = same(dir, in_use), row.missing = c.missing;
+            rows.push_back(std::move(row));
+        } catch (const std::exception& e) {
+            std::fprintf(stderr, "setup: passed over %s: %s\n", dir.c_str(), e.what());
+        }
+    };
+    add(in_use);
+    for (const std::string& dir : known) add(dir);
+    add(default_install(user));
+    try {
+        for (const std::string& place : rekit::install_candidates(hints(), program_dir)) add(game_in(place, 2));
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "setup: the search for copies ended: %s\n", e.what());
+    }
+    return rows;
+}
+
 std::string release_tag(const std::string& version) {
     int parts = 1, digits = 0;
     for (const char c : version) {

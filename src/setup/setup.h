@@ -143,6 +143,21 @@ std::string first_found(const std::vector<std::string>& places,
 std::string find_install(const std::vector<std::string>& known, const std::string& user,
                          const std::string& program_dir, bool* searched);
 
+// A copy of the game on this computer, for the launcher's list of them (--setup --copies): its
+// folder, its version (kVersion, kAmigaVersion, "" another), whether the game plays it now, and
+// what it lacks in plain words (Check::missing).
+struct Copy {
+    std::string path, data;
+    bool in_use = false;
+    std::vector<std::string> missing;
+};
+// Every copy of the game on this computer, each folder once: `in_use` first when it is one, then
+// `known` (the remembered folder, a build's own), the player's own default_install, then the
+// search's places (hints(), two levels down). What is not the game, or can't be read, is passed
+// over (why on stderr). Nothing is written.
+std::vector<Copy> copies(const std::string& in_use, const std::vector<std::string>& known, const std::string& user,
+                         const std::string& program_dir);
+
 // The release tag for the program's `version` (CHR_VERSION): chi-vX.Y.Z when it is a release's X.Y.Z
 // (tools/build_package.py), "" for any other build. The kit's Game::version.
 std::string release_tag(const std::string& version);

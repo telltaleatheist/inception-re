@@ -122,7 +122,7 @@ void usage(std::FILE* out, const char* argv0) {
     if (program.empty() || program == "AppRun") program = "chi";
     const char* name = program.c_str();
     std::fprintf(out, "usage: %s --status | --setup\n"
-                 "       %s --setup --describe | --search | --look PICK | --install PICK [--folder DIR]\n"
+                 "       %s --setup --describe | --search | --copies | --look PICK | --install PICK [--folder DIR]\n"
                  "       %s [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
                  "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--loop-ms N] [--loop-keys KEYS] [--loop-resets] [--keep-places] [--demo-to N]\n"
                  "           [--state] [--show-quiz]\n"
@@ -421,7 +421,7 @@ int begin(int argc, char** argv, Options& options) {
         return chr::platform::print_setup_status(options.game_dir.string(), CHR_DEFAULT_GAME_DIR,
                                                  options.data_dir.string());
     // So does an ask about the setup, on stdout alone: the launcher reads it through a pipe.
-    if (!options.served.empty()) return chr::platform::serve_game_setup(options.served, options.data_dir.string());
+    if (!options.served.empty()) return chr::platform::serve_game_setup(options.served, options.data_dir.string(), CHR_DEFAULT_GAME_DIR);
 
     if (options.setup || options.game_dir.empty()) {
         if (!chr::platform::setup_hooks_allowed(options.setup)) return options.setup ? 2 : 1;

@@ -187,6 +187,20 @@ def main():
               "served: %s of another version's disk: the screen's sentence (%s)" % (what, s))
     check(served_setup.tree(served_user) == [], "break: served: nothing made for it")
 
+    # --copies: a line for each copy on this computer, then done; nothing written; no arguments.
+    copies_user = os.path.join(work, "user-copies")
+    s = served_setup.ask(a.program, ["--copies"], served_setup.asking_env(base, copies_user))
+    rows = [m for m in s.messages[:-1] if m]
+    check(s.clean() and s.code == 0 and s.last.get("ok") is True, "served: --copies answers, done and ok (%s)" % s)
+    # The kit leaves out "data" when it is "" and "in_use" when it is false.
+    check(all("copy" in r and r.get("in_use", True) is True and isinstance(r.get("missing"), list) for r in rows),
+          "served: --copies' lines each name a copy and what it lacks (%s)" % s)
+    check(len([r for r in rows if r.get("in_use")]) <= 1, "served: --copies marks one copy in use at most")
+    check(served_setup.tree(copies_user) == [], "break: served: --copies wrote nothing")
+    s = served_setup.ask(a.program, ["--copies", "extra"], served_setup.asking_env(base, copies_user))
+    check(s.clean() and s.code == 2 and "takes nothing after it" in s.last.get("summary", ""),
+          "break: served: --copies with an argument is refused (%s)" % s)
+
     if a.game and os.path.isdir(a.game):
         pick = os.path.join(work, "pick", "BTECH")
         os.makedirs(pick)
@@ -213,6 +227,15 @@ def main():
         check(files.get("data") == "DOS 1.03", "--status: the version")
         check(tree(work) == before, "break: --status wrote nothing after a setup either")
         check(took < 2.0, "--status found the game in %.2f s" % took)
+        s = served_setup.ask(a.program, ["--copies"], served_setup.asking_env(base, user))
+        mine = [m for m in s.messages[:-1] if m and same(m.get("copy", ""), install)]
+        check(s.clean() and s.code == 0 and len(mine) == 1 and mine[0].get("in_use") is True and
+              mine[0].get("data") == "DOS 1.03" and mine[0].get("missing") == [],
+              "served: --copies lists the install, in use, DOS 1.03, nothing missing (%s)" % s)
+        # The pick is in the work folder beside the program, where the search looks (drop-in): listed, not in use.
+        check([same(m.get("copy", ""), install) for m in s.messages[:-1] if m and m.get("in_use")] == [True],
+              "served: --copies marks the install alone in use (%s)" % [m.get("copy") for m in s.messages if m])
+        check(tree(work) == before, "break: --copies wrote nothing after a setup either")
 
         # A start with no game folder named plays from the remembered one.
         shot = os.path.join(work, "start.bmp")
@@ -232,6 +255,11 @@ def main():
         st = json.loads(p.stdout.strip().splitlines()[-1]) if p.stdout.strip() else {}
         check(st.get("files", {}).get("state") == "incomplete" and "DOS 1.03" in st.get("note", ""),
               "another version: incomplete, the note names DOS 1.03")
+        s = served_setup.ask(a.program, ["--copies"], served_setup.asking_env(base, other))
+        theirs = [m for m in s.messages[:-1] if m and same(m.get("copy", ""), os.path.join(other, "install"))]
+        check(s.clean() and len(theirs) == 1 and theirs[0].get("in_use") is True and "data" not in theirs[0] and
+              any("DOS 1.03" in w for w in theirs[0].get("missing", [])),
+              "served: --copies lists another version's copy, in use, what it lacks naming DOS 1.03 (%s)" % s)
 
         # The same copy through the setup screen (hidden): found, offered, installed; and into a picked folder.
         user = os.path.join(work, "user-c")

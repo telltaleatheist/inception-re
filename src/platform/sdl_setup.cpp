@@ -80,8 +80,9 @@ rekit::sdl::Theme theme() {
     return t;
 }
 
-// This game's recipe for the kit's setup, on its screen or on the launcher's.
-rekit::sdl::Game kit_game(const std::string& user) {
+// This game's recipe for the kit's setup, on its screen or on the launcher's. `known`: the folders a
+// start knows besides the player's own (the remembered one, the build's), for --copies.
+rekit::sdl::Game kit_game(const std::string& user, const std::vector<std::string>& known = {}) {
     rekit::sdl::Game g;
     g.id = setup::kId, g.title = setup::kTitle, g.folder_key = setup::kFolderKey, g.folder_name = setup::kFolderName;
     g.program = "BTECH.EXE";
@@ -130,6 +131,15 @@ rekit::sdl::Game kit_game(const std::string& user) {
                     : r.cancelled ? "Stopped. Nothing was changed."
                                   : "Nothing was copied: " + r.error;
         return o;
+    };
+    g.copies = [user, pdir, known](const rekit::sdl::SetupOptions& o) {
+        std::vector<rekit::sdl::CopyRow> rows;
+        for (const setup::Copy& c : setup::copies(o.in_use, known, user, pdir)) {
+            rekit::sdl::CopyRow row;
+            row.path = c.path, row.data = c.data, row.in_use = c.in_use, row.missing = c.missing;
+            rows.push_back(std::move(row));
+        }
+        return rows;
     };
     return g;
 }
@@ -191,7 +201,8 @@ std::string hook_without_folder() {
 std::string wrong_ask(const std::vector<std::string>& args) {
     const std::string& ask = args[0];
     const std::size_t n = args.size();
-    if (ask == "--describe" || ask == "--search") return n == 1 ? "" : "--setup " + ask + " takes nothing after it.";
+    if (ask == "--describe" || ask == "--search" || ask == "--copies")
+        return n == 1 ? "" : "--setup " + ask + " takes nothing after it.";
     if (n < 2 || args[1].empty()) return "--setup " + ask + " needs the pick.";
     if (ask == "--look") return n == 2 ? "" : "--setup --look takes the pick and nothing after it.";
     if (n == 2 || (n == 4 && args[2] == "--folder" && !args[3].empty())) return "";
@@ -295,10 +306,10 @@ std::string settled_user_folder() {
 }
 
 bool served_ask(const std::string& arg) {
-    return arg == "--describe" || arg == "--search" || arg == "--look" || arg == "--install";
+    return arg == "--describe" || arg == "--search" || arg == "--copies" || arg == "--look" || arg == "--install";
 }
 
-int serve_game_setup(const std::vector<std::string>& args, const std::string& data_dir) {
+int serve_game_setup(const std::vector<std::string>& args, const std::string& data_dir, const std::string& builtin) {
 #if !defined(_WIN32)
     std::signal(SIGPIPE, SIG_IGN);  // a launcher that has gone: the work goes on
 #endif
@@ -312,7 +323,13 @@ int serve_game_setup(const std::vector<std::string>& args, const std::string& da
             return refuse_ask(std::string("There is no folder for the player's files (") + SDL_GetError() + ").");
         rekit::sdl::SetupOptions o;
         o.hidden = true, o.user_folder = user, o.default_out = setup::default_install(user), o.program_dir = program_dir();
-        const rekit::sdl::SetupResult r = rekit::sdl::serve_setup(kit_game(user), o, args);
+        const std::vector<std::string> known{setup::remembered_folder(user), builtin};
+        if (args[0] == "--copies") {  // the copy in use, as a start would take it (never the search's)
+            bool searched = false;
+            o.in_use = setup::find_install(known, user, program_dir(), &searched);
+            if (searched) o.in_use.clear();
+        }
+        const rekit::sdl::SetupResult r = rekit::sdl::serve_setup(kit_game(user, known), o, args);
         if (!r.install_dir.empty() && setup::remembered_folder(user) != r.install_dir &&
             !setup::remember_folder(user, r.install_dir))
             std::fprintf(stderr, "setup: couldn't save the game folder in %s\n", setup::kSettingsFile);
