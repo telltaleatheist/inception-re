@@ -182,6 +182,19 @@ class CheckPaths(unittest.TestCase):
             write(Path(d) / "lib.so", "built in /Users/someone/src")
             self.assertEqual(self.check(d).returncode, 1)
 
+    def test_the_name_passes_only_in_a_public_github_address(self):
+        name = "someonemadeup"
+        for text, code in [("https://github.com/someonemadeup/x/releases", 0),
+                           ("https://api.github.com/repos/someonemadeup/x", 0),
+                           ("https://raw.githubusercontent.com/someonemadeup/x/main/catalog.json", 0),
+                           ("https://raw.githubusercontent.com/someosomeonemadeup/x", 0),
+                           ("https://example.com/someonemadeup/x", 1),
+                           ("built by someonemadeup", 1)]:
+            with tempfile.TemporaryDirectory() as d:
+                write(Path(d) / "chi.exe", text)
+                result = subprocess.run([sys.executable, "-I", str(CHECK_PATHS), d, name], capture_output=True, text=True)
+                self.assertEqual(result.returncode, code, text)
+
     def test_a_game_file_fails_whatever_its_case(self):
         for name in ["BTECH.EXE", "map1.mtp", "data/CITADEL.BLD", "DEMOFILE"]:
             with tempfile.TemporaryDirectory() as d:
