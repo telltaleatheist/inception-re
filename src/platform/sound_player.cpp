@@ -85,4 +85,18 @@ void SoundPlayer::stop_music() {
     if (music_) SDL_ClearAudioStream(music_);
 }
 
+void SoundPlayer::pause() {
+    for (SDL_AudioStream* s : {stream_, music_})
+        if (s) SDL_PauseAudioStreamDevice(s);
+    for (SDL_AudioStream* voice : voices_)
+        if (voice) SDL_PauseAudioStreamDevice(voice);
+}
+
+void SoundPlayer::resume() {
+    for (SDL_AudioStream* s : {stream_, music_})
+        if (s) SDL_ResumeAudioStreamDevice(s);
+    for (SDL_AudioStream* voice : voices_)
+        if (voice) SDL_ResumeAudioStreamDevice(voice);
+}
+
 }  // namespace chr::platform

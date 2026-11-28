@@ -202,6 +202,7 @@ endif()
 if(SDL3_FOUND)
   add_library(chrplatform STATIC
     src/platform/map_layer.cpp
+    src/platform/menu_layer.cpp
     src/platform/original_assets.cpp
     src/platform/overhead_layer.cpp
     src/platform/panel_layer.cpp
@@ -229,7 +230,7 @@ if(SDL3_FOUND)
     CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
 
   # What the platform draws, with SDL's software renderer on a surface: no window.
-  add_executable(rendertests tests/test_main.cpp tests/test_renderer.cpp tests/test_start.cpp)
+  add_executable(rendertests tests/test_main.cpp tests/test_renderer.cpp tests/test_start.cpp tests/test_menu_layer.cpp)
   target_link_libraries(rendertests PRIVATE chrplatform)
   target_compile_definitions(rendertests PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}" CHR_TEST_SCRATCH="${CMAKE_BINARY_DIR}/test-scratch"
     CHR_INTERFACE_TEXT="${CMAKE_SOURCE_DIR}/data/text/interface.json")
@@ -268,7 +269,10 @@ if(SDL3_FOUND)
             "$<TARGET_FILE_DIR:chr>/data/text/interface.json"
     # Our own font, for a copy that has none (docs/formats/font.md).
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/font/font.txt"
-            "$<TARGET_FILE_DIR:chr>/data/font/font.txt")
+            "$<TARGET_FILE_DIR:chr>/data/font/font.txt"
+    # The setup kit's settings for this game (its report page and catalogs), where the kit looks: beside the program.
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/setup-kit-settings.json"
+            "$<TARGET_FILE_DIR:chr>/setup-kit-settings.json")
   target_compile_definitions(chr PRIVATE CHR_DEFAULT_GAME_DIR="${CHR_GAME_DIR}" CHR_VERSION_TAG="${CHR_VERSION_TAG}")
   # The program itself, walking known routes on map 1 with no window (SDL's
   # dummy video driver). They need the game files.
@@ -366,4 +370,15 @@ if(SDL3_FOUND)
   endif()
 else()
   message(STATUS "SDL3 not found: chr is not built (macOS: brew install sdl3)")
+endif()
+
+# Every test runs with the setup kit's test switch (RE_KIT_TEST=1: the in-game
+# menu's keys and hint off, no network), and on macOS as a silent background
+# app (SDL reads both from the environment).
+get_property(chr_tests DIRECTORY PROPERTY TESTS)
+if(chr_tests)
+  set_property(TEST ${chr_tests} APPEND PROPERTY ENVIRONMENT "RE_KIT_TEST=1")
+  if(APPLE)
+    set_property(TEST ${chr_tests} APPEND PROPERTY ENVIRONMENT "SDL_MAC_BACKGROUND_APP=1" "SDL_AUDIO_DRIVER=dummy")
+  endif()
 endif()

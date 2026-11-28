@@ -23,8 +23,14 @@ steps.
 - `data/text/interface.json` (our interface texts, docs/text.md) and
   `data/font/font.txt` (our own font, docs/formats/font.md), beside the
   program or in the Mac app's `Contents/Resources`.
+- `setup-kit-settings.json` (the setup kit's settings for this game: its
+  report page and the launcher's catalogs) beside the program, and
+  `rebuild-files.sha256`, the record of the package's own files that the
+  in-game menu's CHECK MY FILES reads, written last (in the Mac app it covers
+  `Contents/Resources`, written before the signature).
 - `LICENSE`, a `README.txt`, and `licenses/`: SDL's, re-setup-kit's,
-  stb's, miniz's, libarchive's, zlib's and xz's.
+  stb's, miniz's, Monocypher's, the kit's built-in fonts' (OFL),
+  libarchive's, zlib's and xz's.
 
 No file of the original game is ever packaged: no program, data file, save or
 imported text. `tools/package/check_paths.py` refuses a package holding any

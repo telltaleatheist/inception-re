@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -82,8 +83,9 @@ public:
     void clear_clip();
     // The frame drawn so far, at its own size, or null. The caller frees it.
     SDL_Surface* read_frame();
-    // Scales the frame to the window and shows it.
-    void end_frame();
+    // Scales the frame to the window and shows it; `over` (if any) draws on the window's renderer at its
+    // output size first, over the picture (the in-game menu, platform/menu_layer.h).
+    void end_frame(const std::function<void(SDL_Renderer*)>& over = nullptr);
     // The size `id` covers on the 320x200 screen, or nothing if no provider has it.
     std::optional<std::pair<int, int>> logical_size(const AssetId& id);
 

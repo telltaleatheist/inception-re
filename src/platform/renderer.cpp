@@ -220,7 +220,7 @@ void Renderer::draw_rgba(int x, int y, int width, int height, const std::vector<
 
 SDL_Surface* Renderer::read_frame() { return SDL_RenderReadPixels(sdl_, nullptr); }
 
-void Renderer::end_frame() {
+void Renderer::end_frame(const std::function<void(SDL_Renderer*)>& over) {
     SDL_SetRenderTarget(sdl_, nullptr);
     SDL_SetRenderDrawColor(sdl_, 0, 0, 0, 255);
     SDL_RenderClear(sdl_);
@@ -229,6 +229,7 @@ void Renderer::end_frame() {
     const SDL_Rect picture = picture_rect(width, height);
     const SDL_FRect dst{float(picture.x), float(picture.y), float(picture.w), float(picture.h)};
     if (frame_ && picture.w > 0 && picture.h > 0) SDL_RenderTexture(sdl_, frame_, nullptr, &dst);
+    if (over) over(sdl_);
     SDL_RenderPresent(sdl_);
 }
 

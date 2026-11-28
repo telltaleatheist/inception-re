@@ -3,7 +3,7 @@
 // new game's town, walking with the arrow keys and Home/PgUp/End/PgDn. With
 // --map N it skips the start-up and begins on map N.
 //
-//   chr --status | --setup
+//   chr --status | --setup | --setup --then-play [GAME_DIR]
 //   chr [--game-dir DIR] [--data-dir DIR] [--import] [--map N] [--script KEYS]
 //       [--text FILE] [--screenshot FILE.bmp] [--state] [--show-quiz]
 //
@@ -29,6 +29,9 @@
 // player's own install, else the setup screen, which finds or asks for the
 // player's copy and copies it into the data folder. --status prints what is
 // found as one JSON line and writes nothing; --setup only sets the game up.
+// --setup --then-play is the in-game menu's CHANGE (platform/menu_layer.h):
+// the setup, then the game, with the folder it had (GAME_DIR, else the
+// remembered one) when the setup is cancelled or fails.
 
 #include <algorithm>
 #include <cstdio>
@@ -59,6 +62,7 @@
 #include "game/text_provider.h"
 #include "game/town.h"
 #include "platform/map_layer.h"
+#include "platform/menu_layer.h"
 #include "platform/original_assets.h"
 #include "platform/overhead_layer.h"
 #include "platform/pace.h"
@@ -93,6 +97,9 @@ struct Options {
     bool help = false;       // --help: the usage on stdout
     bool status = false;     // --status: the launcher contract's answer (platform/sdl_setup.h)
     bool setup = false;      // --setup: the setup screen only
+    bool then_play = false;  // --setup --then-play: the setup screen, then the game
+    std::filesystem::path former_game_dir;  // --then-play's folder: played when the setup isn't done
+    std::vector<std::string> folders_given;  // --data-dir and --save-dir as given: passed on to CHANGE's setup
     std::vector<std::string> served;  // what follows --setup when the launcher asks (platform/sdl_setup.h)
     bool state = false;      // print the game state after the script
     bool fight_state = false;  // with it, the fight's tables
@@ -121,7 +128,7 @@ void usage(std::FILE* out, const char* argv0) {
     std::string program = std::filesystem::path(argv0 ? argv0 : "chr").stem().string();
     if (program.empty() || program == "AppRun") program = "chi";
     const char* name = program.c_str();
-    std::fprintf(out, "usage: %s --status | --setup\n"
+    std::fprintf(out, "usage: %s --status | --setup | --setup --then-play [GAME_DIR]\n"
                  "       %s --setup --describe | --search | --copies | --look PICK | --install PICK [--folder DIR]\n"
                  "       %s [--game-dir DIR] [--data-dir DIR] [--save-dir DIR] [--import] [--map N] [--script KEYS]\n"
                  "           [--text FILE] [--screenshot FILE.bmp] [--event N] [--events] [--walks] [--walk-to X,Y] [--step-hold N] [--loop-ms N] [--loop-keys KEYS] [--loop-resets] [--keep-places] [--demo-to N]\n"
@@ -149,12 +156,18 @@ bool parse(int argc, char** argv, Options& options) {
             }
         } else if (arg == "--data-dir" && i + 1 < argc) {
             options.data_dir = argv[++i];
+            options.folders_given.insert(options.folders_given.end(), {arg, argv[i]});
         } else if (arg == "--save-dir" && i + 1 < argc) {
             options.save_dir = argv[++i];
+            options.folders_given.insert(options.folders_given.end(), {arg, argv[i]});
         } else if (arg == "--help" || arg == "-h") {
             options.help = true;
         } else if (arg == "--status") {
             options.status = true;
+        } else if (arg == "--setup" && i + 1 < argc && std::string_view(argv[i + 1]) == "--then-play") {
+            options.then_play = true;
+            ++i;
+            if (i + 1 < argc && std::string_view(argv[i + 1]).rfind("--", 0) != 0) options.former_game_dir = argv[++i];
         } else if (arg == "--setup") {
             options.setup = true;
             if (i + 1 < argc && chr::platform::served_ask(argv[i + 1]))
@@ -397,7 +410,7 @@ bool no_player(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string_view arg = argv[i];
         if (arg == "--script" || arg == "--screenshot" || arg == "--status" || arg == "--import" ||
-            (arg == "--setup" && i + 1 < argc))
+            (arg == "--setup" && i + 1 < argc && std::string_view(argv[i + 1]) != "--then-play"))
             return true;
     }
     return chr::platform::setup_unattended();
@@ -423,9 +436,8 @@ int begin(int argc, char** argv, Options& options) {
     // So does an ask about the setup, on stdout alone: the launcher reads it through a pipe.
     if (!options.served.empty()) return chr::platform::serve_game_setup(options.served, options.data_dir.string(), CHR_DEFAULT_GAME_DIR);
 
-    if (options.setup || options.game_dir.empty()) {
-        if (!chr::platform::setup_hooks_allowed(options.setup)) return options.setup ? 2 : 1;
-    }
+    const bool resolve = options.setup || options.then_play || options.game_dir.empty();
+    if (resolve && !chr::platform::setup_hooks_allowed(options.setup)) return options.setup ? 2 : 1;
     if (options.data_dir.empty()) {
         if (const char* env = std::getenv("CHR_DATA_DIR"); env && *env) {
             options.data_dir = env;
@@ -438,8 +450,9 @@ int begin(int argc, char** argv, Options& options) {
         }
     }
     // Started with nothing on the command line (a shortcut, a double-click,
-    // the launcher): no console, so the log goes beside the saves.
-    if (argc == 1) {
+    // the launcher) or by the menu's CHANGE: no console, so the log goes
+    // beside the saves.
+    if (argc == 1 || options.then_play) {
         const auto log = options.data_dir / "chi.log";
         // Both append, so neither writes over what the other wrote.
         if (std::freopen(log.string().c_str(), "w", stdout) && std::freopen(log.string().c_str(), "a", stdout) &&
@@ -448,11 +461,24 @@ int begin(int argc, char** argv, Options& options) {
     }
     if (options.save_dir.empty())
         chr::platform::tell_left_saves(options.data_dir.string(), chr::setup::old_page(), no_player(argc, argv));
-    if (options.setup || options.game_dir.empty()) {
+    if (resolve) {
+        using Mode = chr::platform::SetupMode;
         std::string folder;
-        const int ready = chr::platform::resolve_game(options.setup, scripted, CHR_DEFAULT_GAME_DIR,
-                                                      options.data_dir.string(), &folder);
+        const Mode mode = options.setup ? Mode::setup_only : options.then_play ? Mode::then_play : Mode::play;
+        int ready = chr::platform::resolve_game(mode, scripted, CHR_DEFAULT_GAME_DIR, options.data_dir.string(), &folder);
         if (options.setup) return ready;
+        if (options.then_play && ready != 0) {
+            // Not set up again: the game goes on with the files it had.
+            std::printf("setup: %s; the game starts with the files it had\n", ready == 1 ? "cancelled" : "failed");
+            if (!options.former_game_dir.empty()) {
+                folder = options.former_game_dir.string(), ready = 0;
+                std::printf("setup: game files %s\n", folder.c_str());
+            } else {
+                ready = chr::platform::resolve_game(Mode::play, scripted, CHR_DEFAULT_GAME_DIR, options.data_dir.string(),
+                                                    &folder);
+            }
+            std::fflush(stdout);
+        }
         if (ready != 0) return ready == 1 ? 0 : 1;
         options.game_dir = folder;
     }
@@ -883,6 +909,38 @@ int main(int argc, char** argv) {
                 tried([&] { sitting.key(k); });
             }
         };
+        // An event that is the game's (the in-game menu hands them on).
+        const auto handle = [&](const SDL_Event& event) {
+            renderer.handle(event);
+            if (event.type == SDL_EVENT_QUIT) running = false;
+            if (event.type != SDL_EVENT_KEY_DOWN) return;
+            if (event.key.key == SDLK_ESCAPE) running = false;
+            if (const int k = key_code(event.key.key); k != 0) pressed(k);
+        };
+        // The kit's setup menu over the game (platform/menu_layer.h), for a run a player plays: its time and
+        // its sound stop while it is open.
+        std::unique_ptr<chr::platform::MenuLayer> menu;
+        if (!headless && options.script.empty() && options.loop_keys.empty()) {
+            std::error_code ec;
+            const auto game = std::filesystem::absolute(options.game_dir, ec);
+            const std::string game_dir = ec ? options.game_dir.string() : game.string();
+            const auto saves = options.save_dir.empty() ? options.data_dir : options.save_dir;
+            const std::string log = argc == 1 || options.then_play ? (options.data_dir / "chi.log").string() : "";
+            chr::platform::MenuLayer::Game hooks;
+            hooks.deliver = handle;
+            hooks.pause = [&] {
+                if (sound_player) sound_player->pause();
+            };
+            hooks.resume = [&] {
+                if (sound_player) sound_player->resume();
+            };
+            hooks.quit = [&] { running = false; };
+            hooks.setup_args = {"--setup", "--then-play", game_dir};
+            hooks.setup_args.insert(hooks.setup_args.end(), options.folders_given.begin(), options.folders_given.end());
+            menu = std::make_unique<chr::platform::MenuLayer>(
+                window, chr::platform::menu_hooks(game_dir, options.data_dir.string(), saves.string(), log),
+                chr::platform::menu_theme(), std::move(hooks));
+        }
         std::deque<chr::game::ScriptItem> loop_keys;
         if (!options.loop_keys.empty()) loop_keys = chr::game::parse_key_script(options.loop_keys);
         int frames = 0;
@@ -893,11 +951,8 @@ int main(int argc, char** argv) {
             const Doing before = doing();
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
-                renderer.handle(event);
-                if (event.type == SDL_EVENT_QUIT) running = false;
-                if (event.type != SDL_EVENT_KEY_DOWN) continue;
-                if (event.key.key == SDLK_ESCAPE) running = false;
-                if (const int k = key_code(event.key.key); k != 0) pressed(k);
+                if (menu) menu->event(event);
+                else handle(event);
             }
             if (options.loop_resets && frames % kLoopKeyFrames == 1) {
                 SDL_Event reset{};
@@ -913,14 +968,20 @@ int main(int argc, char** argv) {
                 running = false;
             }
             const Uint64 now = SDL_GetTicksNS();
+            // The menu open: the game's time stands still, and none of it is caught up after.
+            const bool paused = menu && menu->paused();
             // What a key started has had no time yet.
-            if (doing() == before) pace.add(double(now - last) / 1e6);
-            else pace.restart();
+            if (paused) {
+            } else if (doing() == before) {
+                pace.add(double(now - last) / 1e6);
+            } else {
+                pace.restart();
+            }
             last = now;
-            go_on();
+            if (!paused) go_on();
             // The title's tune plays while the title waits for its key
             // (1000:476d); the key cuts it off.
-            if (sound_player) {
+            if (sound_player && !paused) {
                 const bool tune = town && town->title_tune_playing();
                 if (tune && !music_on) sound_player->play_music(chr::game::music_segments(town->title_tune()));
                 if (!tune && music_on) sound_player->stop_music();
@@ -993,7 +1054,8 @@ int main(int argc, char** argv) {
                 }
                 running = false;
             }
-            renderer.end_frame();
+            if (menu) renderer.end_frame([&](SDL_Renderer* r) { menu->draw_over(r); });
+            else renderer.end_frame();
             if (running) SDL_Delay(16);
         }
         if (!options.loop_keys.empty() && town) {

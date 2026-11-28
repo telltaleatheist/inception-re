@@ -55,6 +55,9 @@ public:
     // title.wav if it has one, else the segments. stop_music() cuts it off.
     void play_music(std::span<const game::SoundSegment> segments);
     void stop_music();
+    // Everything stops where it is (the in-game menu is open) and goes on from there.
+    void pause();
+    void resume();
 
 private:
     SDL_AudioStream* open();

@@ -9,6 +9,7 @@
 
 #include "setup/old_names.h"
 
+#include <rekit/sdl/game_menu.h>
 #include <rekit/sdl/setup_screen.h>
 
 namespace chr::platform {
@@ -68,15 +69,31 @@ std::string settled_user_folder();
 // system, not HOME). To be asked before settled_user_folder, which makes the folder.
 bool setup_hooks_allowed(bool setup_only);
 
+// How a start comes to its game folder.
+enum class SetupMode {
+    play,        // a start: the setup only when no copy is found
+    setup_only,  // --setup: the setup whatever is found, nothing played (the launcher's)
+    then_play,   // --setup --then-play: the setup whatever is found, then the game (the menu's CHANGE)
+};
+
 // The game folder a start plays from, into `folder`: the one remembered in
 // `user`'s settings.ini or `builtin` (a build's own default, may be "") while
 // still the game, the player's own install, else the setup (a find offered,
 // or the player picks a copy, its folder or the archive it came in, which is
-// copied into the player's folder) and remembered in settings.ini.
-// `setup_only` (--setup): the screen whatever is found. Returns the launcher
-// contract's exit: 0 ready, 1 the player cancelled, 2 failed (with --setup
-// the reason goes to stdout as {"error": ...}).
-int resolve_game(bool setup_only, bool scripted, const std::string& builtin, const std::string& user,
+// copied into the player's folder) and remembered in settings.ini. With
+// `mode` setup_only or then_play the screen whatever is found. Returns the
+// launcher contract's exit: 0 ready, 1 the player cancelled, 2 failed (with
+// --setup the reason goes to stdout as {"error": ...}).
+int resolve_game(SetupMode mode, bool scripted, const std::string& builtin, const std::string& user,
                  std::string* folder);
+
+// What the in-game menu (platform/menu_layer.h) says and does for this game, playing `game` with the
+// player's folder `user` (the data folder: --data-dir, CHR_DATA_DIR, else the settled one), the saves in
+// `saves` and the log in `log` ("" none): its words, the file check, the paths and UPDATES. The host
+// fills in the window, the drawing, the events, the pause and the ways out.
+rekit::sdl::MenuHooks menu_hooks(const std::string& game, const std::string& user, const std::string& saves,
+                                 const std::string& log);
+// The menu's look: the setup screen's.
+rekit::sdl::Theme menu_theme();
 
 }  // namespace chr::platform

@@ -21,7 +21,7 @@ def asking_env(env, user):
     """`env` with the player's folder `user`. The video driver doesn't exist, so a run that tried to
     open a window would fail, and say so."""
     out = {k: v for k, v in env.items() if not k.startswith(("REKIT_SETUP_", "CHR_SETUP_")) and k != "CHR_GAME_DIR"}
-    out.update(CHR_HIDDEN="1", CHR_DATA_DIR=str(user), SDL_VIDEO_DRIVER="none-of-them", SDL_AUDIO_DRIVER="dummy")
+    out.update(CHR_HIDDEN="1", RE_KIT_TEST="1", CHR_DATA_DIR=str(user), SDL_VIDEO_DRIVER="none-of-them", SDL_AUDIO_DRIVER="dummy")
     return out
 
 

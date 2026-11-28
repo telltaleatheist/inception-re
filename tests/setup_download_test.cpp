@@ -1,6 +1,6 @@
 // The original files from the launcher's catalog (the kit's Game::original_catalogs): the recipe names the
-// catalog, its key, the game's entry (chi) and the build's release tag, and a fresh setup that finds no copy offers
-// the download and gets it. The catalog here is a local one, signed by the kit's test key, its source a zip built in
+// catalog, its key, the game's entry (chi) and the build's release tag, and a fresh setup that finds no copy gets
+// the download at once. The catalog here is a local one, signed by the kit's test key, its source a zip built in
 // the work folder from the player's files (CHR_GAME_DIR): file:// stands in for https:// (REKIT_SETUP_ALLOW_FILE),
 // and nothing is fetched from the network. Without the game folder the zip holds a stand-in, offered and fetched
 // but not installed. Prints names and counts only; nothing of the game is kept.
@@ -96,13 +96,15 @@ bool make_zip(const fs::path& out, const std::vector<std::pair<std::string, std:
     return true;
 }
 
-// A file:// address for `p`, percent-encoded: this checkout's own path has a space in it.
+// A file:/// address for `p` ("file:///E:/..." on Windows, as the kit takes one in a test run), percent-encoded:
+// this checkout's own path has a space in it.
 std::string file_url(const fs::path& p) {
     static const char* hex = "0123456789ABCDEF";
-    std::string url = "file://";
-    for (const char ch : p.generic_string()) {
+    const std::string path = p.generic_string();
+    std::string url = path.rfind('/', 0) == 0 ? "file://" : "file:///";
+    for (const char ch : path) {
         const auto c = static_cast<unsigned char>(ch);
-        if (std::isalnum(c) || std::strchr("/-._~", c)) {
+        if (std::isalnum(c) || std::strchr("/-._~:", c)) {
             url += ch;
         } else {
             url += '%';
@@ -125,7 +127,8 @@ bool starts(const std::vector<std::string>& log, const std::string& head) {
     return false;
 }
 
-// A fresh setup that finds no copy: the download offered, pressed, fetched, and installed when it is the game.
+// A fresh setup that finds no copy: the download started at once (the small window), fetched, and installed when it
+// is the game.
 void download(const fs::path& work, const std::string& game) {
     std::vector<std::pair<std::string, std::string>> files;
     if (!game.empty()) {
@@ -171,9 +174,10 @@ void download(const fs::path& work, const std::string& game) {
     const rekit::sdl::SetupResult r = rekit::sdl::run_setup(g, rekit::sdl::Theme{}, o);
 
     check(has(log, "start: no copy found on this computer"), "a fresh setup searched this computer first");
-    check(has(log, "screen find: DOWNLOAD THE GAME FILES, PICK MY OWN COPY, QUIT"), "no copy found: the download offered");
+    check(has(log, "window small") && has(log, "screen asking: USE MY OWN COPY INSTEAD, CANCEL"),
+          "no copy found: the download asked for at once, in the small window, the player's own copy offered instead");
     check(has(log, "work: GETTING THE ORIGINAL GAME FILES") && has(log, "original: downloaded Inception_DOS.zip"),
-          "the download pressed and fetched from the catalog's source");
+          "the download fetched from the catalog's source");
     check(pickers == 0, "no picker opened");
     if (!game.empty()) {
         check(r.exit == rekit::kSetupReady && !rekit::any_case_path(r.install_dir, "BTECH.EXE").empty(),

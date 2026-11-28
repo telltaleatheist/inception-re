@@ -5,6 +5,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -19,6 +20,7 @@ import build_package  # noqa: E402
 import sums  # noqa: E402
 
 CHECK_PATHS = Path(__file__).resolve().parent / "package/check_paths.py"
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def write(path, text="fixture"):
@@ -40,13 +42,19 @@ class Names(unittest.TestCase):
 class Staging(unittest.TestCase):
     @staticmethod
     def fixture(_, root):
-        for name in ["LICENSE", *build_package.OUR_DATA, "sdl/LICENSE.txt", "extern/re-setup-kit/LICENSE",
-                     "extern/re-setup-kit/third_party/stb/LICENSE", "extern/re-setup-kit/third_party/miniz/LICENSE"]:
+        for name in ["LICENSE", *build_package.OUR_DATA, "data/" + build_package.KIT_SETTINGS, "sdl/LICENSE.txt",
+                     "extern/re-setup-kit/LICENSE", "extern/re-setup-kit/third_party/stb/LICENSE",
+                     "extern/re-setup-kit/third_party/miniz/LICENSE", "extern/re-setup-kit/third_party/monocypher/LICENCE.md",
+                     "extern/re-setup-kit/assets/OFL.txt"]:
             write(root / name)
+        # The kit's own tool writes the files record.
+        (root / build_package.FILES_MANIFEST).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / build_package.FILES_MANIFEST, root / build_package.FILES_MANIFEST)
         prefix = root / "deps/prefix"
         for name in build_package.ARCHIVE_LICENCES:
             write(prefix / "share/licenses" / name, "fixture licence")
-        write(root / "build/CMakeCache.txt", f"REKIT_LIBARCHIVE_LIB:FILEPATH={prefix / 'lib/libarchive.a'}\n")
+        write(root / "build/CMakeCache.txt", f"REKIT_LIBARCHIVE_LIB:FILEPATH={prefix / 'lib/libarchive.a'}\n"
+                                              f"REKIT_NOTICE_FILES:INTERNAL={root / 'extern/re-setup-kit/assets/OFL.txt'}\n")
 
     def test_the_stage_holds_our_data_the_read_me_and_every_licence(self):
         with tempfile.TemporaryDirectory() as d:
@@ -58,8 +66,10 @@ class Staging(unittest.TestCase):
             for name in build_package.OUR_DATA:
                 self.assertTrue((out / name).is_file())
             self.assertTrue((out / "LICENSE").is_file() and (out / "README.txt").is_file())
-            for name in ["SDL-LICENSE.txt", "re-setup-kit-LICENSE", "stb-LICENSE", "miniz-LICENSE",
-                         *build_package.ARCHIVE_LICENCES.values()]:
+            self.assertTrue((out / build_package.KIT_SETTINGS).is_file())  # the kit's settings beside the program
+            self.assertIn("Shift+Alt+F1", (out / "README.txt").read_text())
+            for name in ["SDL-LICENSE.txt", "re-setup-kit-LICENSE", "stb-LICENSE", "miniz-LICENSE", "monocypher-LICENCE.md",
+                         "re-setup-kit-OFL.txt", *build_package.ARCHIVE_LICENCES.values()]:
                 self.assertTrue((out / "licenses" / name).is_file(), name)
 
     def test_a_missing_kit_licence_is_refused(self):
@@ -75,7 +85,8 @@ class Staging(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             Staging.fixture(None, root)
-            write(root / "build/CMakeCache.txt", "REKIT_LIBARCHIVE_LIB:FILEPATH=/opt/x/lib/libarchive.dylib\n")
+            write(root / "build/CMakeCache.txt", "REKIT_LIBARCHIVE_LIB:FILEPATH=/opt/x/lib/libarchive.dylib\n"
+                                                  f"REKIT_NOTICE_FILES:INTERNAL={root / 'extern/re-setup-kit/assets/OFL.txt'}\n")
             (root / "stage").mkdir()
             with self.assertRaisesRegex(RuntimeError, "static libarchive"):
                 build_package.stage_common(root, root / "build", root / "sdl", root / "stage")
@@ -114,6 +125,11 @@ class LinuxLayout(unittest.TestCase):
             for name in ["chi", "libSDL3.so.0", *build_package.OUR_DATA, "README.txt", "licenses/SDL-LICENSE.txt"]:
                 self.assertIn(top + name, names)
             self.assertNotIn(top + "chr", names)
+            # The record of the package's own files, beside the program, naming the kit's settings too.
+            record = tarfile.open(archive).extractfile(top + build_package.FILES_RECORD).read().decode()
+            self.assertIn("  chi\n", record)
+            self.assertIn("  " + build_package.KIT_SETTINGS + "\n", record)
+            self.assertNotIn(build_package.FILES_RECORD, record)
             unpacked = root / "dist/smoke/CHI-Rebuild-1-test-linux-x86_64/libSDL3.so.0"
             self.assertFalse(unpacked.is_symlink())
             self.assertEqual(unpacked.read_text(), "fixture library")
@@ -123,6 +139,23 @@ class LinuxLayout(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(RuntimeError, "needs an icon"):
                 self.build(Path(d), installer=True)
+
+
+class FilesRecord(unittest.TestCase):
+    def test_the_files_record_is_checked(self):
+        with tempfile.TemporaryDirectory() as d:
+            root, folder = Path(d), Path(d) / "pkg"
+            Staging.fixture(None, root)
+            write(folder / "chi", "program")
+            write(folder / "data/text/interface.json", "{}")
+            build_package.write_files_record(root, folder)
+            build_package.check_files_record(folder)
+            write(folder / "data/text/interface.json", "changed")
+            with self.assertRaisesRegex(RuntimeError, "doesn't match"):
+                build_package.check_files_record(folder)
+            (folder / build_package.FILES_RECORD).unlink()
+            with self.assertRaisesRegex(RuntimeError, "No "):
+                build_package.check_files_record(folder)
 
 
 class Marker(unittest.TestCase):

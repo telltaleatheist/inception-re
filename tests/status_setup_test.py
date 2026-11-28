@@ -47,6 +47,27 @@ def run(program, args, env, timeout=120):
     return p, time.monotonic() - t
 
 
+def then_play(program, args, env, timeout=60):
+    """--setup --then-play (the in-game menu's CHANGE): it plays once the setup is done, so it is stopped once its log
+    (chi.log in CHR_DATA_DIR) names the game files it plays from, or it has ended. The log's lines."""
+    log = os.path.join(env["CHR_DATA_DIR"], "chi.log")
+    if os.path.exists(log):
+        os.remove(log)
+    p = subprocess.Popen([program, "--setup", "--then-play"] + args, env=env, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        done = p.poll() is not None
+        lines = open(log, errors="replace").read().splitlines() if os.path.exists(log) else []
+        if done or any(l.startswith("setup: game files ") for l in lines):
+            break
+        time.sleep(0.2)
+    if p.poll() is None:
+        p.kill()
+    p.wait()
+    return open(log, errors="replace").read().splitlines() if os.path.exists(log) else []
+
+
 def screen_pick(path, frames="200"):
     """The setup screen driven to a pick of `path`. FIND searches first, and what a search finds near
     the program is offered before any picker opens, so the find's plate (pick other files) is pressed
@@ -243,6 +264,22 @@ def main():
         check(p.returncode == 0 and any(l.startswith("setup: game files ") and same(l[len("setup: game files "):], install)
                                         for l in p.stdout.splitlines()),
               "a start plays from the remembered install (%d)" % p.returncode)
+
+        # The in-game menu's CHANGE: --setup --then-play, the folder in use after it. Set up again: the game plays
+        # the new files; cancelled or failed: the ones it had (that folder, else the remembered one).
+        had = "setup: game files " + install
+        out = then_play(a.program, [install], env)
+        check("setup: cancelled; the game starts with the files it had" in out and had in out,
+              "then-play, cancelled (no player): the game starts with the files it had")
+        out = then_play(a.program, [install], dict(env, CHR_SETUP_PICK=notgame))
+        check("setup: failed; the game starts with the files it had" in out and had in out,
+              "then-play, a pick that isn't the game: the game starts with the files it had")
+        out = then_play(a.program, [], env)
+        check("setup: cancelled; the game starts with the files it had" in out and had in out,
+              "then-play with no folder given, cancelled: the remembered folder")
+        out = then_play(a.program, [install], dict(env, CHR_SETUP_PICK=os.path.join(pick, btech)))
+        check(any(l.startswith("setup: copied ") for l in out) and had in out and
+              not any("the files it had" in l for l in out), "then-play, a copy picked: set up, and the game plays it")
 
         # Another version's BTECH.EXE: --status incomplete, the note names DOS 1.03.
         other = os.path.join(work, "user-other")

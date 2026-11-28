@@ -61,7 +61,12 @@ copies it into the data folder; `chr --setup` opens it on purpose and
 `chr --status` prints what is found (docs/setup.md). It
 starts at the title screen, or with `--map N` on map N with the side panel (map 1 is
 the town a new game starts in). Walk with the arrow keys, and Home, PgUp, End
-and PgDn for the diagonals. `--script "up*5 y"` plays keys first and prints
+and PgDn for the diagonals. Shift+Alt+F1 (Cmd+Shift+F1 on a Mac) opens the setup
+kit's menu over the game, which waits meanwhile: the game files in use (CHANGE
+sets them up again and restarts the game, `chr --setup --then-play`), updates,
+a check of the files and where to report a problem; Esc goes back. On Windows,
+if the keyboard-layout hotkey Alt+Shift is turned on, those keys may also switch
+the layout. `--script "up*5 y"` plays keys first and prints
 what each did; with `--screenshot FILE.bmp` it writes one frame and quits
 without opening a window.
 

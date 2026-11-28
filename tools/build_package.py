@@ -64,6 +64,10 @@ README = (
     "  Windows: %APPDATA%\\BattleTech\\Inception Rebuild\n"
     "  macOS:   ~/Library/Application Support/BattleTech/Inception Rebuild\n"
     "  Linux:   ~/.local/share/BattleTech/Inception Rebuild\n\n"
+    "Shift+Alt+F1 (Cmd+Shift+F1 on a Mac) opens a menu over the game, which waits meanwhile:\n"
+    "the game files, updates, a file check and where to report a problem; Esc goes back.\n"
+    "(On Windows, if the keyboard-layout hotkey Alt+Shift is on, those keys may also switch\n"
+    "the layout.)\n\n"
     "From a command line: chi --game-dir <game folder> starts on that folder; chi --setup\n"
     "sets the game up again; chi --help lists the rest.\n\n"
     "BattleTech: The Crescent Hawk's Inception was written by Westwood Associates and\n"
@@ -211,6 +215,51 @@ def check_marker_slices(binary, label, archs):
 
 # Our own data files: the interface texts and the font for a copy that has none.
 OUR_DATA = ["data/text/interface.json", "data/font/font.txt"]
+# The setup kit's settings for this game (its report page, its catalogs), beside the program where the kit looks
+# (SDL_GetBasePath), before the files record lists it.
+KIT_SETTINGS = "setup-kit-settings.json"
+
+
+def kit_notice_files(build):
+    """The files the kit lists for a package beside the program (REKIT_NOTICE_FILES in the build's CMake cache: its
+    built-in fonts' licence), each into licenses/ as re-setup-kit-<name>. None listed is refused."""
+    cache = (build / "CMakeCache.txt").read_text(encoding="utf-8", errors="replace")
+    found = re.search(r"^REKIT_NOTICE_FILES:INTERNAL=(.*)$", cache, re.M)
+    files = [Path(f) for f in found.group(1).split(";") if f] if found else []
+    if not files:
+        raise RuntimeError(f"The kit lists no notice files in {build / 'CMakeCache.txt'} (REKIT_NOTICE_FILES)")
+    return {"re-setup-kit-" + f.name: f for f in files}
+
+
+# The record of a package's own files the in-game menu's CHECK MY FILES reads (the kit's include/rekit/manifest.h).
+FILES_RECORD = "rebuild-files.sha256"
+FILES_MANIFEST = "extern/re-setup-kit/tools/files_manifest.py"
+
+
+def write_files_record(root, folder):
+    """FILES_RECORD at the top of `folder`, by the kit's tool, on the finished folder: after its last file is in place,
+    before anything packs or seals it (the zip, the Setup, the AppImage, a Mac app's signature). The program finds it
+    in its own folder (SDL_GetBasePath: a Mac app's Contents/Resources, an AppImage's usr/bin)."""
+    subprocess.run([sys.executable, "-I", str(root / FILES_MANIFEST), str(folder)], check=True, stdout=subprocess.DEVNULL)
+
+
+def check_files_record(folder):
+    """`folder`'s FILES_RECORD names every file in it (but itself), each with its SHA-256, and nothing that is gone."""
+    record = folder / FILES_RECORD
+    if not record.is_file():
+        raise RuntimeError(f"No {FILES_RECORD} in {folder}")
+    named = {}
+    for line in record.read_text(encoding="utf-8").splitlines():
+        found = re.fullmatch(r"([0-9a-f]{64})  (.+)", line)
+        if not found:
+            raise RuntimeError(f"{record}: not a record line: {line!r}")
+        named[found.group(2)] = found.group(1)
+    there = {f.relative_to(folder).as_posix() for f in folder.rglob("*")
+             if f.is_file() and not f.is_symlink() and f.name != FILES_RECORD}
+    wrong = sorted(set(named) ^ there) + sorted(n for n in set(named) & there
+                                               if hashlib.sha256((folder / n).read_bytes()).hexdigest() != named[n])
+    if wrong:
+        raise RuntimeError(f"{record} doesn't match its folder: " + ", ".join(wrong[:10]))
 
 
 def stage_common(root, build, sdl, resources):
@@ -223,12 +272,15 @@ def stage_common(root, build, sdl, resources):
         (resources / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ours, resources / name)
     shutil.copy2(root / "LICENSE", resources / "LICENSE")
+    shutil.copy2(root / "data" / KIT_SETTINGS, resources / KIT_SETTINGS)
     notices = resources / "licenses"
     notices.mkdir(exist_ok=True)
     kit = root / "extern/re-setup-kit"
     for name, source in [("SDL-LICENSE.txt", sdl / "LICENSE.txt"), ("re-setup-kit-LICENSE", kit / "LICENSE"),
                          ("stb-LICENSE", kit / "third_party/stb/LICENSE"),
-                         ("miniz-LICENSE", kit / "third_party/miniz/LICENSE")]:
+                         ("miniz-LICENSE", kit / "third_party/miniz/LICENSE"),
+                         ("monocypher-LICENCE.md", kit / "third_party/monocypher/LICENCE.md"),
+                         *kit_notice_files(build).items()]:
         if not source.is_file():
             raise RuntimeError(f"Missing licence: {source}")
         shutil.copy2(source, notices / name)
@@ -257,7 +309,7 @@ def hidden_env(scratch, **more):
     env = dict(os.environ)
     for k in [k for k in env if k.startswith(("REKIT_SETUP_", "CHR_"))]:
         env.pop(k)
-    env.update(CHR_HIDDEN="1", SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy", SDL_RENDER_DRIVER="software",
+    env.update(CHR_HIDDEN="1", RE_KIT_TEST="1", SDL_VIDEO_DRIVER="dummy", SDL_AUDIO_DRIVER="dummy", SDL_RENDER_DRIVER="software",
                HOME=str(home), APPDATA=str(home), XDG_DATA_HOME=str(home / "share"), **more)
     return env
 
@@ -325,6 +377,7 @@ def package_windows(root, build, sdl, output, label, game, installer):
     copy_msvc_runtime(stage)
     stage_common(root, build, sdl, stage)
     check_paths(root, stage, root, sdl)
+    write_files_record(root, stage)  # the zip and the Setup carry it
     archive = output / f"{name}.zip"
     zip_flat(stage, archive)
     extracted = output / "smoke"
@@ -332,6 +385,7 @@ def package_windows(root, build, sdl, output, label, game, installer):
         shutil.rmtree(extracted)
     with zipfile.ZipFile(archive) as source:
         source.extractall(extracted)
+    check_files_record(extracted)
     smoke(extracted / f"{PROGRAM}.exe", game)
     write_digest(archive)
     print(f"Packaged and smoke-tested {archive}")
@@ -425,6 +479,7 @@ def package_linux(root, build, sdl, output, label, game, installer, tools):
     shutil.copy2(found[0].resolve(), stage / soname)
     stage_common(root, build, sdl, stage)
     check_paths(root, stage, root, sdl)
+    write_files_record(root, stage)
     archive = output / f"{name}.tar.gz"
     with tarfile.open(archive, "w:gz") as target:
         target.add(stage, arcname=name)
@@ -435,6 +490,7 @@ def package_linux(root, build, sdl, output, label, game, installer, tools):
     with tarfile.open(archive) as source:
         source.extractall(extracted, filter="data")
     executable = extracted / name / PROGRAM
+    check_files_record(extracted / name)
     if not resolved_beside(executable, soname):
         raise RuntimeError(f"The unpacked {PROGRAM} does not load {soname} from beside it")
     smoke(executable, game)
@@ -462,6 +518,7 @@ def appimage(root, stage, output, label, game, sdl, tools):
     bin_dir.mkdir(parents=True)
     doc.mkdir(parents=True)
     shutil.copy2(stage / PROGRAM, bin_dir / PROGRAM)
+    shutil.copy2(stage / KIT_SETTINGS, bin_dir / KIT_SETTINGS)
     shutil.copytree(stage / "data", bin_dir / "data")
     for name in ("LICENSE", "README.txt", "licenses"):
         (shutil.copytree if (stage / name).is_dir() else shutil.copy2)(stage / name, doc / name)
@@ -470,12 +527,21 @@ def appimage(root, stage, output, label, game, sdl, tools):
     run(str(tools / "linuxdeploy-x86_64.AppImage"), "--appdir", str(appdir), "-e", str(bin_dir / PROGRAM),
         "-d", str(root / "tools/package/chi.desktop"), "-i", str(icon), env=env)
     check_marker(bin_dir / PROGRAM, label)
-    smoke(bin_dir / PROGRAM, game)
     check_paths(root, appdir, root, sdl)
+    write_files_record(root, bin_dir)  # after linuxdeploy (it changes the program), before the image and the smoke
+    smoke(bin_dir / PROGRAM, game)
     image = output / f"{STEM}-{label}-x86_64.AppImage"
     run(str(tools / "appimagetool-x86_64.AppImage"), str(appdir), str(image), env=env)
     # Started without FUSE (a CI runner has none): the image unpacks itself and runs.
     smoke(image.resolve(), game, APPIMAGE_EXTRACT_AND_RUN="1")
+    unpacked = output / "appimage-unpacked"
+    if unpacked.exists():
+        shutil.rmtree(unpacked)
+    unpacked.mkdir()
+    subprocess.run([str(image.resolve()), "--appimage-extract"], cwd=unpacked, stdout=subprocess.DEVNULL, check=True,
+                   timeout=600, env=env)
+    check_files_record(unpacked / "squashfs-root/usr/bin")
+    shutil.rmtree(unpacked)
     write_digest(image)
     print(f"AppImage {image}")
     return image
@@ -590,8 +656,12 @@ def package_mac(root, build, sdl, output, label, game, universal=True):
                                          "Needs your own copy of The Crescent Hawk's Inception (DOS 1.03 or Amiga 2.3)."}
     with open(app / "Contents/Info.plist", "wb") as f:
         plistlib.dump(plist, f)
+    # The record of Contents/Resources, where the program looks (SDL_GetBasePath), written before the signature seals
+    # it: codesign refuses a plain file at the top of Contents, and Info.plist and the programs are the signature's.
+    write_files_record(root, resources)
     # Signed before the smoke test, so a release's hardened runtime is what is started.
     sign_app(root, app, frameworks, exe, str(root / "tools/package/chi.entitlements"))
+    check_files_record(resources)
     smoke(exe, game)
     if universal:
         smoke_x86_64(exe)
@@ -608,6 +678,7 @@ def package_mac(root, build, sdl, output, label, game, universal=True):
     (dmg_stage / "Applications").symlink_to("/Applications")
     shutil.copy2(resources / "README.txt", dmg_stage / "Read me.txt")
     check_paths(root, dmg_stage, root, sdl)
+    check_files_record(dmg_stage / app.name / "Contents/Resources")
     run("hdiutil", "create", "-volname", APP_NAME, "-srcfolder", str(dmg_stage), "-ov", "-format", "UDZO", str(dmg),
         stdout=subprocess.DEVNULL)
     shutil.rmtree(dmg_stage)

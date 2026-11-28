@@ -4,6 +4,7 @@
 #include "setup/versions.h"
 
 #include <rekit/archive.h>
+#include <rekit/program_record.h>
 #include <rekit/sdl/pickers.h>
 #include <rekit/sdl/setup_screen.h>
 #include <rekit/sdl/setup_serve.h>
@@ -20,6 +21,16 @@
 #include <filesystem>
 #include <functional>
 #include <iterator>
+
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 #ifndef CHR_VERSION
 #define CHR_VERSION "dev"
@@ -148,6 +159,7 @@ rekit::sdl::Game kit_game(const std::string& user, const std::vector<std::string
 // copied in; the game's folder, or "".
 std::string run_screen(bool setup_only, bool scripted, const std::string& found, bool searched,
                        const std::string& user, int* exit) {
+    // (setup_only: --setup, the launcher's: its errors as JSON and no PLAY; the menu's CHANGE has PLAY.)
     const rekit::sdl::Game g = kit_game(user);
     rekit::sdl::SetupOptions o;
     o.hidden = setup_unattended(scripted);
@@ -183,6 +195,66 @@ std::string take_copy(const std::string& picked, const std::string& user, std::s
     }
     std::printf("setup: copied %d files into %s\n", r.files, r.dir.c_str());
     return r.dir;
+}
+
+#if defined(_WIN32)
+// Whether the Setup's uninstall record under `root` (tools/package/installer.iss's AppId) names `folder`.
+bool setup_record_names(HKEY root, const std::filesystem::path& folder) {
+    HKEY key;
+    if (RegOpenKeyExW(root, L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{11AFD380-EF35-4002-81BC-7312A6971E0F}_is1", 0,
+                      KEY_READ | KEY_WOW64_64KEY, &key) != ERROR_SUCCESS)
+        return false;
+    wchar_t value[4096] = {};
+    DWORD size = sizeof(value) - sizeof(wchar_t), type = 0;
+    const bool read = RegQueryValueExW(key, L"InstallLocation", nullptr, &type, reinterpret_cast<BYTE*>(value), &size) ==
+                          ERROR_SUCCESS &&
+                      type == REG_SZ;
+    RegCloseKey(key);
+    std::error_code ec;
+    return read && std::filesystem::equivalent(std::filesystem::path(value), folder, ec);
+}
+#endif
+
+// How this program was installed, for the menu's UPDATES (rekit/update.h): a build that is no release is never
+// updated; a Mac app; the Setup's install (its uninstaller beside the program), for this user or every user; an
+// AppImage; else the folder a zip or tarball was unpacked into.
+rekit::InstallKind install_kind() {
+    using K = rekit::InstallKind;
+    if (setup::release_tag(CHR_VERSION).empty()) return K::kDevelopment;
+    const std::string self = rekit::self_path();
+    if (self.empty()) return K::kUnknown;
+    const std::filesystem::path dir = std::filesystem::path(self).parent_path();
+#if defined(__APPLE__)
+    const std::filesystem::path contents = dir.parent_path();
+    return dir.filename() == "MacOS" && contents.filename() == "Contents" && contents.parent_path().extension() == ".app"
+               ? K::kMacApp
+               : K::kUnknown;
+#elif defined(_WIN32)
+    std::error_code ec;
+    if (!std::filesystem::exists(dir / "unins000.exe", ec)) return K::kFolder;
+    if (setup_record_names(HKEY_CURRENT_USER, dir)) return K::kWindowsSetupUser;
+    return setup_record_names(HKEY_LOCAL_MACHINE, dir) ? K::kWindowsSetupMachine : K::kUnknown;
+#else
+    const char* appimage = std::getenv("APPIMAGE");
+    return appimage && *appimage && self == appimage ? K::kAppImage : K::kFolder;
+#endif
+}
+
+// The release's file an install of this kind updates from (tools/build_package.py names them).
+std::string release_file(rekit::InstallKind kind) {
+    using K = rekit::InstallKind;
+    switch (kind) {
+    case K::kWindowsSetupUser:
+    case K::kWindowsSetupMachine: return "CHI-Rebuild-{tag}-Setup.exe";
+    case K::kMacApp: return "CHI-Rebuild-{tag}-mac.dmg";
+    case K::kAppImage: return "CHI-Rebuild-{tag}-x86_64.AppImage";
+#if defined(_WIN32)
+    case K::kFolder: return "CHI-Rebuild-{tag}-win64.zip";
+#else
+    case K::kFolder: return "CHI-Rebuild-{tag}-linux-x86_64.tar.gz";
+#endif
+    default: return "";
+    }
 }
 
 // A test hook without the test's own player folder: why it is refused, else "".
@@ -339,14 +411,15 @@ int serve_game_setup(const std::vector<std::string>& args, const std::string& da
     }
 }
 
-int resolve_game(bool setup_only, bool scripted, const std::string& builtin, const std::string& user,
+int resolve_game(SetupMode mode, bool scripted, const std::string& builtin, const std::string& user,
                  std::string* folder) {
+    const bool setup_only = mode == SetupMode::setup_only;
     const std::vector<std::string> known{setup::remembered_folder(user), builtin};
     rekit::sdl::unattended() = [scripted] { return setup_unattended(scripted); };
     std::string game;
     bool searched = false;
     const std::string found = setup::find_install(known, user, program_dir(), &searched);
-    if (!setup_only && !found.empty() && !searched) game = found;
+    if (mode == SetupMode::play && !found.empty() && !searched) game = found;
     const bool chosen = game.empty();  // by the setup this start: remembered
     // A test's stand-in for the player's pick: walked and copied in with no screen.
     if (const char* pick = std::getenv("CHR_SETUP_PICK"); game.empty() && pick && *pick) {
@@ -376,5 +449,51 @@ int resolve_game(bool setup_only, bool scripted, const std::string& builtin, con
     *folder = game;
     return rekit::kSetupReady;
 }
+
+}  // namespace chr::platform
+
+namespace chr::platform {
+
+rekit::sdl::MenuHooks menu_hooks(const std::string& game, const std::string& user, const std::string& saves,
+                                 const std::string& log) {
+    namespace fs = std::filesystem;
+    rekit::sdl::MenuHooks h;
+    h.title = setup::kTitle;
+    h.version = CHR_VERSION;
+    h.user_folder = user;
+    h.log_file = log;
+    h.files_in_use = game;
+    h.report_url = "https://github.com/telltaleatheist/inception-re/issues";
+    h.install = install_kind();
+    h.program_dir = program_dir();  // a Mac app's Contents/Resources, an AppImage's usr/bin: where the package's record is
+    // A copy set up before the kit kept records: the program's own check (setup::check_install).
+    h.check_game_files = [game] {
+        std::vector<std::string> problems;
+        const setup::Check c = setup::check_install(game);
+        if (c.state == rekit::Status::kMissing) problems.push_back(c.why.empty() ? "These are not the game's files." : c.why);
+        for (const std::string& m : c.missing) problems.push_back(m);
+        return problems;
+    };
+    // No settings of the player's but the game folder: no RESET SETTINGS.
+    // UPDATES: the rebuild's releases (chi-vX.Y.Z on inception-re), found through the launcher's signed catalog;
+    // before an update the saves and settings.ini are copied to Backups. A build that is no release has no version
+    // to compare: no check at all (an empty repo).
+    const std::string tag = setup::release_tag(CHR_VERSION);
+    if (tag.empty()) return h;
+    rekit::sdl::UpdateSource& u = h.update;
+    u.recipe = {setup::kOriginalKey, "inception-re", "chi-v", tag, release_file(h.install)};
+    u.catalogs.assign(std::begin(setup::kOriginalCatalogs), std::end(setup::kOriginalCatalogs));
+    u.keys = {setup::kCatalogKey};
+    std::error_code ec;
+    for (int n = 1; n <= 6; ++n) {  // the saved games Game1 to Game6 (platform/save_files.h)
+        const fs::path save = fs::path(saves) / ("Game" + std::to_string(n));
+        if (fs::exists(save, ec)) u.keep.push_back(save.string());
+    }
+    const fs::path settings = fs::path(user) / setup::kSettingsFile;
+    if (fs::exists(settings, ec)) u.keep.push_back(settings.string());
+    return h;
+}
+
+rekit::sdl::Theme menu_theme() { return theme(); }
 
 }  // namespace chr::platform
