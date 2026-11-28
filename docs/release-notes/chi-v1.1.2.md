@@ -12,9 +12,8 @@ is set up. The game itself plays as in 1.0.1.
 
 - **Updating from the menu now works for the Windows zip.** A copy unpacked
   from the zip and started from its own folder now puts the new version in
-  place and starts it again, also when that folder is at the top of a drive.
-  If you play the Windows zip of 1.1.0 or 1.1.1, download this version by hand
-  once; after that, updates work from the menu.
+  place and starts it again. If you play the Windows zip of 1.1.0 or 1.1.1,
+  download this version by hand once; after that, updates work from the menu.
 - **The backup before an update has every saved game.** A game saved in a new
   slot since the game started was left out of it; now it has every saved game
   there is at that moment, and your settings.
@@ -109,9 +108,8 @@ Automated tests check these, but nobody has gone through them yet:
 - Setting the game up on the launcher's screens, and its list of copies.
 - The menu over the game on a real screen, and its keys on real keyboards. It
   was tested on hidden windows, with its keys sent by the tests.
-- Updating from the menu. The setup kit's own tests run its download, backup
-  and swap with test releases; no real release has been updated to yet, by a
-  player or a test.
+- Updating from the menu has been tried on Windows (zip and installer); on a
+  Mac and on Linux it has not yet been tried with a real release.
 - A long sitting with the saving and the faster menus of 1.0.1: scripted runs
   only.
 - An Amiga copy's sounds. In a recorded test fight they come at the moments
