@@ -484,14 +484,22 @@ rekit::sdl::MenuHooks menu_hooks(const std::string& game, const std::string& use
     u.recipe = {setup::kOriginalKey, "inception-re", "chi-v", tag, release_file(h.install)};
     u.catalogs.assign(std::begin(setup::kOriginalCatalogs), std::end(setup::kOriginalCatalogs));
     u.keys = {setup::kCatalogKey};
+    // Looked for when the backup is made, not now: a slot first saved during this start is in it too.
+    u.keep_now = [user, saves] { return update_keep(user, saves); };
+    return h;
+}
+
+std::vector<std::string> update_keep(const std::string& user, const std::string& saves) {
+    namespace fs = std::filesystem;
+    std::vector<std::string> keep;
     std::error_code ec;
     for (int n = 1; n <= 6; ++n) {  // the saved games Game1 to Game6 (platform/save_files.h)
         const fs::path save = fs::path(saves) / ("Game" + std::to_string(n));
-        if (fs::exists(save, ec)) u.keep.push_back(save.string());
+        if (fs::exists(save, ec)) keep.push_back(save.string());
     }
     const fs::path settings = fs::path(user) / setup::kSettingsFile;
-    if (fs::exists(settings, ec)) u.keep.push_back(settings.string());
-    return h;
+    if (fs::exists(settings, ec)) keep.push_back(settings.string());
+    return keep;
 }
 
 rekit::sdl::Theme menu_theme() { return theme(); }

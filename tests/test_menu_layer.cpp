@@ -4,6 +4,7 @@
 // SDL's dummy video driver: nothing on the screen.
 
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -127,4 +128,36 @@ TEST(menu_layer_over_the_game) {
     set_env("RE_LAUNCHER", nullptr);
     set_env("RE_KIT_TEST", kit_test ? kept.c_str() : nullptr);
     std::filesystem::remove_all(user, ec);
+}
+
+// UPDATES' backup is looked for when it is made: a slot first saved after the start is in it, as is settings.ini.
+TEST(update_backup_asked_at_backup_time) {
+    namespace fs = std::filesystem;
+    const fs::path user = fs::path(CHR_TEST_SCRATCH) / "update_keep";
+    const fs::path saves = user / "saves";
+    std::error_code ec;
+    fs::remove_all(user, ec);
+    fs::create_directories(saves, ec);
+    const auto write = [](const fs::path& p) {
+        std::FILE* f = std::fopen(p.string().c_str(), "wb");
+        if (f) std::fputs("x", f), std::fclose(f);
+    };
+    const auto has = [](const std::vector<std::string>& list, const fs::path& p) {
+        for (const std::string& s : list)
+            if (fs::path(s) == p) return true;
+        return false;
+    };
+    write(saves / "Game2");
+    const auto hooks = menu_hooks((user / "no game here").string(), user.string(), saves.string(), "");
+    CHECK(hooks.update.keep.empty());  // nothing fixed at the start
+    // After the start: a new slot and the settings.
+    write(saves / "Game5");
+    write(user / chr::setup::kSettingsFile);
+    write(saves / "Game5.part");  // a write in progress is no save
+    const std::vector<std::string> keep = update_keep(user.string(), saves.string());
+    CHECK(keep.size() == 3);
+    CHECK(has(keep, saves / "Game2") && has(keep, saves / "Game5") && has(keep, user / chr::setup::kSettingsFile));
+    // A release's hooks ask the same at backup time (a build that is no release has no UPDATES).
+    if (hooks.update.keep_now) CHECK(hooks.update.keep_now() == keep);
+    fs::remove_all(user, ec);
 }

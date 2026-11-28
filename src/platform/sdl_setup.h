@@ -93,6 +93,9 @@ int resolve_game(SetupMode mode, bool scripted, const std::string& builtin, cons
 // fills in the window, the drawing, the events, the pause and the ways out.
 rekit::sdl::MenuHooks menu_hooks(const std::string& game, const std::string& user, const std::string& saves,
                                  const std::string& log);
+// What UPDATES backs up before an update, as it is at the moment it is asked (the menu's keep_now): the saved
+// games Game1 to Game6 in `saves` that exist and settings.ini in `user`.
+std::vector<std::string> update_keep(const std::string& user, const std::string& saves);
 // The menu's look: the setup screen's.
 rekit::sdl::Theme menu_theme();
 
