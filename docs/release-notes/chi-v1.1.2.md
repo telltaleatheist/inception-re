@@ -108,8 +108,8 @@ Automated tests check these, but nobody has gone through them yet:
 - Setting the game up on the launcher's screens, and its list of copies.
 - The menu over the game on a real screen, and its keys on real keyboards. It
   was tested on hidden windows, with its keys sent by the tests.
-- Updating from the menu has been tried on Windows (zip and installer); on a
-  Mac and on Linux it has not yet been tried with a real release.
+- Updating from the menu has been tried on Windows (zip and installer) and on
+  a Mac; on Linux it has not yet been tried with a real release.
 - A long sitting with the saving and the faster menus of 1.0.1: scripted runs
   only.
 - An Amiga copy's sounds. In a recorded test fight they come at the moments
