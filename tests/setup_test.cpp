@@ -170,8 +170,9 @@ void game_free(const fs::path& work) {
     check(setup::remembered_folder((work / "ini").string()) == "/some/where", "game_folder read from settings.ini");
     check(setup::remember_folder((work / "ini").string(), "/else/where") &&
               setup::remembered_folder((work / "ini").string()) == "/else/where" &&
-              read(work / "ini" / setup::kSettingsFile).find("speed=2\n") != std::string::npos,
-          "game_folder written, the other lines kept");
+              read(work / "ini" / setup::kSettingsFile).find("speed=2") != std::string::npos &&
+              read(work / "ini" / setup::kSettingsFile).find("; a comment") != std::string::npos,
+          "game_folder written, the other lines kept");  // a text file: CRLF on Windows
     check(setup::remembered_folder((work / "absent").string()).empty(), "no settings.ini: no game_folder");
 
     // Folders that are not the game, and another version's.
