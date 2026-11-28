@@ -30,7 +30,12 @@ steps.
   `Contents/Resources`, written before the signature).
 - `LICENSE`, a `README.txt`, and `licenses/`: SDL's, re-setup-kit's,
   stb's, miniz's, Monocypher's, the kit's built-in fonts' (OFL),
-  libarchive's, zlib's and xz's.
+  libarchive's, zlib's and xz's. The AppImage also has
+  `licenses/appimage-runtime/`: the type-2 runtime that starts it is a
+  separate program with libfuse (LGPL 2.1), squashfuse, zstd, zlib, mimalloc
+  and musl linked in, and its `NOTICE.txt` names each, with where the source
+  is and how to put another runtime in its place. The packaging refuses an
+  AppImage without them (`tools/package/appimage-runtime`).
 
 No file of the original game is ever packaged: no program, data file, save or
 imported text. `tools/package/check_paths.py` refuses a package holding any
@@ -90,7 +95,10 @@ of what the compiler writes (`CHR_TRIM_PATHS`).
   SDL and the program are built for both (`CMAKE_OSX_ARCHITECTURES`), the
   static archive libraries are too (`build_archive.sh mac`), and `lipo`
   checks every binary in the app for both. The x86_64 half is started under
-  Rosetta when the Mac has it. `--this-arch` builds this Mac's architecture
+  Rosetta when the Mac has it: the signed program's half answers `--help` and
+  `--status`, then the whole smoke test runs on a copy of the app whose
+  program is that half alone (`lipo -thin`, signed ad hoc again), so nothing
+  else can run. The app itself is only read. `--this-arch` builds this Mac's architecture
   alone, for a quicker local test. SDL goes to `Contents/Frameworks`, named `@rpath`. The library,
   the program and the app are signed with `tools/package/chi.entitlements`
   (no exceptions to the hardened runtime) and checked with
@@ -122,7 +130,11 @@ of what the compiler writes (`CHR_TRIM_PATHS`).
   of the zip's layout, and is smoke-tested from the unpacked archive. The
   release form is the AppImage, made with `--installer`.
   `--appimage-tools DIR` names the folder holding
-  `linuxdeploy-x86_64.AppImage` and `appimagetool-x86_64.AppImage`. The
+  `linuxdeploy-x86_64.AppImage`, `appimagetool-x86_64.AppImage` and the
+  type-2 runtime `runtime-x86_64`, as `tools/deps/get_appimage_tools.sh DIR`
+  fetches them: each at the release and SHA-256 that script pins (the same
+  pins as the other -re games'). The packaging refuses tools that differ, and
+  hands appimagetool the runtime, which would otherwise download the latest. The
   AppImage holds `usr/bin/chi` with `data/` beside it, and the notices in
   `usr/share/doc/chi`. Its desktop entry (`tools/package/chi.desktop`)
   names the icon, `tools/package/chi.png`.
@@ -160,8 +172,9 @@ The packaging's unit tests (no build, no game files):
 
 `.github/workflows/package-check.yml` ("package check") runs the packaging on
 GitHub's runners, one job per platform: Linux (Ubuntu 24.04, the tarball
-and the AppImage, with linuxdeploy and appimagetool at pinned releases
-checked by SHA-256, the AppImage started without FUSE),
+and the AppImage, with linuxdeploy, appimagetool and the runtime at the
+releases `tools/deps/get_appimage_tools.sh` pins, checked by SHA-256, the
+AppImage started without FUSE),
 Windows (Windows Server 2022, MSVC: the zip and Setup.exe) and macOS (the
 universal dmg). It runs by hand (workflow_dispatch), and on pushes to main
 that touch `src/`, `tools/`, `tests/`, `CMakeLists.txt`, `extern/` or the workflow.

@@ -5,6 +5,7 @@
 import json
 import os
 from pathlib import Path
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -139,6 +140,60 @@ class LinuxLayout(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaisesRegex(RuntimeError, "needs an icon"):
                 self.build(Path(d), installer=True)
+
+
+class AppImageTools(unittest.TestCase):
+    def test_the_two_tools_and_the_runtime_are_pinned(self):
+        pins = build_package.appimage_tools(ROOT)
+        self.assertEqual(set(pins), {"linuxdeploy-x86_64.AppImage", "appimagetool-x86_64.AppImage", "runtime-x86_64"})
+        self.assertTrue(all(len(digest) == 64 for digest in pins.values()))
+
+    def test_a_missing_or_different_tool_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            tools = Path(d)
+            with self.assertRaisesRegex(RuntimeError, "--appimage-tools"):
+                build_package.appimage_ready(ROOT, None)
+            with self.assertRaisesRegex(RuntimeError, "Missing AppImage tool"):
+                build_package.appimage_ready(ROOT, tools)
+            for name in build_package.appimage_tools(ROOT):
+                write(tools / name, "not the pinned release")
+            with self.assertRaisesRegex(RuntimeError, "hashes .* pins"):
+                build_package.appimage_ready(ROOT, tools)
+
+    def test_the_appimage_needs_the_runtimes_notices(self):
+        notices = sorted(f.name for f in (ROOT / build_package.RUNTIME_NOTICE).iterdir())
+        self.assertIn("NOTICE.txt", notices)
+        self.assertIn("libfuse-LGPL2.txt", notices)
+        with tempfile.TemporaryDirectory() as d:
+            licenses = Path(d) / "licenses"
+            with self.assertRaisesRegex(RuntimeError, "runtime's notice"):
+                build_package.check_runtime_notice(ROOT, licenses)
+            shutil.copytree(ROOT / build_package.RUNTIME_NOTICE, licenses / "appimage-runtime")
+            build_package.check_runtime_notice(ROOT, licenses)
+            write(licenses / "appimage-runtime/NOTICE.txt", "changed")
+            with self.assertRaisesRegex(RuntimeError, "NOTICE.txt"):
+                build_package.check_runtime_notice(ROOT, licenses)
+
+
+@unittest.skipUnless(sys.platform == "darwin", "a Mac app's x86_64 half")
+class X86Copy(unittest.TestCase):
+    def test_the_copy_holds_the_x86_64_half_alone_and_the_app_is_untouched(self):
+        with tempfile.TemporaryDirectory() as d:
+            app = Path(d) / "app/Inception Rebuild.app"
+            program = app / "Contents/MacOS" / build_package.PROGRAM
+            program.parent.mkdir(parents=True)
+            shutil.copyfile("/usr/bin/true", program)  # a universal program of the system's (not its flags)
+            program.chmod(0o755)
+            with open(app / "Contents/Info.plist", "wb") as f:  # what makes the folder a bundle to codesign
+                plistlib.dump({"CFBundleExecutable": build_package.PROGRAM, "CFBundleIdentifier": "test.chi",
+                               "CFBundlePackageType": "APPL"}, f)
+            before = program.read_bytes()
+            (Path(d) / "copy").mkdir()
+            copy = build_package.x86_64_copy(app, Path(d) / "copy")
+            archs = subprocess.run(["lipo", "-archs", str(copy)], capture_output=True, text=True, check=True).stdout
+            self.assertEqual(archs.split(), ["x86_64"])
+            self.assertEqual(program.read_bytes(), before)
+            subprocess.run(["codesign", "--verify", str(copy.parent.parent.parent)], check=True)
 
 
 class FilesRecord(unittest.TestCase):

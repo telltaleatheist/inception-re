@@ -9,7 +9,8 @@ One platform per run, this machine's (docs/RELEASING.md):
   Windows  CHI-Rebuild-<label>-win64.zip          chi.exe and SDL3.dll at the top level
            CHI-Rebuild-<label>-Setup.exe          with --installer (Inno Setup)
   Linux    CHI-Rebuild-<label>-linux-x86_64.tar.gz   chi and libSDL3.so.0 (the checks' form)
-           CHI-Rebuild-<label>-x86_64.AppImage    with --installer: usr/bin/chi (--appimage-tools)
+           CHI-Rebuild-<label>-x86_64.AppImage    with --installer: usr/bin/chi (--appimage-tools, the
+                                                  folder tools/deps/get_appimage_tools.sh fills)
 The build's program stays chr, which the tools and the reference rig run; the
 package names it chi. Every file made gets a .sha256 beside it; sums.py writes
 a release's SHA256SUMS over all of them.
@@ -469,6 +470,8 @@ def package_linux(root, build, sdl, output, label, game, installer, tools):
     if stage.exists():
         shutil.rmtree(stage)
     stage.mkdir(parents=True)
+    if installer:
+        appimage_ready(root, tools)  # before the build: nothing is built for an AppImage that can't be made
     binary = configure_and_build(root, build, sdl, label)
     shutil.copy2(binary, stage / PROGRAM)
     check_marker(stage / PROGRAM, label)
@@ -501,15 +504,54 @@ def package_linux(root, build, sdl, output, label, game, installer, tools):
     return archive
 
 
-def appimage(root, stage, output, label, game, sdl, tools):
-    """CHI-Rebuild-<label>-x86_64.AppImage: usr/bin/chi with data/ beside it (SDL_GetBasePath), the
-    notices in usr/share/doc/chi, the libraries by linuxdeploy. `tools` holds linuxdeploy-x86_64.AppImage
-    and appimagetool-x86_64.AppImage. The desktop entry's icon is tools/package/chi.png (ICONS.md)."""
-    icon = root / "tools/package/chi.png"
-    if not icon.is_file():
+APPIMAGE_TOOLS = "tools/deps/get_appimage_tools.sh"
+RUNTIME_NOTICE = "tools/package/appimage-runtime"  # the runtime's notices: it links libfuse (LGPL 2.1) and more
+
+
+def appimage_tools(root):
+    """The AppImage's tools and runtime, each with the SHA-256 tools/deps/get_appimage_tools.sh pins: what
+    ships must not move under a package (unnamed, appimagetool would download the latest runtime)."""
+    script = (root / APPIMAGE_TOOLS).read_text(encoding="utf-8")
+    pins = dict(re.findall(r"^get (\S+) https://\S+ ([0-9a-f]{64})$", script, re.M))
+    if set(pins) != {"linuxdeploy-x86_64.AppImage", "appimagetool-x86_64.AppImage", "runtime-x86_64"}:
+        raise RuntimeError(f"{APPIMAGE_TOOLS} pins {sorted(pins)}, not the two tools and the runtime")
+    return pins
+
+
+def appimage_ready(root, tools):
+    """The AppImage can be made: its icon, and in `tools` each of the tools and the runtime as pinned."""
+    if not (root / "tools/package/chi.png").is_file():
         raise RuntimeError("The AppImage needs an icon: tools/package/chi.png is missing")
     if not tools:
-        raise RuntimeError("--appimage-tools DIR (linuxdeploy and appimagetool) is needed for the AppImage")
+        raise RuntimeError(f"--appimage-tools DIR (linuxdeploy, appimagetool and the runtime: {APPIMAGE_TOOLS} DIR) "
+                           "is needed for the AppImage")
+    for name, wanted in appimage_tools(root).items():
+        file = Path(tools) / name
+        if not file.is_file():
+            raise RuntimeError(f"Missing AppImage tool: {file} ({APPIMAGE_TOOLS} {tools})")
+        found = hashlib.sha256(file.read_bytes()).hexdigest()
+        if found != wanted:
+            raise RuntimeError(f"AppImage tool {file} hashes {found}, {APPIMAGE_TOOLS} pins {wanted}")
+
+
+def check_runtime_notice(root, licenses):
+    """`licenses` (the AppImage's usr/share/doc/chi/licenses) holds the runtime's notices, each as in the repo."""
+    wanted = sorted(f for f in (root / RUNTIME_NOTICE).iterdir() if f.is_file())
+    if not wanted:
+        raise RuntimeError(f"No notices in {RUNTIME_NOTICE}")
+    for notice in wanted:
+        shipped = licenses / "appimage-runtime" / notice.name
+        if not shipped.is_file() or shipped.read_bytes() != notice.read_bytes():
+            raise RuntimeError(f"The AppImage lacks the runtime's notice {notice.name} (licenses/appimage-runtime)")
+
+
+def appimage(root, stage, output, label, game, sdl, tools):
+    """CHI-Rebuild-<label>-x86_64.AppImage: usr/bin/chi with data/ beside it (SDL_GetBasePath), the
+    notices in usr/share/doc/chi (the runtime's in licenses/appimage-runtime), the libraries by linuxdeploy.
+    `tools` holds linuxdeploy, appimagetool and the type-2 runtime as tools/deps/get_appimage_tools.sh pins
+    them. The desktop entry's icon is tools/package/chi.png (ICONS.md)."""
+    appimage_ready(root, tools)
+    icon = root / "tools/package/chi.png"
     tools = Path(tools).resolve()
     appdir = output / "AppDir"
     if appdir.exists():
@@ -522,16 +564,19 @@ def appimage(root, stage, output, label, game, sdl, tools):
     shutil.copytree(stage / "data", bin_dir / "data")
     for name in ("LICENSE", "README.txt", "licenses"):
         (shutil.copytree if (stage / name).is_dir() else shutil.copy2)(stage / name, doc / name)
+    shutil.copytree(root / RUNTIME_NOTICE, doc / "licenses/appimage-runtime")
     env = dict(os.environ, APPIMAGE_EXTRACT_AND_RUN="1", ARCH="x86_64",
                LD_LIBRARY_PATH=os.pathsep.join([str(stage.resolve()), os.environ.get("LD_LIBRARY_PATH", "")]))
     run(str(tools / "linuxdeploy-x86_64.AppImage"), "--appdir", str(appdir), "-e", str(bin_dir / PROGRAM),
         "-d", str(root / "tools/package/chi.desktop"), "-i", str(icon), env=env)
     check_marker(bin_dir / PROGRAM, label)
     check_paths(root, appdir, root, sdl)
+    check_runtime_notice(root, doc / "licenses")
     write_files_record(root, bin_dir)  # after linuxdeploy (it changes the program), before the image and the smoke
     smoke(bin_dir / PROGRAM, game)
     image = output / f"{STEM}-{label}-x86_64.AppImage"
-    run(str(tools / "appimagetool-x86_64.AppImage"), str(appdir), str(image), env=env)
+    run(str(tools / "appimagetool-x86_64.AppImage"), "--runtime-file", str(tools / "runtime-x86_64"), str(appdir),
+        str(image), env=env)
     # Started without FUSE (a CI runner has none): the image unpacks itself and runs.
     smoke(image.resolve(), game, APPIMAGE_EXTRACT_AND_RUN="1")
     unpacked = output / "appimage-unpacked"
@@ -541,6 +586,7 @@ def appimage(root, stage, output, label, game, sdl, tools):
     subprocess.run([str(image.resolve()), "--appimage-extract"], cwd=unpacked, stdout=subprocess.DEVNULL, check=True,
                    timeout=600, env=env)
     check_files_record(unpacked / "squashfs-root/usr/bin")
+    check_runtime_notice(root, unpacked / f"squashfs-root/usr/share/doc/{PROGRAM}/licenses")
     shutil.rmtree(unpacked)
     write_digest(image)
     print(f"AppImage {image}")
@@ -558,9 +604,21 @@ def check_archs(files, archs):
             raise RuntimeError(f"{file.name} holds {' '.join(sorted(got))}, not {' '.join(archs)}")
 
 
-def smoke_x86_64(exe):
-    """The universal app's other half: its x86_64 program started under Rosetta (--help and --status), when
-    this Mac has Rosetta; otherwise said and skipped."""
+def x86_64_copy(app, folder):
+    """A copy of `app` in `folder` whose program is its x86_64 half alone (lipo -thin), signed ad hoc again, so
+    nothing but that half can run: on an Apple silicon Mac, Rosetta's. The app itself is only read."""
+    copy = Path(folder) / app.name
+    run("ditto", str(app), str(copy))
+    program = copy / "Contents/MacOS" / PROGRAM
+    run("lipo", str(program), "-thin", "x86_64", "-output", str(program))
+    run("codesign", "--force", "--deep", "--sign", "-", str(copy))
+    return program
+
+
+def smoke_x86_64(exe, game=None):
+    """The universal app's other half under Rosetta, when this Mac has it (otherwise said and skipped): the
+    signed program's x86_64 half answers --help and --status, then the whole smoke test (smoke) runs on a copy
+    holding that half alone (x86_64_copy)."""
     if subprocess.run(["arch", "-x86_64", "/usr/bin/true"], capture_output=True).returncode != 0:
         print("Smoke: x86_64 not started (no Rosetta on this Mac)")
         return
@@ -571,7 +629,10 @@ def smoke_x86_64(exe):
                                     timeout=SMOKE_SECONDS)
             if result.returncode != 0:
                 raise RuntimeError(f"The x86_64 program failed {args[0]} ({result.returncode})")
-    print("Smoke: the x86_64 program answers --help and --status (Rosetta)")
+    print("Smoke: the signed x86_64 program answers --help and --status (Rosetta)")
+    with tempfile.TemporaryDirectory(prefix="chi-x86_64-") as folder:
+        print("Smoke: the x86_64 half alone, under Rosetta:")
+        smoke(x86_64_copy(exe.parent.parent.parent, folder), game)
 
 
 def build_rpaths(otool_lines):
@@ -664,7 +725,7 @@ def package_mac(root, build, sdl, output, label, game, universal=True):
     check_files_record(resources)
     smoke(exe, game)
     if universal:
-        smoke_x86_64(exe)
+        smoke_x86_64(exe, game)
 
     dmg = output / f"{STEM}-{label}-mac.dmg"
     dmg_stage = output / "dmg"
@@ -717,7 +778,8 @@ if __name__ == "__main__":
                         help="macOS: this Mac's architecture only, for a local test (a release is universal)")
     parser.add_argument("--installer", action="store_true",
                         help="Windows: also Setup.exe (Inno Setup); Linux: also the AppImage")
-    parser.add_argument("--appimage-tools", type=Path, help="Linux: the folder with linuxdeploy and appimagetool")
+    parser.add_argument("--appimage-tools", type=Path,
+                        help="Linux: the folder with linuxdeploy, appimagetool and the runtime (tools/deps/get_appimage_tools.sh)")
     parser.add_argument("--game", type=Path, default=os.environ.get("CHR_GAME_DIR") or None,
                         help="the player's game folder for the smoke test (default CHR_GAME_DIR; never packaged)")
     options = parser.parse_args()
