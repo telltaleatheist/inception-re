@@ -20,12 +20,15 @@ exactly what it does, then write our own code that does the same thing. The
 aim is for the rebuild to play as the original did, and for its source and
 notes to document how the original worked, for preservation and research.
 
-**Status:** chi-v1.0.1 is out for Windows, macOS and Linux on the
-[Releases page](https://github.com/telltaleatheist/inception-re/releases). Please
-update if you have 0.1.0 or 1.0.0: both can change a game you loaded and later saved
-to the same slot. It is checked against the original DOS game; what is known to
-differ, and what no one has played yet, is in its notes. You need your own copy of the DOS version 1.03
-or the Amiga version 2.3 (below); the first start finds it or asks you where it is.
+**Status:** chi-v1.1.0 is out for Windows, macOS and Linux on the
+[Releases page](https://github.com/telltaleatheist/inception-re/releases). It adds a
+menu over the game (Shift+Alt+F1, Cmd+Shift+F1 on a Mac) and a first start that sets
+itself up, downloading the original DOS files if no copy is found; the Mac app is
+signed and notarized. Please update if you have 0.1.0 or 1.0.0: both can change a
+game you loaded and later saved to the same slot. It is checked against the original
+DOS game; what is known to differ, and what no one has played yet, is in its notes.
+The game needs a copy of the DOS version 1.03 or the Amiga version 2.3 (below); the
+first start finds one or downloads the DOS files.
 
 ## You need your own copy of the game
 
