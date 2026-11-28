@@ -20,8 +20,9 @@ exactly what it does, then write our own code that does the same thing. The
 aim is for the rebuild to play as the original did, and for its source and
 notes to document how the original worked, for preservation and research.
 
-**Status:** chi-v1.1.0 is out for Windows, macOS and Linux on the
-[Releases page](https://github.com/telltaleatheist/inception-re/releases). It adds a
+**Status:** chi-v1.1.1 is out for Windows, macOS and Linux on the
+[Releases page](https://github.com/telltaleatheist/inception-re/releases). It changes
+only the Linux AppImage, which now carries its runtime's licence notices. 1.1.0 added a
 menu over the game (Shift+Alt+F1, Cmd+Shift+F1 on a Mac) and a first start that sets
 itself up, downloading the original DOS files if no copy is found; the Mac app is
 signed and notarized. Please update if you have 0.1.0 or 1.0.0: both can change a
